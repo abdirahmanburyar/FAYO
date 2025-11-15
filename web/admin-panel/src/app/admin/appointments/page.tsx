@@ -178,7 +178,7 @@ export default function AppointmentsPage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Today's Appointments</p>
+              <p className="text-sm font-medium text-gray-600">Today&apos;s Appointments</p>
               <p className="text-2xl font-bold text-green-600">
                 {appointments.filter(a => a.date === new Date().toISOString().split('T')[0]).length}
               </p>
