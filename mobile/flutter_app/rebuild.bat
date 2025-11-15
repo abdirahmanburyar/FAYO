@@ -1,0 +1,9 @@
+@echo off
+echo Cleaning Flutter build...
+flutter clean
+
+echo Getting Flutter dependencies...
+flutter pub get
+
+echo Building Flutter app...
+flutter run

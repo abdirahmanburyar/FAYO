@@ -1,0 +1,86 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Doctor {
+  id            String   @id @default(cuid())
+  userId        String   @unique // Reference to user in user-service
+  licenseNumber String   @unique
+  experience    Int      // years of experience
+  isVerified    Boolean  @default(false)
+  isAvailable   Boolean  @default(true)
+  consultationFee Int?   // in cents
+  bio           String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Many-to-many relationship with hospitals
+  hospitalDoctors HospitalDoctor[]
+  
+  // Many-to-many relationship with specialties
+  doctorSpecialties DoctorSpecialty[]
+
+  @@map("doctors")
+}
+
+model HospitalDoctor {
+  id        String   @id @default(cuid())
+  doctorId  String
+  hospitalId String
+  role      String   @default("CONSULTANT") // CONSULTANT, SENIOR_CONSULTANT, HEAD_OF_DEPARTMENT, RESIDENT, INTERN, GENERAL_PRACTITIONER
+  isActive  Boolean  @default(true)
+  joinedAt  DateTime @default(now())
+  leftAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, hospitalId])
+  @@map("hospital_doctors")
+}
+
+model Hospital {
+  id          String        @id @default(cuid())
+  name        String
+  type        String        @default("HOSPITAL")
+  address     String
+  city        String
+  phone       String?
+  email       String?
+  website     String?
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Many-to-many relationship with doctors
+  hospitalDoctors HospitalDoctor[]
+
+  @@map("hospitals")
+}
+
+model DoctorSpecialty {
+  id          String   @id @default(cuid())
+  doctorId    String
+  specialtyId String   // Reference to shared_specialties.id
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  // Note: specialty relationship will be handled via API calls to shared-service
+
+  @@unique([doctorId, specialtyId])
+  @@map("doctor_specialties")
+}

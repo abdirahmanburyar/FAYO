@@ -1,0 +1,248 @@
+// Unified Prisma schema for all FAYO AI services
+// This ensures all tables exist in the same database
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== USER SERVICE TABLES =====
+model User {
+  id        String   @id @default(cuid())
+  username  String?  @unique // For username/password authentication
+  email     String?  @unique
+  phone     String?  @unique
+  password  String?  // For username/password authentication
+  firstName String?
+  lastName  String?
+  role      UserRole @default(PATIENT)
+  userType  UserType @default(PATIENT) // PATIENT, DOCTOR, HOSPITAL_MANAGER
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Profile information
+  dateOfBirth DateTime?
+  gender      Gender?
+  address     String?
+
+  @@map("users")
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("otp_codes")
+}
+
+// ===== HOSPITAL SERVICE TABLES =====
+model Hospital {
+  id          String        @id @default(cuid())
+  name        String
+  type        HospitalType  @default(HOSPITAL)
+  address     String
+  city        String
+  phone       String?
+  email       String?
+  website     String?
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relationships with shared data
+  specialties HospitalSpecialty[]
+  services    HospitalService[]
+  
+  // Many-to-many relationship with doctors
+  hospitalDoctors HospitalDoctor[]
+
+  @@map("hospitals")
+}
+
+model HospitalSpecialty {
+  id          String   @id @default(cuid())
+  hospitalId  String
+  specialtyId String   // Reference to shared_specialties.id
+  specialtyName String // Cache the specialty name for performance
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@unique([hospitalId, specialtyId])
+  @@map("hospital_specialties")
+}
+
+
+model HospitalService {
+  id          String   @id @default(cuid())
+  hospitalId  String
+  serviceId   String   // Reference to shared_services.id
+  serviceName String   // Cache the service name for performance
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@unique([hospitalId, serviceId])
+  @@map("hospital_services")
+}
+
+// ===== SHARED SERVICE TABLES =====
+model Country {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cities City[]
+
+  @@map("shared_countries")
+}
+
+model City {
+  id        String   @id @default(cuid())
+  name      String
+  countryId String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  @@unique([name, countryId])
+  @@map("shared_cities")
+}
+
+
+model Specialty {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Many-to-many relationship with doctors
+  doctorSpecialties DoctorSpecialty[]
+
+  @@map("shared_specialties")
+}
+
+
+model Service {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("shared_services")
+}
+
+// ===== DOCTOR SERVICE TABLES =====
+model Doctor {
+  id            String   @id @default(cuid())
+  userId        String   @unique // Reference to user in user-service
+  licenseNumber String   @unique
+  experience    Int      // years of experience
+  isVerified    Boolean  @default(false)
+  isAvailable   Boolean  @default(true)
+  consultationFee Int?   // in cents
+  bio           String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Many-to-many relationship with hospitals
+  hospitalDoctors HospitalDoctor[]
+  
+  // Many-to-many relationship with specialties
+  doctorSpecialties DoctorSpecialty[]
+
+  @@map("doctors")
+}
+
+model HospitalDoctor {
+  id        String   @id @default(cuid())
+  doctorId  String
+  hospitalId String
+  role      String   @default("CONSULTANT") // CONSULTANT, SENIOR_CONSULTANT, HEAD_OF_DEPARTMENT, RESIDENT, INTERN, GENERAL_PRACTITIONER
+  isActive  Boolean  @default(true)
+  joinedAt  DateTime @default(now())
+  leftAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, hospitalId])
+  @@map("hospital_doctors")
+}
+
+model DoctorSpecialty {
+  id          String   @id @default(cuid())
+  doctorId    String
+  specialtyId String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  doctor    Doctor    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  specialty Specialty @relation(fields: [specialtyId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, specialtyId])
+  @@map("doctor_specialties")
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  type      String   @default("string") // string, number, boolean, json
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("shared_settings")
+}
+
+// ===== ENUMS =====
+enum UserRole {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+enum UserType {
+  PATIENT
+  DOCTOR
+  HOSPITAL_MANAGER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum HospitalType {
+  HOSPITAL
+  CLINIC
+}

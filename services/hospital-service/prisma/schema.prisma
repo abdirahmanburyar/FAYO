@@ -1,0 +1,116 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["hospitals"]
+}
+
+model Hospital {
+  id          String        @id @default(cuid())
+  name        String
+  type        HospitalType  @default(HOSPITAL)
+  address     String
+  city        String
+  phone       String?
+  email       String?
+  website     String?
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relationships with shared data
+  specialties HospitalSpecialty[]
+  services    HospitalService[]
+  
+  // Many-to-many relationship with doctors
+  hospitalDoctors HospitalDoctor[]
+
+  @@map("hospitals")
+  @@schema("hospitals")
+}
+
+model HospitalSpecialty {
+  id          String   @id @default(cuid())
+  hospitalId  String
+  specialtyId String   // Reference to shared_specialties.id
+  specialtyName String // Cache the specialty name for performance
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@unique([hospitalId, specialtyId])
+  @@map("hospital_specialties")
+  @@schema("hospitals")
+}
+
+
+model HospitalService {
+  id        String   @id @default(cuid())
+  hospitalId String
+  serviceId  String   // Reference to shared_services.id
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@unique([hospitalId, serviceId])
+  @@map("hospital_services")
+  @@schema("hospitals")
+}
+
+model HospitalDoctor {
+  id        String   @id @default(cuid())
+  doctorId  String
+  hospitalId String
+  role      String   @default("CONSULTANT") // CONSULTANT, SENIOR_CONSULTANT, HEAD_OF_DEPARTMENT, RESIDENT, INTERN, GENERAL_PRACTITIONER
+  isActive  Boolean  @default(true)
+  joinedAt  DateTime @default(now())
+  leftAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, hospitalId])
+  @@map("hospital_doctors")
+  @@schema("hospitals")
+}
+
+model Doctor {
+  id            String   @id @default(cuid())
+  userId        String   @unique // Reference to user in user-service
+  specialty     String
+  licenseNumber String   @unique
+  experience    Int      // years of experience
+  isVerified    Boolean  @default(false)
+  isAvailable   Boolean  @default(true)
+  consultationFee Int?   // in cents
+  bio           String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Many-to-many relationship with hospitals
+  hospitalDoctors HospitalDoctor[]
+
+  @@map("doctors")
+  @@schema("hospitals")
+}
+
+enum HospitalType {
+  HOSPITAL
+  CLINIC
+
+  @@schema("hospitals")
+}

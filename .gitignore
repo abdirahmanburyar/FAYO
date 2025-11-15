@@ -1,0 +1,378 @@
+# ============================================
+# FAYO AI - Root .gitignore
+# ============================================
+
+# ============================================
+# Dependencies
+# ============================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# ============================================
+# Environment Variables
+# ============================================
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env*.local
+*.env
+!.env.example
+!**/env.example
+
+# ============================================
+# Build Outputs
+# ============================================
+dist/
+build/
+out/
+.next/
+.nuxt/
+.output/
+*.tsbuildinfo
+
+# ============================================
+# TypeScript
+# ============================================
+*.tsbuildinfo
+*.js.map
+*.d.ts.map
+
+# ============================================
+# Testing
+# ============================================
+coverage/
+.nyc_output/
+*.lcov
+.jest/
+
+# ============================================
+# Logs
+# ============================================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ============================================
+# Docker
+# ============================================
+*.tar.gz
+docker-compose.override.yml
+.dockerignore.local
+
+# ============================================
+# Database
+# ============================================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+pgdata/
+postgres-data/
+
+# Prisma (keep schemas, ignore generated)
+# Note: Keep prisma/schema.prisma files
+**/prisma/migrations/
+**/node_modules/.prisma/
+
+# ============================================
+# IDE & Editor
+# ============================================
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# IntelliJ / WebStorm
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.vim/
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ============================================
+# OS Files
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.directory
+.Trash-*
+.nfs*
+
+# ============================================
+# Temporary Files
+# ============================================
+*.tmp
+*.temp
+*.bak
+*.backup
+*.swp
+*.swo
+*~
+.cache/
+.temp/
+tmp/
+temp/
+
+# ============================================
+# Deployment & CI/CD
+# ============================================
+# Deployment archives
+*.tar.gz
+*.zip
+!node_modules/**/*.zip
+
+# SSH Keys (keep examples, ignore actual keys)
+*.pem
+*.key
+!*.example.key
+id_rsa*
+!id_rsa*.pub.example
+!**/setup-ssh-key*.sh
+!**/setup-ssh-key*.ps1
+
+# ============================================
+# Flutter / Mobile
+# ============================================
+# Flutter build outputs
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/.pub-cache/
+**/.pub/
+**/pubspec.lock
+
+# Android
+**/android/.gradle/
+**/android/app/build/
+**/android/.idea/
+**/android/local.properties
+**/android/.externalNativeBuild/
+**/android/captures/
+**/android/.cxx/
+
+# iOS
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/.last_build_id
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+
+# ============================================
+# Next.js
+# ============================================
+.next/
+out/
+.vercel/
+.vercelignore
+
+# ============================================
+# NestJS
+# ============================================
+dist/
+*.tsbuildinfo
+
+# ============================================
+# Misc
+# ============================================
+# Lock files (optional - uncomment if you want to ignore)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Editor directories and files
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ============================================
+# Project Specific
+# ============================================
+# Fix scripts output
+fix-hospital-services.js
+
+# Deployment scripts output
+scripts/*.tar.gz
+
+# Local test files
+test-*.js
+*.test.local.*
+
+# Windows reserved names (nul, con, prn, etc.)
+nul
+con
+prn
+aux
+com1
+com2
+com3
+com4
+com5
+com6
+com7
+com8
+com9
+lpt1
+lpt2
+lpt3
+lpt4
+lpt5
+lpt6
+lpt7
+lpt8
+lpt9
+
+# ============================================
+# Keep Important Files
+# ============================================
+# Keep example files
+!**/*.example
+!**/env.example
+!**/*.example.*
+
+# Keep documentation
+!*.md
+!**/*.md
+
+# Keep Dockerfiles
+!**/Dockerfile
+!**/docker-compose*.yml
+!docker-compose*.yml
+
+# Keep scripts
+!scripts/**/*.sh
+!scripts/**/*.ps1
+!scripts/**/*.bat
+
+# Keep GitHub workflows
+!.github/workflows/*.yml
+
+# Keep Prisma schemas
+!**/prisma/schema.prisma
+!**/*.prisma
+

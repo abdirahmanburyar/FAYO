@@ -1,0 +1,264 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+env:
+  VPS_HOST: 31.97.58.62
+  VPS_USER: root
+  DOCKER_COMPOSE_VERSION: 2.24.0
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: |
+            services/*/package-lock.json
+            web/*/package-lock.json
+
+      - name: Install dependencies and build services
+        run: |
+          echo "Checking service dependencies..."
+          for service in services/*/; do
+            if [ -f "$service/package.json" ]; then
+              echo "Installing dependencies for $service"
+              cd "$service"
+              npm ci || npm install
+              cd ../..
+            fi
+          done
+
+      - name: Lint code
+        run: |
+          echo "Running lint checks..."
+          # Add your linting commands here if needed
+          # npm run lint
+
+  deploy:
+    name: Deploy to Production
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+
+      - name: Add VPS to known hosts
+        run: |
+          ssh-keyscan -H ${{ env.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Test SSH connection
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "echo 'SSH connection successful'"
+
+      - name: Install Docker and Docker Compose on VPS
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+            # Check if Docker is installed
+            if ! command -v docker &> /dev/null; then
+              echo "Installing Docker..."
+              curl -fsSL https://get.docker.com -o get-docker.sh
+              sh get-docker.sh
+              systemctl enable docker
+              systemctl start docker
+            fi
+            
+            # Check if Docker Compose is installed
+            if ! command -v docker-compose &> /dev/null; then
+              echo "Installing Docker Compose..."
+              curl -L "https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              chmod +x /usr/local/bin/docker-compose
+            fi
+            
+            # Verify installations
+            docker --version
+            docker-compose --version
+          ENDSSH
+
+      - name: Create deployment directory on VPS
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+            mkdir -p /opt/fayo
+            mkdir -p /opt/fayo/services
+            mkdir -p /opt/fayo/web
+            mkdir -p /opt/fayo/scripts
+          ENDSSH
+
+      - name: Copy files to VPS
+        run: |
+          # Copy docker-compose file
+          scp -o StrictHostKeyChecking=no docker-compose.prod.yml ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/
+          
+          # Create tar archive of services (excluding node_modules, dist, .git)
+          echo "Creating services archive..."
+          tar --exclude='node_modules' --exclude='dist' --exclude='.git' --exclude='*.log' -czf services.tar.gz services/ || true
+          
+          # Copy services archive to VPS
+          scp -o StrictHostKeyChecking=no services.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/
+          
+          # Extract on VPS
+          ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+            cd /opt/fayo
+            tar -xzf services.tar.gz
+            rm services.tar.gz
+          ENDSSH
+          
+          # Clean up local archive
+          rm -f services.tar.gz
+          
+          # Create tar archive of web directory
+          if [ -d "web" ]; then
+            echo "Creating web archive..."
+            tar --exclude='node_modules' --exclude='.next' --exclude='.git' --exclude='*.log' -czf web.tar.gz web/ || true
+            
+            # Copy web archive to VPS
+            scp -o StrictHostKeyChecking=no web.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/
+            
+            # Extract on VPS
+            ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+              cd /opt/fayo
+              tar -xzf web.tar.gz
+              rm web.tar.gz
+            ENDSSH
+            
+            # Clean up local archive
+            rm -f web.tar.gz
+          fi
+          
+          # Copy scripts if they exist
+          if [ -d "scripts" ]; then
+            echo "Creating scripts archive..."
+            tar -czf scripts.tar.gz scripts/ || true
+            scp -o StrictHostKeyChecking=no scripts.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/
+            ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+              cd /opt/fayo
+              tar -xzf scripts.tar.gz
+              rm scripts.tar.gz
+            ENDSSH
+            rm -f scripts.tar.gz
+          fi
+
+      - name: Create .env file on VPS
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+            cd /opt/fayo
+            if [ ! -f .env ]; then
+              cat > .env << 'ENVFILE'
+            # Database
+            POSTGRES_USER=postgres
+            POSTGRES_PASSWORD=postgres
+            DATABASE_URL=postgresql://postgres:postgres@postgres:5432/fayo?schema=public
+            
+            # Redis
+            REDIS_PASSWORD=
+            
+            # RabbitMQ
+            RABBITMQ_USER=guest
+            RABBITMQ_PASS=guest
+            
+            # JWT
+            JWT_SECRET=your-super-secret-jwt-key-change-in-production-CHANGE-THIS
+            
+            # OTP
+            OTP_EXPIRES_IN=300000
+            OTP_LENGTH=6
+            
+            # Email (configure these)
+            EMAIL_USER=
+            EMAIL_PASS=
+            DEFAULT_EMAIL=
+            
+            # SMS (configure these)
+            SMS_API_KEY=
+            SMS_API_URL=
+            
+            # Keycloak (configure these)
+            KEYCLOAK_URL=http://localhost:8080
+            KEYCLOAK_REALM=fayo
+            KEYCLOAK_CLIENT_ID=fayo-web
+            KEYCLOAK_CLIENT_SECRET=
+            KEYCLOAK_CALLBACK_URL=http://31.97.58.62:3006/auth/keycloak/callback
+            
+            # API URLs
+            NEXT_PUBLIC_API_URL=http://31.97.58.62:3006
+            ENVFILE
+            fi
+          ENDSSH
+
+      - name: Deploy with Docker Compose
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+            cd /opt/fayo
+            
+            # Stop existing containers
+            docker-compose -f docker-compose.prod.yml down || true
+            
+            # Pull latest images or build
+            docker-compose -f docker-compose.prod.yml build --no-cache
+            
+            # Start services
+            docker-compose -f docker-compose.prod.yml up -d
+            
+            # Show running containers
+            docker-compose -f docker-compose.prod.yml ps
+            
+            # Show logs for debugging
+            echo "=== Container Status ==="
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+          ENDSSH
+
+      - name: Wait for services to be healthy
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+            echo "Waiting for services to start..."
+            sleep 30
+            
+            # Check health endpoints
+            echo "Checking service health..."
+            for port in 3000 3001 3002 3003 3004 3005 3006 3007; do
+              echo "Checking port $port..."
+              timeout 10 bash -c "until curl -f http://localhost:$port/api/v1/health || curl -f http://localhost:$port/health; do sleep 2; done" || echo "Service on port $port may not be ready yet"
+            done
+          ENDSSH
+
+      - name: Deployment Summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **VPS IP**: ${{ env.VPS_HOST }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployment Time**: $(date)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Services Deployed:" >> $GITHUB_STEP_SUMMARY
+          echo "- Admin Panel: http://${{ env.VPS_HOST }}:3000" >> $GITHUB_STEP_SUMMARY
+          echo "- Gateway: http://${{ env.VPS_HOST }}:3006" >> $GITHUB_STEP_SUMMARY
+          echo "- User Service: http://${{ env.VPS_HOST }}:3001" >> $GITHUB_STEP_SUMMARY
+          echo "- Hospital Service: http://${{ env.VPS_HOST }}:3002" >> $GITHUB_STEP_SUMMARY
+          echo "- Doctor Service: http://${{ env.VPS_HOST }}:3003" >> $GITHUB_STEP_SUMMARY
+          echo "- Shared Service: http://${{ env.VPS_HOST }}:3004" >> $GITHUB_STEP_SUMMARY
+          echo "- Appointment Service: http://${{ env.VPS_HOST }}:3005" >> $GITHUB_STEP_SUMMARY
+          echo "- Notification Worker: http://${{ env.VPS_HOST }}:3007" >> $GITHUB_STEP_SUMMARY
+

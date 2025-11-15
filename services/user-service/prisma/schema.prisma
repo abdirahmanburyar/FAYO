@@ -1,0 +1,72 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["users"]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String?  @unique // For username/password authentication
+  email     String?  @unique
+  phone     String?  @unique
+  password  String? // For username/password authentication
+  firstName String?
+  lastName  String?
+  role      UserRole @default(PATIENT)
+  userType  UserType @default(PATIENT) // PATIENT, DOCTOR, HOSPITAL_MANAGER
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Profile information
+  dateOfBirth DateTime?
+  gender      Gender?
+  address     String?
+
+  @@map("users")
+  @@schema("users")
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("otp_codes")
+  @@schema("users")
+}
+
+enum UserRole {
+  PATIENT
+  DOCTOR
+  ADMIN
+
+  @@schema("users")
+}
+
+enum UserType {
+  PATIENT
+  DOCTOR
+  HOSPITAL_MANAGER
+
+  @@schema("users")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+
+  @@schema("users")
+}
