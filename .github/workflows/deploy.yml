@@ -254,7 +254,7 @@ jobs:
             
             # Check health endpoints
             echo "Checking service health..."
-            for port in 3000 3001 3002 3003 3004 3005 3006 3007; do
+            for port in 3000 3001 3002 3003 3004 3006 3007; do
               echo "Checking port $port..."
               timeout 10 bash -c "until curl -f http://localhost:$port/api/v1/health || curl -f http://localhost:$port/health; do sleep 2; done" || echo "Service on port $port may not be ready yet"
             done
@@ -274,6 +274,5 @@ jobs:
           echo "- Hospital Service: http://${{ env.VPS_HOST }}:3002" >> $GITHUB_STEP_SUMMARY
           echo "- Doctor Service: http://${{ env.VPS_HOST }}:3003" >> $GITHUB_STEP_SUMMARY
           echo "- Shared Service: http://${{ env.VPS_HOST }}:3004" >> $GITHUB_STEP_SUMMARY
-          echo "- Appointment Service: http://${{ env.VPS_HOST }}:3005" >> $GITHUB_STEP_SUMMARY
           echo "- Notification Worker: http://${{ env.VPS_HOST }}:3007" >> $GITHUB_STEP_SUMMARY
 

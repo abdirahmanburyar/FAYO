@@ -6,7 +6,6 @@ import axios from 'axios';
 export class ProxyService {
   private readonly services = {
     user: process.env.USER_SERVICE_URL || 'http://localhost:3001',
-    appointment: process.env.APPOINTMENT_SERVICE_URL || 'http://localhost:3002',
     triage: process.env.TRIAGE_SERVICE_URL || 'http://localhost:3003',
     notification: process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3004',
   };
@@ -52,10 +51,6 @@ export class ProxyService {
 
   async proxyToUserService(path: string, method: string, data?: any, headers?: any) {
     return this.proxyRequest('user', path, method, data, headers);
-  }
-
-  async proxyToAppointmentService(path: string, method: string, data?: any, headers?: any) {
-    return this.proxyRequest('appointment', path, method, data, headers);
   }
 
   async proxyToTriageService(path: string, method: string, data?: any, headers?: any) {

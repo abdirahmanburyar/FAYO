@@ -33,32 +33,6 @@ export class ProxyController {
     res.status(result.status).json(result.data);
   }
 
-  @All('appointments/*')
-  async proxyToAppointmentService(
-    @Req() req: Request,
-    @Res() res: Response,
-    @Body() body: any,
-    @Headers() headers: any,
-    @Query() query: any,
-  ) {
-    const path = req.path.replace('/appointments', '');
-    const method = req.method;
-    
-    const authHeaders = {
-      ...headers,
-      authorization: headers.authorization,
-    };
-
-    const result = await this.proxyService.proxyToAppointmentService(
-      path,
-      method,
-      body,
-      authHeaders,
-    );
-
-    res.status(result.status).json(result.data);
-  }
-
   @All('triage/*')
   async proxyToTriageService(
     @Req() req: Request,

@@ -91,7 +91,6 @@ The system consists of the following services:
 - **Hospital Service** (Port 3002) - Hospital management
 - **Doctor Service** (Port 3003) - Doctor management
 - **Shared Service** (Port 3004) - Categories and utilities
-- **Appointment Service** (Port 3005) - Appointment scheduling
 - **Notification Worker** (Port 3007) - Background notifications
 
 ## 🌐 Production URLs
@@ -104,7 +103,6 @@ After deployment, services are available at:
 - **Hospital Service**: http://31.97.58.62:3002
 - **Doctor Service**: http://31.97.58.62:3003
 - **Shared Service**: http://31.97.58.62:3004
-- **Appointment Service**: http://31.97.58.62:3005
 - **Notification Worker**: http://31.97.58.62:3007
 
 ## ⚙️ Configuration
@@ -245,7 +243,7 @@ docker exec -i fayo-postgres psql -U postgres fayo < backup_file.sql
 
 2. Check if ports are already in use:
    ```bash
-   netstat -tulpn | grep -E '3000|3001|3002|3003|3004|3005|3006|3007|5432|6379'
+   netstat -tulpn | grep -E '3000|3001|3002|3003|3004|3006|3007|5432|6379'
    ```
 
 3. Check Docker resources:

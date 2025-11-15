@@ -122,7 +122,6 @@ GitHub Repository
 | Hospital Service | 3002 | http://31.97.58.62:3002 |
 | Doctor Service | 3003 | http://31.97.58.62:3003 |
 | Shared Service | 3004 | http://31.97.58.62:3004 |
-| Appointment Service | 3005 | http://31.97.58.62:3005 |
 | Gateway | 3006 | http://31.97.58.62:3006 |
 | Notification Worker | 3007 | http://31.97.58.62:3007 |
 

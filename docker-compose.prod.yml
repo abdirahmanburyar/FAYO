@@ -228,39 +228,6 @@ services:
       retries: 3
       start_period: 40s
 
-  appointment-service:
-    build:
-      context: ./services/appointment-service
-      dockerfile: Dockerfile
-    container_name: fayo-appointment-service
-    ports:
-      - '3005:3005'
-    environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/appointment_service?schema=public}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      KAFKA_BROKER: kafka:9092
-      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
-      PORT: 3005
-      SERVICE_NAME: appointment-service
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      kafka:
-        condition: service_healthy
-    networks:
-      - fayo-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3005/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
   gateway:
     build:
       context: ./services/gateway
@@ -278,7 +245,6 @@ services:
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-}
       KEYCLOAK_CALLBACK_URL: ${KEYCLOAK_CALLBACK_URL:-http://31.97.58.62:3006/auth/keycloak/callback}
       USER_SERVICE_URL: http://user-service:3001
-      APPOINTMENT_SERVICE_URL: http://appointment-service:3005
       TRIAGE_SERVICE_URL: ${TRIAGE_SERVICE_URL:-http://localhost:3003}
       NOTIFICATION_SERVICE_URL: http://notification-worker:3007
     depends_on:
@@ -286,7 +252,6 @@ services:
       - hospital-service
       - doctor-service
       - shared-service
-      - appointment-service
       - notification-worker
     networks:
       - fayo-network
