@@ -51,6 +51,7 @@ jobs:
             fi
           done
           
+          # also
           # Handle web/admin-panel if it exists
           if [ -f "web/admin-panel/package.json" ]; then
             echo "📦 Installing dependencies for web/admin-panel..."
