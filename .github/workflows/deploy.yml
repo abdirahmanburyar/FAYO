@@ -376,7 +376,7 @@ jobs:
           HEALTH_CHECK_PASSED=0
           HEALTH_CHECK_FAILED=0
           
-          for port in 3000 3001 3002 3003 3004 3006 3007; do
+          for port in 3000 3001 3002 3003 3004 3006; do
             echo -n "Checking port $port... "
             if timeout 15 bash -c "until curl -sf http://localhost:$port/api/v1/health 2>/dev/null || curl -sf http://localhost:$port/health 2>/dev/null; do sleep 2; done" 2>/dev/null; then
               echo "✅ Healthy"
@@ -420,7 +420,6 @@ jobs:
           echo "| Hospital Service | http://${{ env.VPS_HOST }}:3002 |" >> $GITHUB_STEP_SUMMARY
           echo "| Doctor Service | http://${{ env.VPS_HOST }}:3003 |" >> $GITHUB_STEP_SUMMARY
           echo "| Shared Service | http://${{ env.VPS_HOST }}:3004 |" >> $GITHUB_STEP_SUMMARY
-          echo "| Notification Worker | http://${{ env.VPS_HOST }}:3007 |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📝 Next Steps" >> $GITHUB_STEP_SUMMARY
           echo "1. Verify services are running: \`ssh root@${{ env.VPS_HOST }} 'cd /opt/fayo && docker compose ps'\`" >> $GITHUB_STEP_SUMMARY

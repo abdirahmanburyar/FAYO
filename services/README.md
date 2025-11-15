@@ -40,16 +40,7 @@
   - Kafka event publishing
   - Integration with AI/ML models
 
-#### 5. Notification Worker (`services/notification-worker/`)
-- **Purpose**: Consume RabbitMQ SMS queue
-- **Status**: Needs creation
-- **Required Features**:
-  - RabbitMQ consumer
-  - SMS sending integration
-  - Email notifications
-  - Push notifications
-
-#### 6. Gateway/BFF (`services/gateway/`)
+#### 5. Gateway/BFF (`services/gateway/`)
 - **Purpose**: Proxy requests, handle Keycloak auth
 - **Status**: Needs creation
 - **Required Features**:
@@ -130,8 +121,7 @@ npm run start:dev
 
 1. Complete Appointment Service implementation
 2. Create Triage Service with AI integration
-3. Build Notification Worker
-4. Implement Gateway with Keycloak
+3. Implement Gateway with Keycloak
 5. Create Flutter mobile app
 6. Build React web dashboard
 7. Add comprehensive testing

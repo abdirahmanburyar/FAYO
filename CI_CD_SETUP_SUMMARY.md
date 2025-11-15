@@ -123,7 +123,6 @@ GitHub Repository
 | Doctor Service | 3003 | http://31.97.58.62:3003 |
 | Shared Service | 3004 | http://31.97.58.62:3004 |
 | Gateway | 3006 | http://31.97.58.62:3006 |
-| Notification Worker | 3007 | http://31.97.58.62:3007 |
 
 ## 🔐 Security Notes
 

@@ -91,8 +91,6 @@ The system consists of the following services:
 - **Hospital Service** (Port 3002) - Hospital management
 - **Doctor Service** (Port 3003) - Doctor management
 - **Shared Service** (Port 3004) - Categories and utilities
-- **Notification Worker** (Port 3007) - Background notifications
-
 ## 🌐 Production URLs
 
 After deployment, services are available at:
@@ -103,7 +101,6 @@ After deployment, services are available at:
 - **Hospital Service**: http://31.97.58.62:3002
 - **Doctor Service**: http://31.97.58.62:3003
 - **Shared Service**: http://31.97.58.62:3004
-- **Notification Worker**: http://31.97.58.62:3007
 
 ## ⚙️ Configuration
 
