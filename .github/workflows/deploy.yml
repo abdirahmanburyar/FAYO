@@ -387,7 +387,8 @@ jobs:
             fi
           done
           
-          echo ""
+          echo "..."
+
           echo "Health check summary: $HEALTH_CHECK_PASSED passed, $HEALTH_CHECK_FAILED not yet ready"
           
           if [ $HEALTH_CHECK_PASSED -gt 0 ]; then
