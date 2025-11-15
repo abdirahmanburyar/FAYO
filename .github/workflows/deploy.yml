@@ -41,10 +41,25 @@ jobs:
             if [ -f "$service/package.json" ]; then
               echo "Installing dependencies for $service"
               cd "$service"
-              npm ci || npm install
+              # Try npm ci first, if it fails due to lock file mismatch, use npm install
+              if ! npm ci 2>/dev/null; then
+                echo "Lock file out of sync, updating with npm install..."
+                npm install
+              fi
               cd ../..
             fi
           done
+          
+          # Also handle web/admin-panel if it exists
+          if [ -f "web/admin-panel/package.json" ]; then
+            echo "Installing dependencies for web/admin-panel"
+            cd web/admin-panel
+            if ! npm ci 2>/dev/null; then
+              echo "Lock file out of sync, updating with npm install..."
+              npm install
+            fi
+            cd ../..
+          fi
 
       - name: Lint code
         run: |
