@@ -109,7 +109,7 @@ jobs:
 
       - name: Install Docker and Docker Compose on VPS
         run: |
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR -o UserKnownHostsFile=/dev/null ${{ env.VPS_USER }}@${{ env.VPS_HOST }} bash << 'ENDSSH'
             # Check if Docker is installed
             if ! command -v docker &> /dev/null; then
               echo "Installing Docker..."
@@ -124,8 +124,8 @@ jobs:
               echo "Installing Docker Compose plugin..."
               # Docker Compose v2 is included with Docker Desktop and can be installed as a plugin
               # For Linux, install the compose plugin
-              apt-get update
-              apt-get install -y docker-compose-plugin || {
+              apt-get update -qq
+              apt-get install -y docker-compose-plugin 2>/dev/null || {
                 echo "Installing standalone docker-compose as fallback..."
                 COMPOSE_VERSION="v2.24.0"
                 ARCH=$(uname -m)
@@ -134,7 +134,7 @@ jobs:
                 else
                   ARCH="x86_64"
                 fi
-                curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-${ARCH}" -o /usr/local/bin/docker-compose
+                curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-${ARCH}" -o /usr/local/bin/docker-compose 2>/dev/null
                 chmod +x /usr/local/bin/docker-compose
               }
             fi
@@ -155,7 +155,7 @@ jobs:
 
       - name: Create deployment directory on VPS
         run: |
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR -o UserKnownHostsFile=/dev/null ${{ env.VPS_USER }}@${{ env.VPS_HOST }} bash << 'ENDSSH'
             mkdir -p /opt/fayo
             mkdir -p /opt/fayo/services
             mkdir -p /opt/fayo/web
@@ -165,17 +165,17 @@ jobs:
       - name: Copy files to VPS
         run: |
           # Copy docker-compose file
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" scp -o StrictHostKeyChecking=no docker-compose.prod.yml ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" scp -o StrictHostKeyChecking=no -o LogLevel=ERROR docker-compose.prod.yml ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/ 2>/dev/null
           
           # Create tar archive of services (excluding node_modules, dist, .git)
           echo "Creating services archive..."
           tar --exclude='node_modules' --exclude='dist' --exclude='.git' --exclude='*.log' -czf services.tar.gz services/ || true
           
-            # Copy services archive to VPS
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" scp -o StrictHostKeyChecking=no services.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/
+          # Copy services archive to VPS
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" scp -o StrictHostKeyChecking=no -o LogLevel=ERROR services.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/ 2>/dev/null
           
           # Extract on VPS
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR -o UserKnownHostsFile=/dev/null ${{ env.VPS_USER }}@${{ env.VPS_HOST }} bash << 'ENDSSH'
             cd /opt/fayo
             tar -xzf services.tar.gz
             rm services.tar.gz
@@ -190,10 +190,10 @@ jobs:
             tar --exclude='node_modules' --exclude='.next' --exclude='.git' --exclude='*.log' -czf web.tar.gz web/ || true
             
             # Copy web archive to VPS
-            sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" scp -o StrictHostKeyChecking=no web.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/
+            sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" scp -o StrictHostKeyChecking=no -o LogLevel=ERROR web.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/ 2>/dev/null
             
             # Extract on VPS
-            sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+            sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR -o UserKnownHostsFile=/dev/null ${{ env.VPS_USER }}@${{ env.VPS_HOST }} bash << 'ENDSSH'
               cd /opt/fayo
               tar -xzf web.tar.gz
               rm web.tar.gz
@@ -207,8 +207,8 @@ jobs:
           if [ -d "scripts" ]; then
             echo "Creating scripts archive..."
             tar -czf scripts.tar.gz scripts/ || true
-            sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" scp -o StrictHostKeyChecking=no scripts.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/
-            sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+            sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" scp -o StrictHostKeyChecking=no -o LogLevel=ERROR scripts.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/ 2>/dev/null
+            sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR -o UserKnownHostsFile=/dev/null ${{ env.VPS_USER }}@${{ env.VPS_HOST }} bash << 'ENDSSH'
               cd /opt/fayo
               tar -xzf scripts.tar.gz
               rm scripts.tar.gz
@@ -218,7 +218,7 @@ jobs:
 
       - name: Create .env file on VPS
         run: |
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR -o UserKnownHostsFile=/dev/null ${{ env.VPS_USER }}@${{ env.VPS_HOST }} bash << 'ENDSSH'
             cd /opt/fayo
             if [ ! -f .env ]; then
               cat > .env << 'ENVFILE'
@@ -265,7 +265,7 @@ jobs:
 
       - name: Deploy with Docker Compose
         run: |
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR -o UserKnownHostsFile=/dev/null ${{ env.VPS_USER }}@${{ env.VPS_HOST }} bash << 'ENDSSH'
             cd /opt/fayo
             
             # Stop existing containers (use docker compose plugin if available, fallback to docker-compose)
@@ -288,7 +288,7 @@ jobs:
 
       - name: Wait for services to be healthy
         run: |
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR -o UserKnownHostsFile=/dev/null ${{ env.VPS_USER }}@${{ env.VPS_HOST }} bash << 'ENDSSH'
             echo "Waiting for services to start..."
             sleep 30
             
