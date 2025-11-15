@@ -119,16 +119,38 @@ jobs:
               systemctl start docker
             fi
             
-            # Check if Docker Compose is installed
-            if ! command -v docker-compose &> /dev/null; then
-              echo "Installing Docker Compose..."
-              curl -L "https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-              chmod +x /usr/local/bin/docker-compose
+            # Check if Docker Compose is available (plugin or standalone)
+            if ! docker compose version &> /dev/null && ! command -v docker-compose &> /dev/null; then
+              echo "Installing Docker Compose plugin..."
+              # Docker Compose v2 is included with Docker Desktop and can be installed as a plugin
+              # For Linux, install the compose plugin
+              apt-get update
+              apt-get install -y docker-compose-plugin || {
+                echo "Installing standalone docker-compose as fallback..."
+                COMPOSE_VERSION="v2.24.0"
+                ARCH=$(uname -m)
+                if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
+                  ARCH="aarch64"
+                else
+                  ARCH="x86_64"
+                fi
+                curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-${ARCH}" -o /usr/local/bin/docker-compose
+                chmod +x /usr/local/bin/docker-compose
+              }
             fi
             
             # Verify installations
             docker --version
-            docker-compose --version
+            # Check for docker compose (plugin) or docker-compose (standalone)
+            if docker compose version &> /dev/null; then
+              echo "Using Docker Compose plugin:"
+              docker compose version
+            elif command -v docker-compose &> /dev/null; then
+              echo "Using standalone docker-compose:"
+              docker-compose --version
+            else
+              echo "Warning: Docker Compose not found, but continuing..."
+            fi
           ENDSSH
 
       - name: Create deployment directory on VPS
@@ -246,17 +268,18 @@ jobs:
           sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
             cd /opt/fayo
             
-            # Stop existing containers
-            docker-compose -f docker-compose.prod.yml down || true
-            
-            # Pull latest images or build
-            docker-compose -f docker-compose.prod.yml build --no-cache
-            
-            # Start services
-            docker-compose -f docker-compose.prod.yml up -d
-            
-            # Show running containers
-            docker-compose -f docker-compose.prod.yml ps
+            # Stop existing containers (use docker compose plugin if available, fallback to docker-compose)
+            if docker compose version &> /dev/null; then
+              docker compose -f docker-compose.prod.yml down || true
+              docker compose -f docker-compose.prod.yml build --no-cache
+              docker compose -f docker-compose.prod.yml up -d
+              docker compose -f docker-compose.prod.yml ps
+            else
+              docker-compose -f docker-compose.prod.yml down || true
+              docker-compose -f docker-compose.prod.yml build --no-cache
+              docker-compose -f docker-compose.prod.yml up -d
+              docker-compose -f docker-compose.prod.yml ps
+            fi
             
             # Show logs for debugging
             echo "=== Container Status ==="
