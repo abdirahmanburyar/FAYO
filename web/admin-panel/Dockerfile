@@ -16,6 +16,8 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Ensure public directory exists (create if it doesn't)
+RUN mkdir -p ./public || true
 
 # Next.js collects completely anonymous telemetry data about general usage.
 # Learn more here: https://nextjs.org/telemetry
@@ -44,11 +46,14 @@ RUN chown nextjs:nodejs .next
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy public directory from builder stage
-# With Next.js standalone output, public files are included, but we copy explicitly to ensure they're accessible
-# Create public directory first, then copy contents
-RUN mkdir -p ./public
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+# Public directory should already be included in the standalone output
+# Next.js standalone automatically includes public files, so we don't need to copy it separately
+# If needed, the public files will be in ./app/public after copying the standalone output
+RUN mkdir -p ./public && \
+    if [ -d "./app/public" ] && [ "$(ls -A ./app/public 2>/dev/null)" ]; then \
+      cp -r ./app/public/* ./public/ 2>/dev/null || true; \
+    fi && \
+    chown -R nextjs:nodejs ./public || true
 
 USER nextjs
 
