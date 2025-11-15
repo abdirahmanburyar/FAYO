@@ -1,4 +1,4 @@
-version: '3.8'
+# version is obsolete in newer Docker Compose versions
 
 services:
   # Infrastructure Services
@@ -51,7 +51,7 @@ services:
       - rabbitmqdata:/var/lib/rabbitmq
 
   zookeeper:
-    image: bitnami/zookeeper:latest
+    image: bitnami/zookeeper:3.9
     container_name: fayo-zookeeper
     environment:
       ALLOW_ANONYMOUS_LOGIN: 'yes'
@@ -64,7 +64,7 @@ services:
       - zookeeperdata:/bitnami/zookeeper
 
   kafka:
-    image: bitnami/kafka:latest
+    image: bitnami/kafka:3.6
     container_name: fayo-kafka
     environment:
       KAFKA_CFG_PROCESS_ROLES: 'broker,controller'
@@ -81,8 +81,8 @@ services:
       KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 1
       ALLOW_PLAINTEXT_LISTENER: 'yes'
-    depends_on:
-      - zookeeper
+    # Note: Kafka is using KRaft mode, so it doesn't need Zookeeper
+    # depends_on removed since KRaft mode doesn't require Zookeeper
     ports:
       - '9092:9092'
     networks:
