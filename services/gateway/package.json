@@ -1,7 +1,7 @@
 {
   "name": "gateway",
   "version": "1.0.0",
-  "description": "FAYO Gateway - API Gateway with Keycloak integration and service routing",
+  "description": "FAYO Gateway - API Gateway with JWT authentication and service routing",
   "main": "dist/main.js",
   "engines": {
     "node": ">=22.17.1",

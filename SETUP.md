@@ -40,10 +40,10 @@ This guide will help you set up and run the complete FAYO Healthcare microservic
                                  │
          ┌───────────────────────┼───────────────────────┐
          │                       │                       │
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│     Kafka       │    │   Zookeeper     │    │   Keycloak      │
-│   (Port 9092)   │    │  (Port 2181)    │    │  (Port 8080)    │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+┌─────────────────┐    ┌─────────────────┐
+│     Kafka       │    │   Zookeeper     │
+│   (Port 9092)   │    │  (Port 2181)    │
+└─────────────────┘    └─────────────────┘
 ```
 
 ## 🚀 Quick Start
@@ -262,7 +262,6 @@ docker-compose logs -f
 # View specific service logs
 docker-compose logs -f postgres
 docker-compose logs -f kafka
-docker-compose logs -f keycloak
 ```
 
 ### Database Access
@@ -278,10 +277,9 @@ docker exec -it fayoai-app-redis-1 redis-cli
 
 ### Common Issues
 
-1. **Port conflicts**: Ensure ports 3000-3004, 5432, 6379, 8080, 9092 are available
+1. **Port conflicts**: Ensure ports 3000-3004, 5432, 6379, 9092 are available
 2. **Database connection**: Check PostgreSQL is running and accessible
 3. **Kafka issues**: Ensure Zookeeper is running before Kafka
-4. **Keycloak access**: Wait for Keycloak to fully initialize (check logs)
 
 ### Reset Everything
 ```bash
@@ -314,7 +312,7 @@ docker-compose up -d
 
 ### Gateway (Port 3000)
 - `GET /api/v1/health` - Health check
-- `POST /api/v1/auth/keycloak/exchange` - Exchange Keycloak token
+- `POST /api/v1/auth/validate` - Validate JWT token
 - `GET /api/v1/users/*` - Proxy to User Service
 - `GET /api/v1/appointments/*` - Proxy to Appointment Service
 

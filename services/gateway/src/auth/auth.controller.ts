@@ -6,11 +6,6 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('keycloak/exchange')
-  async exchangeKeycloakToken(@Body() body: { token: string }) {
-    return this.authService.exchangeKeycloakToken(body.token);
-  }
-
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   getProfile(@Request() req) {

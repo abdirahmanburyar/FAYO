@@ -119,7 +119,6 @@ Important variables to configure:
 - `POSTGRES_PASSWORD` - Change the database password
 - `EMAIL_USER` and `EMAIL_PASS` - Email service credentials
 - `SMS_API_KEY` and `SMS_API_URL` - SMS service credentials
-- `KEYCLOAK_*` - Keycloak configuration if using
 
 After updating `.env`, restart the services:
 

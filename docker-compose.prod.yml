@@ -239,11 +239,6 @@ services:
       PORT: 3000
       SERVICE_NAME: gateway
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
-      KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8080}
-      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-fayo}
-      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-fayo-web}
-      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-}
-      KEYCLOAK_CALLBACK_URL: ${KEYCLOAK_CALLBACK_URL:-http://31.97.58.62:3006/auth/keycloak/callback}
       USER_SERVICE_URL: http://user-service:3001
       TRIAGE_SERVICE_URL: ${TRIAGE_SERVICE_URL:-http://localhost:3003}
     depends_on:

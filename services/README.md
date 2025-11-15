@@ -16,7 +16,7 @@
   - Doctor specialty management
 
 #### 2. Infrastructure (Docker Compose)
-- **Services**: PostgreSQL, Redis, RabbitMQ, Kafka, Zookeeper, Keycloak
+- **Services**: PostgreSQL, Redis, RabbitMQ, Kafka, Zookeeper
 - **Network**: Custom bridge network for service communication
 - **Status**: All services configured and working
 
@@ -41,12 +41,12 @@
   - Integration with AI/ML models
 
 #### 5. Gateway/BFF (`services/gateway/`)
-- **Purpose**: Proxy requests, handle Keycloak auth
+- **Purpose**: Proxy requests, handle JWT authentication
 - **Status**: Needs creation
 - **Required Features**:
   - API Gateway functionality
-  - Keycloak integration
-  - Token exchange
+  - JWT authentication
+  - Token validation
   - Request routing
   - Rate limiting
 
@@ -60,10 +60,10 @@
   - Profile management
 
 #### 8. React App (`web/react-app/`)
-- **Purpose**: Web client with Keycloak auth
+- **Purpose**: Web client with JWT authentication
 - **Status**: Needs creation
 - **Required Features**:
-  - Keycloak authentication
+  - JWT authentication
   - Admin dashboard
   - Doctor management
   - Analytics
@@ -86,7 +86,6 @@ npm run start:dev
 ```
 
 ### 3. Access Services
-- **Keycloak**: http://localhost:8080 (admin/admin)
 - **RabbitMQ**: http://localhost:15672 (guest/guest)
 - **User Service**: http://localhost:3001
 - **PostgreSQL**: localhost:5432 (postgres/postgres)
@@ -121,7 +120,7 @@ npm run start:dev
 
 1. Complete Appointment Service implementation
 2. Create Triage Service with AI integration
-3. Implement Gateway with Keycloak
+3. Implement Gateway with JWT authentication
 5. Create Flutter mobile app
 6. Build React web dashboard
 7. Add comprehensive testing
@@ -133,7 +132,7 @@ npm run start:dev
 
 - **Database**: Each service has its own database schema
 - **Communication**: HTTP for sync, Kafka for async events, RabbitMQ for queues
-- **Authentication**: JWT for mobile, Keycloak for web
+- **Authentication**: JWT for all clients
 - **Caching**: Redis for session and OTP storage
 - **Monitoring**: Health checks implemented
 - **Security**: Input validation, CORS, rate limiting ready
