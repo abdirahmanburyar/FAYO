@@ -12,6 +12,9 @@ RUN npm ci || npm install --legacy-peer-deps
 # Copy source code
 COPY . .
 
+# Clean any existing build artifacts
+RUN rm -rf dist
+
 # Build the application
 RUN npm run build
 
