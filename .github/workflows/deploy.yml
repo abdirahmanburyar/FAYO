@@ -77,10 +77,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup SSH
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+      - name: Install sshpass
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sshpass
+
+      - name: Check VPS Password Secret
+        run: |
+          if [ -z "${{ secrets.VPS_SSH_PASSWORD }}" ]; then
+            echo "::error::VPS_SSH_PASSWORD secret is not set!"
+            echo "Please add the VPS password as a GitHub secret:"
+            echo "1. Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo "2. Click 'New repository secret'"
+            echo "3. Name: VPS_SSH_PASSWORD"
+            echo "4. Value: Buryar@2020#"
+            echo "5. Click 'Add secret'"
+            exit 1
+          fi
+          echo "✓ VPS password secret is configured"
 
       - name: Add VPS to known hosts
         run: |
@@ -88,11 +102,11 @@ jobs:
 
       - name: Test SSH connection
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "echo 'SSH connection successful'"
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} "echo 'SSH connection successful'"
 
       - name: Install Docker and Docker Compose on VPS
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
             # Check if Docker is installed
             if ! command -v docker &> /dev/null; then
               echo "Installing Docker..."
@@ -116,7 +130,7 @@ jobs:
 
       - name: Create deployment directory on VPS
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
             mkdir -p /opt/fayo
             mkdir -p /opt/fayo/services
             mkdir -p /opt/fayo/web
@@ -126,17 +140,17 @@ jobs:
       - name: Copy files to VPS
         run: |
           # Copy docker-compose file
-          scp -o StrictHostKeyChecking=no docker-compose.prod.yml ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" scp -o StrictHostKeyChecking=no docker-compose.prod.yml ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/
           
           # Create tar archive of services (excluding node_modules, dist, .git)
           echo "Creating services archive..."
           tar --exclude='node_modules' --exclude='dist' --exclude='.git' --exclude='*.log' -czf services.tar.gz services/ || true
           
-          # Copy services archive to VPS
-          scp -o StrictHostKeyChecking=no services.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/
+            # Copy services archive to VPS
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" scp -o StrictHostKeyChecking=no services.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/
           
           # Extract on VPS
-          ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
             cd /opt/fayo
             tar -xzf services.tar.gz
             rm services.tar.gz
@@ -151,10 +165,10 @@ jobs:
             tar --exclude='node_modules' --exclude='.next' --exclude='.git' --exclude='*.log' -czf web.tar.gz web/ || true
             
             # Copy web archive to VPS
-            scp -o StrictHostKeyChecking=no web.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/
+            sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" scp -o StrictHostKeyChecking=no web.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/
             
             # Extract on VPS
-            ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+            sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
               cd /opt/fayo
               tar -xzf web.tar.gz
               rm web.tar.gz
@@ -168,8 +182,8 @@ jobs:
           if [ -d "scripts" ]; then
             echo "Creating scripts archive..."
             tar -czf scripts.tar.gz scripts/ || true
-            scp -o StrictHostKeyChecking=no scripts.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/
-            ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+            sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" scp -o StrictHostKeyChecking=no scripts.tar.gz ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/
+            sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
               cd /opt/fayo
               tar -xzf scripts.tar.gz
               rm scripts.tar.gz
@@ -179,7 +193,7 @@ jobs:
 
       - name: Create .env file on VPS
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
             cd /opt/fayo
             if [ ! -f .env ]; then
               cat > .env << 'ENVFILE'
@@ -226,7 +240,7 @@ jobs:
 
       - name: Deploy with Docker Compose
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
             cd /opt/fayo
             
             # Stop existing containers
@@ -248,7 +262,7 @@ jobs:
 
       - name: Wait for services to be healthy
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'ENDSSH'
             echo "Waiting for services to start..."
             sleep 30
             
