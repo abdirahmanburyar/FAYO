@@ -7,7 +7,7 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install dependencies
-RUN npm ci --only=production
+RUN npm ci --omit=dev || npm install --omit=dev --legacy-peer-deps
 
 # Copy source code
 COPY . .
