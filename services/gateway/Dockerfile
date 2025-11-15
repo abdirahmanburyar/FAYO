@@ -12,8 +12,10 @@ RUN npm ci || npm install --legacy-peer-deps
 # Copy source code
 COPY . .
 
-# Clean any existing build artifacts
-RUN rm -rf dist
+# Clean any existing build artifacts and ensure no old files remain
+RUN rm -rf dist && \
+    find . -name "*.tsbuildinfo" -delete && \
+    rm -f src/auth/strategies/keycloak.strategy.ts 2>/dev/null || true
 
 # Build the application
 RUN npm run build
