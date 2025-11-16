@@ -200,64 +200,18 @@ class SpecialtiesApiService {
   async getSpecialtiesForSelect(): Promise<Array<{ value: string; label: string }>> {
     try {
       const specialties = await this.getSpecialties();
-      return specialties.map(specialty => ({
-        value: specialty.id,
-        label: specialty.name,
-      }));
+      // Filter only active specialties and format for select
+      return specialties
+        .filter(specialty => specialty.isActive)
+        .map(specialty => ({
+          value: specialty.id,
+          label: specialty.name,
+        }));
     } catch (error) {
       console.error('❌ [SPECIALTIES_API] Error getting specialties for select:', error);
-      
-      // Fallback to default specialties if API fails
-      console.log('🔄 [SPECIALTIES_API] Using fallback specialties...');
-      const fallbackSpecialties = this.getFallbackSpecialties();
-      return fallbackSpecialties;
+      // Don't use fallback - specialties must come from database
+      throw error;
     }
-  }
-
-  // Fallback specialties when database is not available
-  private getFallbackSpecialties(): Array<{ value: string; label: string }> {
-    return [
-      { value: 'cardiology', label: 'Cardiology' },
-      { value: 'neurology', label: 'Neurology' },
-      { value: 'gastroenterology', label: 'Gastroenterology' },
-      { value: 'endocrinology', label: 'Endocrinology' },
-      { value: 'pulmonology', label: 'Pulmonology' },
-      { value: 'nephrology', label: 'Nephrology' },
-      { value: 'rheumatology', label: 'Rheumatology' },
-      { value: 'hematology', label: 'Hematology' },
-      { value: 'oncology', label: 'Oncology' },
-      { value: 'infectious-diseases', label: 'Infectious Diseases' },
-      { value: 'general-surgery', label: 'General Surgery' },
-      { value: 'cardiothoracic-surgery', label: 'Cardiothoracic Surgery' },
-      { value: 'neurosurgery', label: 'Neurosurgery' },
-      { value: 'orthopedic-surgery', label: 'Orthopedic Surgery' },
-      { value: 'plastic-surgery', label: 'Plastic Surgery' },
-      { value: 'pediatric-surgery', label: 'Pediatric Surgery' },
-      { value: 'vascular-surgery', label: 'Vascular Surgery' },
-      { value: 'urological-surgery', label: 'Urological Surgery' },
-      { value: 'gynecological-surgery', label: 'Gynecological Surgery' },
-      { value: 'ophthalmological-surgery', label: 'Ophthalmological Surgery' },
-      { value: 'pediatric-cardiology', label: 'Pediatric Cardiology' },
-      { value: 'pediatric-neurology', label: 'Pediatric Neurology' },
-      { value: 'neonatology', label: 'Neonatology' },
-      { value: 'pediatric-gastroenterology', label: 'Pediatric Gastroenterology' },
-      { value: 'pediatric-endocrinology', label: 'Pediatric Endocrinology' },
-      { value: 'psychiatry', label: 'Psychiatry' },
-      { value: 'psychology', label: 'Psychology' },
-      { value: 'dermatology', label: 'Dermatology' },
-      { value: 'ophthalmology', label: 'Ophthalmology' },
-      { value: 'otolaryngology', label: 'Otolaryngology (ENT)' },
-      { value: 'anesthesiology', label: 'Anesthesiology' },
-      { value: 'radiology', label: 'Radiology' },
-      { value: 'pathology', label: 'Pathology' },
-      { value: 'emergency-medicine', label: 'Emergency Medicine' },
-      { value: 'family-medicine', label: 'Family Medicine' },
-      { value: 'internal-medicine', label: 'Internal Medicine' },
-      { value: 'pediatrics', label: 'Pediatrics' },
-      { value: 'obstetrics-gynecology', label: 'Obstetrics & Gynecology' },
-      { value: 'urology', label: 'Urology' },
-      { value: 'orthopedics', label: 'Orthopedics' },
-    ];
   }
 }
 

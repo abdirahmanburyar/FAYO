@@ -78,11 +78,15 @@ export default function CreateDoctorModal({ isOpen, onClose, onSuccess }: Create
   const loadSpecialties = async () => {
     try {
       setLoadingSpecialties(true);
+      setError(null);
       const specialtiesData = await sharedApi.getSpecialties();
-      setSpecialties(specialtiesData);
+      // Filter only active specialties
+      const activeSpecialties = specialtiesData.filter(s => s.isActive);
+      setSpecialties(activeSpecialties);
     } catch (error) {
       console.error('Error loading specialties:', error);
-      setError('Failed to load specialties');
+      setError('Failed to load specialties. Please try again.');
+      setSpecialties([]);
     } finally {
       setLoadingSpecialties(false);
     }

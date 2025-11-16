@@ -75,14 +75,9 @@ export default function CreateDoctorPage() {
         setSpecialties(specialtiesData);
       } catch (error) {
         console.error('Error loading specialties:', error);
-        // Fallback to basic specialties if API fails
-        setSpecialties([
-          { value: 'general-medicine', label: 'General Medicine' },
-          { value: 'cardiology', label: 'Cardiology' },
-          { value: 'neurology', label: 'Neurology' },
-          { value: 'orthopedics', label: 'Orthopedics' },
-          { value: 'pediatrics', label: 'Pediatrics' },
-        ]);
+        setError('Failed to load specialties. Please refresh the page.');
+        // Don't set fallback - specialties must come from database
+        setSpecialties([]);
       } finally {
         setSpecialtiesLoading(false);
       }

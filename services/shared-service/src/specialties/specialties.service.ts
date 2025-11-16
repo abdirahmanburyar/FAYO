@@ -8,18 +8,41 @@ export class SpecialtiesService {
   constructor(private prisma: PrismaService) {}
 
   async create(createSpecialtyDto: CreateSpecialtyDto): Promise<Specialty> {
-    // Check if specialty already exists
-    const existingSpecialty = await this.prisma.specialty.findUnique({
-      where: { name: createSpecialtyDto.name },
-    });
+    try {
+      // Check if specialty already exists
+      const existingSpecialty = await this.prisma.specialty.findUnique({
+        where: { name: createSpecialtyDto.name },
+      });
 
-    if (existingSpecialty) {
-      throw new ConflictException('Specialty with this name already exists');
+      if (existingSpecialty) {
+        throw new ConflictException('Specialty with this name already exists');
+      }
+
+      // Ensure isActive has a default value if not provided
+      const data = {
+        name: createSpecialtyDto.name,
+        description: createSpecialtyDto.description || null,
+        isActive: createSpecialtyDto.isActive !== undefined ? createSpecialtyDto.isActive : true,
+      };
+
+      return await this.prisma.specialty.create({
+        data,
+      });
+    } catch (error) {
+      // If it's already a NestJS exception, re-throw it
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+      
+      // Handle Prisma unique constraint errors
+      if (error.code === 'P2002') {
+        throw new ConflictException('Specialty with this name already exists');
+      }
+      
+      // Log and re-throw other errors
+      console.error('Error creating specialty:', error);
+      throw error;
     }
-
-    return this.prisma.specialty.create({
-      data: createSpecialtyDto,
-    });
   }
 
   async findAll(): Promise<Specialty[]> {

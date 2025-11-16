@@ -30,10 +30,21 @@ export class SpecialtiesController {
   @Post()
   @ApiOperation({ summary: 'Create a new specialty' })
   @ApiResponse({ status: 201, description: 'Specialty created successfully', type: Specialty })
+  @ApiResponse({ status: 400, description: 'Bad request - validation failed' })
   @ApiResponse({ status: 409, description: 'Specialty with this name already exists' })
-  @ApiBearerAuth()
-  create(@Body() createSpecialtyDto: CreateSpecialtyDto) {
-    return this.specialtiesService.create(createSpecialtyDto);
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  async create(@Body() createSpecialtyDto: CreateSpecialtyDto) {
+    try {
+      return await this.specialtiesService.create(createSpecialtyDto);
+    } catch (error) {
+      // Re-throw NestJS exceptions (they have proper status codes)
+      if (error.status) {
+        throw error;
+      }
+      // For unexpected errors, log and throw a generic error
+      console.error('Unexpected error in create specialty:', error);
+      throw error;
+    }
   }
 
   @Get()
