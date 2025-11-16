@@ -119,8 +119,8 @@ class RealtimeService {
 
       // WebSocket URL - using raw WebSocket instead of Socket.IO
       // Note: The service has a global prefix 'api/v1', so the WebSocket path is '/api/v1/ws'
-      // Using the gateway endpoint for WebSocket connections
-      const String socketUrl = 'ws://31.97.58.62:3006/api/v1/ws';
+      // Using hospital-service directly (no gateway)
+      const String socketUrl = 'ws://31.97.58.62:3002/api/v1/ws';
       
 
       _channel = WebSocketChannel.connect(Uri.parse(socketUrl));

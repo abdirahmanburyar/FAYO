@@ -308,7 +308,10 @@ jobs:
               'SMS_API_URL=' \
               '' \
               '# API URLs' \
-              'NEXT_PUBLIC_API_URL=http://31.97.58.62:3006' > .env
+              'USER_SERVICE_URL=http://31.97.58.62:3001' \
+              'HOSPITAL_SERVICE_URL=http://31.97.58.62:3002' \
+              'DOCTOR_SERVICE_URL=http://31.97.58.62:3003' \
+              'SHARED_SERVICE_URL=http://31.97.58.62:3004' > .env
             echo "✅ .env file created"
           else
             echo "ℹ️ .env file already exists, skipping creation"
@@ -369,7 +372,7 @@ jobs:
           HEALTH_CHECK_PASSED=0
           HEALTH_CHECK_FAILED=0
           
-          for port in 3000 3001 3002 3003 3004 3006; do
+          for port in 3000 3001 3002 3003 3004; do
             echo -n "Checking port $port... "
             if timeout 15 bash -c "until curl -sf http://localhost:$port/api/v1/health 2>/dev/null || curl -sf http://localhost:$port/health 2>/dev/null; do sleep 2; done" 2>/dev/null; then
               echo "✅ Healthy"
@@ -499,7 +502,6 @@ jobs:
           echo "| Service | URL |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|-----|" >> $GITHUB_STEP_SUMMARY
           echo "| Admin Panel | http://${{ env.VPS_HOST }}:3000 |" >> $GITHUB_STEP_SUMMARY
-          echo "| Gateway | http://${{ env.VPS_HOST }}:3006 |" >> $GITHUB_STEP_SUMMARY
           echo "| User Service | http://${{ env.VPS_HOST }}:3001 |" >> $GITHUB_STEP_SUMMARY
           echo "| Hospital Service | http://${{ env.VPS_HOST }}:3002 |" >> $GITHUB_STEP_SUMMARY
           echo "| Doctor Service | http://${{ env.VPS_HOST }}:3003 |" >> $GITHUB_STEP_SUMMARY
