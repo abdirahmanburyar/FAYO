@@ -402,16 +402,16 @@ jobs:
           sleep 15
           
           echo "Running migrations for user-service..."
-          docker exec fayo-user-service npx prisma migrate deploy || echo "⚠️ User-service migration failed or already applied"
+          docker exec fayo-user-service sh -c "npx prisma migrate deploy 2>&1 || (npm install prisma --no-save && npx prisma migrate deploy)" || echo "⚠️ User-service migration failed or already applied"
           
           echo "Running migrations for hospital-service..."
-          docker exec fayo-hospital-service npx prisma migrate deploy || echo "⚠️ Hospital-service migration failed or already applied"
+          docker exec fayo-hospital-service sh -c "npx prisma migrate deploy 2>&1 || (npm install prisma --no-save && npx prisma migrate deploy)" || echo "⚠️ Hospital-service migration failed or already applied"
           
           echo "Running migrations for doctor-service..."
-          docker exec fayo-doctor-service npx prisma migrate deploy || echo "⚠️ Doctor-service migration failed or already applied"
+          docker exec fayo-doctor-service sh -c "npx prisma migrate deploy 2>&1 || (npm install prisma --no-save && npx prisma migrate deploy)" || echo "⚠️ Doctor-service migration failed or already applied"
           
           echo "Running migrations for shared-service..."
-          docker exec fayo-shared-service npx prisma migrate deploy || echo "⚠️ Shared-service migration failed or already applied"
+          docker exec fayo-shared-service sh -c "npx prisma migrate deploy 2>&1 || (npm install prisma --no-save && npx prisma migrate deploy)" || echo "⚠️ Shared-service migration failed or already applied"
           
           echo "✅ Migrations completed"
           REMOTE_MIGRATE
