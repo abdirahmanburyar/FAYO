@@ -34,11 +34,24 @@ RUN apk add --no-cache dumb-init openssl libc6-compat
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nestjs -u 1001
 
+# Copy package files
+COPY --from=builder --chown=nestjs:nodejs /app/package*.json ./
+
+# Install only production dependencies (including prisma for migrations)
+RUN (npm ci --omit=dev || npm install --omit=dev --legacy-peer-deps || npm install --omit=dev --force) && \
+    npm install prisma --save-prod && \
+    npm cache clean --force
+
 # Copy built application
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
-COPY --from=builder --chown=nestjs:nodejs /app/package*.json ./
 COPY --from=builder --chown=nestjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nestjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+# Ensure migrations directory exists (even if empty, it's needed for prisma migrate deploy)
+RUN mkdir -p /app/prisma/migrations
+
+# Copy startup script
+COPY --chown=nestjs:nodejs start.sh /app/start.sh
+RUN chmod +x /app/start.sh
 
 # Switch to non-root user
 USER nestjs
@@ -52,4 +65,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Start the application
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/main.js"]
+CMD ["/app/start.sh"]

@@ -177,6 +177,8 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      KAFKA_BROKER: kafka:9092
+      SHARED_SERVICE_URL: http://shared-service:3004
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       HOST: 0.0.0.0
       PORT: 3003
