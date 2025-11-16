@@ -135,6 +135,7 @@ services:
     ports:
       - '3002:3002'
     environment:
+      NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/hospital_service?schema=public}
       REDIS_HOST: redis
       REDIS_PORT: 6379
