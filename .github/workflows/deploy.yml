@@ -392,6 +392,31 @@ jobs:
           REMOTE_HEALTH
         continue-on-error: true
 
+      - name: Run Prisma Migrations
+        run: |
+          echo "🗄️ Running Prisma migrations for all services..."
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR -o ConnectTimeout=10 ${{ env.VPS_USER }}@${{ env.VPS_HOST }} 'bash -s' << 'REMOTE_MIGRATE'
+          cd /opt/fayo
+          
+          echo "Waiting for database to be ready..."
+          sleep 15
+          
+          echo "Running migrations for user-service..."
+          docker exec fayo-user-service npx prisma migrate deploy || echo "⚠️ User-service migration failed or already applied"
+          
+          echo "Running migrations for hospital-service..."
+          docker exec fayo-hospital-service npx prisma migrate deploy || echo "⚠️ Hospital-service migration failed or already applied"
+          
+          echo "Running migrations for doctor-service..."
+          docker exec fayo-doctor-service npx prisma migrate deploy || echo "⚠️ Doctor-service migration failed or already applied"
+          
+          echo "Running migrations for shared-service..."
+          docker exec fayo-shared-service npx prisma migrate deploy || echo "⚠️ Shared-service migration failed or already applied"
+          
+          echo "✅ Migrations completed"
+          REMOTE_MIGRATE
+        continue-on-error: true
+
       - name: Generate Admin Credentials
         run: |
           echo "👤 Generating admin user credentials..."

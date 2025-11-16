@@ -29,7 +29,8 @@ export class ProxyService {
           'Content-Type': 'application/json',
           ...headers,
         },
-        timeout: 10000,
+        timeout: 30000, // Increased timeout to 30 seconds
+        validateStatus: () => true, // Don't throw on any status code
       });
 
       return {
@@ -38,14 +39,21 @@ export class ProxyService {
         headers: response.headers,
       };
     } catch (error) {
+      // Handle axios errors
       if (error.response) {
+        // Service responded with error status
         return {
           status: error.response.status,
-          data: error.response.data,
+          data: error.response.data || { message: 'Service error' },
           headers: error.response.headers,
         };
+      } else if (error.request) {
+        // Request was made but no response received
+        throw new Error(`Service ${service} is not responding. Connection timeout or service unavailable.`);
+      } else {
+        // Error setting up the request
+        throw new Error(`Failed to proxy request to ${service}: ${error.message}`);
       }
-      throw error;
     }
   }
 
