@@ -395,95 +395,7 @@ jobs:
           REMOTE_HEALTH
         continue-on-error: true
 
-      - name: Run Prisma Migrations
-        run: |
-          echo "🗄️ Running Prisma migrations for all services..."
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR -o ConnectTimeout=10 ${{ env.VPS_USER }}@${{ env.VPS_HOST }} 'bash -s' << 'REMOTE_MIGRATE'
-          cd /opt/fayo
-          
-          echo "Waiting for database to be ready..."
-          sleep 15
-          
-          echo "Running migrations for user-service..."
-          docker exec fayo-user-service sh -c "npx prisma migrate deploy 2>&1 || (npm install prisma --no-save && npx prisma migrate deploy)" || echo "⚠️ User-service migration failed or already applied"
-          
-          echo "Running migrations for hospital-service..."
-          docker exec fayo-hospital-service sh -c "npx prisma migrate deploy 2>&1 || (npm install prisma --no-save && npx prisma migrate deploy)" || echo "⚠️ Hospital-service migration failed or already applied"
-          
-          echo "Running migrations for doctor-service..."
-          docker exec fayo-doctor-service sh -c "npx prisma migrate deploy 2>&1 || (npm install prisma --no-save && npx prisma migrate deploy)" || echo "⚠️ Doctor-service migration failed or already applied"
-          
-          echo "Running migrations for shared-service..."
-          docker exec fayo-shared-service sh -c "npx prisma migrate deploy 2>&1 || (npm install prisma --no-save && npx prisma migrate deploy)" || echo "⚠️ Shared-service migration failed or already applied"
-          
-          echo "✅ Migrations completed"
-          REMOTE_MIGRATE
-        continue-on-error: true
 
-      - name: Generate Admin Credentials
-        run: |
-          echo "👤 Generating admin user credentials..."
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR -o ConnectTimeout=10 ${{ env.VPS_USER }}@${{ env.VPS_HOST }} 'bash -s' << 'REMOTE_ADMIN'
-          cd /opt/fayo
-          
-          echo "Waiting for user-service to be ready..."
-          sleep 10
-          
-          echo "Running admin creation script..."
-          docker exec fayo-user-service sh -c 'node << "NODE_SCRIPT"
-          const { PrismaClient } = require("@prisma/client");
-          const bcrypt = require("bcryptjs");
-          const prisma = new PrismaClient();
-          
-          (async () => {
-            try {
-              const existingAdmin = await prisma.user.findFirst({
-                where: { role: "ADMIN" }
-              });
-              
-              if (existingAdmin) {
-                console.log("✅ Admin user already exists:");
-                console.log("   Username: " + existingAdmin.username);
-                console.log("   Email: " + existingAdmin.email);
-                console.log("   Role: " + existingAdmin.role);
-                console.log("");
-                console.log("📝 To reset password, use the admin panel or update directly in database.");
-              } else {
-                const hashedPassword = await bcrypt.hash("admin123", 10);
-                const admin = await prisma.user.create({
-                  data: {
-                    username: "0001",
-                    email: "admin@fayo.com",
-                    password: hashedPassword,
-                    firstName: "System",
-                    lastName: "Administrator",
-                    role: "ADMIN",
-                    userType: "HOSPITAL_MANAGER",
-                    isActive: true,
-                  },
-                });
-                
-                console.log("✅ Admin user created successfully!");
-                console.log("");
-                console.log("📋 Admin Credentials:");
-                console.log("   Username: " + admin.username);
-                console.log("   Password: admin123");
-                console.log("   Email: " + admin.email);
-                console.log("   Role: " + admin.role);
-                console.log("");
-                console.log("⚠️  IMPORTANT: Change the default password after first login!");
-              }
-            } catch (error) {
-              console.error("❌ Error creating admin user:", error.message);
-              process.exit(1);
-            } finally {
-              await prisma.$disconnect();
-            }
-          })();
-          NODE_SCRIPT
-          ' 2>&1 || echo "⚠️ Failed to generate admin credentials (admin may already exist)"
-          REMOTE_ADMIN
-        continue-on-error: true
 
       - name: Deployment Summary
         run: |
@@ -509,10 +421,12 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 👤 Admin Credentials" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Default admin user has been created (if it didn't exist):" >> $GITHUB_STEP_SUMMARY
+          echo "Admin user is automatically created by user-service on startup (if it doesn't exist):" >> $GITHUB_STEP_SUMMARY
           echo "- **Username**: \`0001\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Password**: \`admin123\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Email**: \`admin@fayo.com\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check user-service logs to see if admin was created: \`docker logs fayo-user-service\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "⚠️ **IMPORTANT**: Change the default password after first login!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

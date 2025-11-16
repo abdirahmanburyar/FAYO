@@ -37,13 +37,63 @@ RUN adduser -S nestjs -u 1001
 # Copy package files
 COPY package*.json ./
 
-# Install only production dependencies
-RUN (npm ci --omit=dev || npm install --omit=dev --legacy-peer-deps || npm install --omit=dev --force) && npm cache clean --force
+# Install only production dependencies (including prisma for migrations)
+RUN (npm ci --omit=dev || npm install --omit=dev --legacy-peer-deps || npm install --omit=dev --force) && \
+    npm install prisma --save-prod && \
+    npm cache clean --force
 
 # Copy built application
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+
+# Create startup script that runs migrations, creates admin, then starts the app
+RUN echo '#!/bin/sh\n\
+set -e\n\
+echo "🗄️ Running Prisma migrations..."\n\
+npx prisma migrate deploy || echo "⚠️ Migration failed or already applied"\n\
+echo "👤 Creating admin user if not exists..."\n\
+node -e "\n\
+const { PrismaClient } = require(\"@prisma/client\");\n\
+const bcrypt = require(\"bcryptjs\");\n\
+const prisma = new PrismaClient();\n\
+(async () => {\n\
+  try {\n\
+    const existingAdmin = await prisma.user.findFirst({ where: { role: \"ADMIN\" } });\n\
+    if (existingAdmin) {\n\
+      console.log(\"✅ Admin user already exists: \" + existingAdmin.username);\n\
+    } else {\n\
+      const hashedPassword = await bcrypt.hash(\"admin123\", 10);\n\
+      const admin = await prisma.user.create({\n\
+        data: {\n\
+          username: \"0001\",\n\
+          email: \"admin@fayo.com\",\n\
+          password: hashedPassword,\n\
+          firstName: \"System\",\n\
+          lastName: \"Administrator\",\n\
+          role: \"ADMIN\",\n\
+          userType: \"HOSPITAL_MANAGER\",\n\
+          isActive: true,\n\
+        },\n\
+      });\n\
+      console.log(\"✅ Admin user created successfully!\");\n\
+      console.log(\"📋 Admin Credentials:\");\n\
+      console.log(\"   Username: \" + admin.username);\n\
+      console.log(\"   Password: admin123\");\n\
+      console.log(\"   Email: \" + admin.email);\n\
+      console.log(\"⚠️  IMPORTANT: Change the default password after first login!\");\n\
+    }\n\
+  } catch (error) {\n\
+    console.error(\"⚠️ Error creating admin user:\", error.message);\n\
+  } finally {\n\
+    await prisma.$disconnect();\n\
+  }\n\
+})();\n\
+" || echo "⚠️ Admin creation failed (may already exist)"\n\
+echo "🚀 Starting application..."\n\
+exec node dist/main.js' > /app/start.sh && \
+    chmod +x /app/start.sh && \
+    chown nestjs:nodejs /app/start.sh
 
 # Switch to non-root user
 USER nestjs
@@ -57,4 +107,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Start the application
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/main.js"]
+CMD ["/app/start.sh"]
