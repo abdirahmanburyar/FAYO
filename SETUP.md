@@ -15,7 +15,7 @@ This guide will help you set up and run the complete FAYO Healthcare microservic
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Flutter App   │    │   React Web     │    │   Gateway       │
+│   Flutter App   │    │   React Web     │
 │   (Mobile)      │    │   (Admin)       │    │   (Port 3000)   │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
@@ -164,7 +164,6 @@ KAFKA_BROKER=localhost:9092
 PORT=3002
 ```
 
-#### Gateway
 ```env
 PORT=3000
 JWT_SECRET=your-super-secret-jwt-key
@@ -222,13 +221,13 @@ curl -X POST http://localhost:3002/api/v1/appointments \
 curl http://localhost:3002/api/v1/appointments
 ```
 
-### 4. Test Gateway
+### 4. Test Services
 
 ```bash
 # Test health check
 curl http://localhost:3000/api/v1/health
 
-# Test user service through gateway
+# Test user service directly
 curl http://localhost:3000/api/v1/users
 ```
 
@@ -252,7 +251,6 @@ curl http://localhost:3000/api/v1/users
 - **User Service**: http://localhost:3001/api/v1/health
 - **Appointment Service**: http://localhost:3002/api/v1/health
 - **Notification Worker**: http://localhost:3004/api/v1/health
-- **Gateway**: http://localhost:3000/api/v1/health
 
 ### Service Logs
 ```bash
@@ -310,7 +308,6 @@ docker-compose up -d
 - `POST /api/v1/triage` - Create triage request
 - `POST /api/v1/triage/predict` - Predict specialty
 
-### Gateway (Port 3000)
 - `GET /api/v1/health` - Health check
 - `POST /api/v1/auth/validate` - Validate JWT token
 - `GET /api/v1/users/*` - Proxy to User Service
