@@ -24,8 +24,8 @@ FROM node:22.17.1-alpine AS production
 
 WORKDIR /app
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
+# Install dumb-init and OpenSSL for Prisma
+RUN apk add --no-cache dumb-init openssl libc6-compat
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
