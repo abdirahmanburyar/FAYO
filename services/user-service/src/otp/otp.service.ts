@@ -19,45 +19,62 @@ export class OtpService {
   ) {}
 
   async generateOtp(phone: string): Promise<{ code: string; expiresIn: number; userCreated: boolean }> {
-    // Check if user exists, if not create them
-    let user = await this.prisma.user.findUnique({
-      where: { phone, isActive: true },
-    });
-
-    let userCreated = false;
-    if (!user) {
-      // Create user with minimal data
-      user = await this.prisma.user.create({
-        data: {
-          phone,
-          firstName: 'User',
-          lastName: 'User',
-          role: 'PATIENT',
-        },
+    try {
+      // Check if user exists, if not create them
+      let user = await this.prisma.user.findUnique({
+        where: { phone, isActive: true },
       });
-      userCreated = true;
+
+      let userCreated = false;
+      if (!user) {
+        // Create user with minimal data
+        user = await this.prisma.user.create({
+          data: {
+            phone,
+            firstName: 'User',
+            lastName: 'User',
+            role: 'PATIENT',
+          },
+        });
+        userCreated = true;
+      }
+
+      const code = this.generateRandomCode();
+      const expiresIn = parseInt(this.configService.get('OTP_EXPIRES_IN', '300000')); // 5 minutes default
+      
+      // Store in Redis for fast access (non-blocking)
+      try {
+        const redisKey = `otp:${phone}`;
+        await this.redisService.setWithExpiry(redisKey, code, expiresIn / 1000);
+      } catch (redisError) {
+        console.warn('Redis error (non-critical):', redisError);
+        // Continue even if Redis fails
+      }
+      
+      // Store in database for audit trail
+      try {
+        await this.prisma.otpCode.create({
+          data: {
+            phone,
+            code,
+            expiresAt: new Date(Date.now() + expiresIn),
+          },
+        });
+      } catch (dbError) {
+        console.error('Database error storing OTP:', dbError);
+        // Continue even if database write fails (OTP is still in Redis)
+      }
+
+      // Send OTP via email (non-blocking)
+      await this.sendOtpViaEmail(phone, code).catch((emailError) => {
+        console.warn('Email error (non-critical):', emailError);
+      });
+
+      return { code, expiresIn, userCreated };
+    } catch (error) {
+      console.error('Error in generateOtp:', error);
+      throw error;
     }
-
-    const code = this.generateRandomCode();
-    const expiresIn = parseInt(this.configService.get('OTP_EXPIRES_IN', '300000')); // 5 minutes default
-    
-    // Store in Redis for fast access
-    const redisKey = `otp:${phone}`;
-    await this.redisService.setWithExpiry(redisKey, code, expiresIn / 1000);
-    
-    // Store in database for audit trail
-    await this.prisma.otpCode.create({
-      data: {
-        phone,
-        code,
-        expiresAt: new Date(Date.now() + expiresIn),
-      },
-    });
-
-    // Send OTP via email
-    await this.sendOtpViaEmail(phone, code);
-
-    return { code, expiresIn, userCreated };
   }
 
   async verifyOtp(phone: string, code: string): Promise<boolean> {

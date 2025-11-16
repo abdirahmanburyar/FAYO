@@ -8,13 +8,18 @@ export class OtpController {
 
   @Post('generate')
   async generateOtp(@Body() generateOtpDto: GenerateOtpDto) {
-    const { phone } = generateOtpDto;
-    const result = await this.otpService.generateOtp(phone);
-    return {
-      message: result.userCreated ? 'User created and OTP sent successfully' : 'OTP sent successfully',
-      expiresIn: result.expiresIn,
-      userCreated: result.userCreated,
-    };
+    try {
+      const { phone } = generateOtpDto;
+      const result = await this.otpService.generateOtp(phone);
+      return {
+        message: result.userCreated ? 'User created and OTP sent successfully' : 'OTP sent successfully',
+        expiresIn: result.expiresIn,
+        userCreated: result.userCreated,
+      };
+    } catch (error) {
+      console.error('Error generating OTP:', error);
+      throw error;
+    }
   }
 
   @Post('verify')
