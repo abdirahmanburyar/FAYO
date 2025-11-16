@@ -349,7 +349,7 @@ jobs:
           
           # Force remove any containers with conflicting names (in case they exist outside compose)
           echo "Cleaning up any orphaned containers..."
-          docker rm -f fayo-kafka fayo-postgres fayo-redis fayo-rabbitmq fayo-user-service fayo-hospital-service fayo-doctor-service fayo-shared-service fayo-admin-panel 2>/dev/null || true
+          docker rm -f kafka postgres redis rabbitmq user-service hospital-service doctor-service shared-service admin-panel 2>/dev/null || true
           
           # Build images
           echo "Building Docker images..."
@@ -436,7 +436,7 @@ jobs:
           echo "- **Password**: \`admin123\`" >> $GITHUB_STEP_SUMMARY
           echo "- **Email**: \`admin@fayo.com\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Check user-service logs to see if admin was created: \`docker logs fayo-user-service\`" >> $GITHUB_STEP_SUMMARY
+          echo "Check user-service logs to see if admin was created: \`docker logs user-service\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "⚠️ **IMPORTANT**: Change the default password after first login!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
