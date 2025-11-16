@@ -188,6 +188,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      kafka:
+        condition: service_healthy
+      shared-service:
+        condition: service_started
     networks:
       - fayo-network
     restart: unless-stopped
