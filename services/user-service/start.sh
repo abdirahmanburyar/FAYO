@@ -1,8 +1,25 @@
 #!/bin/sh
 set -e
 
+echo "⏳ Waiting for database to be ready..."
+# Wait for database connection (max 30 seconds)
+timeout=30
+counter=0
+until node -e "const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); prisma.\$connect().then(() => { console.log('✅ Database connected'); process.exit(0); }).catch(() => { process.exit(1); });" 2>/dev/null; do
+  counter=$((counter + 1))
+  if [ $counter -ge $timeout ]; then
+    echo "❌ Database connection timeout after ${timeout} seconds"
+    exit 1
+  fi
+  echo "   Waiting for database... ($counter/$timeout)"
+  sleep 1
+done
+
 echo "🗄️ Running Prisma migrations..."
-npx prisma migrate deploy || echo "⚠️ Migration failed or already applied"
+npx prisma migrate deploy
+if [ $? -ne 0 ]; then
+  echo "⚠️ Migration failed, but continuing..."
+fi
 
 echo "👤 Creating admin user if not exists..."
 node -e "
