@@ -26,21 +26,25 @@ class SpecialtiesApiService {
 
   async getSpecialties(includeInactive?: boolean): Promise<Specialty[]> {
     try {
-      // First check if shared service is healthy
-      await this.checkSharedServiceHealth();
-      
       const params = new URLSearchParams();
       if (includeInactive) params.append('includeInactive', 'true');
 
       const url = `${API_CONFIG.SHARED_SERVICE_URL}/api/v1/specialties${params.toString() ? `?${params.toString()}` : ''}`;
       console.log('🔍 [SPECIALTIES_API] Fetching specialties from:', url);
       
+      // Use a longer timeout for the actual request (10 seconds)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
 
       console.log('📡 [SPECIALTIES_API] Response status:', response.status);
 
@@ -61,34 +65,17 @@ class SpecialtiesApiService {
       return specialties;
     } catch (error) {
       console.error('❌ [SPECIALTIES_API] Error fetching specialties:', error);
-      throw error;
-    }
-  }
-
-  private async checkSharedServiceHealth(): Promise<void> {
-    try {
-      const healthUrl = `${API_CONFIG.SHARED_SERVICE_URL}/api/v1/health`;
-      console.log('🔍 [SPECIALTIES_API] Checking shared service health at:', healthUrl);
       
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
-      
-      const response = await fetch(healthUrl, {
-        method: 'GET',
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`Shared service health check failed: ${response.status} ${response.statusText}`);
+      // Provide a more user-friendly error message
+      if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+        throw new Error('Request timed out. Please check if the shared service is running and try again.');
       }
       
-      const healthData = await response.json();
-      console.log('✅ [SPECIALTIES_API] Shared service is healthy:', healthData);
-    } catch (error) {
-      console.error('❌ [SPECIALTIES_API] Shared service health check failed:', error);
-      throw new Error(`Shared service is not accessible: ${error.message}`);
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+        throw new Error('Cannot connect to shared service. Please check your network connection and ensure the service is running.');
+      }
+      
+      throw error;
     }
   }
 

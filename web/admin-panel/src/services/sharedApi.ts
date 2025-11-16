@@ -96,19 +96,36 @@ class SharedApiService {
   // Specialties
   async getSpecialties(): Promise<Specialty[]> {
     try {
+      // Use a longer timeout (10 seconds)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
       const response = await fetch(`${API_CONFIG.SHARED_SERVICE_URL}/api/v1/specialties`, {
         method: 'GET',
         headers: this.getAuthHeaders(),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ message: `Failed to fetch specialties: ${response.statusText}` }));
         throw new Error(errorData.message || `Failed to fetch specialties: ${response.statusText}`);
       }
 
       return await response.json();
     } catch (error) {
       console.error('Error fetching specialties:', error);
+      
+      // Provide user-friendly error messages
+      if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+        throw new Error('Request timed out. Please check if the shared service is running and try again.');
+      }
+      
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+        throw new Error('Cannot connect to shared service. Please check your network connection and ensure the service is running.');
+      }
+      
       throw error;
     }
   }
