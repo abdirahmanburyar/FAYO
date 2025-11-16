@@ -11,12 +11,23 @@ export class EmailService {
   }
 
   private initializeTransporter() {
-    // Using Gmail SMTP (you can change this to any SMTP provider)
+    // Using SMTP configuration (Gmail SMTP)
+    const mailHost = this.configService.get('MAIL_HOST', 'smtp.gmail.com');
+    const mailPort = parseInt(this.configService.get('MAIL_PORT', '587'));
+    const mailUsername = this.configService.get('MAIL_USERNAME', 'buryar313@gmail.com');
+    const mailPassword = this.configService.get('MAIL_PASSWORD', 'fjmnakpupnytzsah');
+    const mailEncryption = this.configService.get('MAIL_ENCRYPTION', 'tls');
+    
     this.transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: mailHost,
+      port: mailPort,
+      secure: mailEncryption === 'ssl', // true for 465, false for other ports
       auth: {
-        user: this.configService.get('EMAIL_USER', 'buryar313@gmail.com'),
-        pass: this.configService.get('EMAIL_PASS', ''), // App password for Gmail
+        user: mailUsername,
+        pass: mailPassword,
+      },
+      tls: {
+        rejectUnauthorized: false, // Allow self-signed certificates
       },
     });
   }
@@ -24,9 +35,11 @@ export class EmailService {
   async sendOtpEmail(phone: string, otp: string, recipientEmail?: string): Promise<boolean> {
     try {
       const email = recipientEmail || this.configService.get('DEFAULT_EMAIL', 'buryar313@gmail.com');
+      const mailFromAddress = this.configService.get('MAIL_FROM_ADDRESS', 'buryar313@gmail.com');
+      const mailFromName = this.configService.get('MAIL_FROM_NAME', 'FAYO Healthcare');
       
       const mailOptions = {
-        from: `"FAYO Healthcare" <${this.configService.get('EMAIL_USER', 'buryar313@gmail.com')}>`,
+        from: `"${mailFromName}" <${mailFromAddress}>`,
         to: email,
         subject: 'FAYO Healthcare - OTP Verification Code',
         html: this.generateOtpEmailTemplate(phone, otp),
@@ -160,8 +173,11 @@ export class EmailService {
 
   async sendWelcomeEmail(email: string, firstName: string): Promise<boolean> {
     try {
+      const mailFromAddress = this.configService.get('MAIL_FROM_ADDRESS', 'buryar313@gmail.com');
+      const mailFromName = this.configService.get('MAIL_FROM_NAME', 'FAYO Healthcare');
+      
       const mailOptions = {
-        from: `"FAYO Healthcare" <${this.configService.get('EMAIL_USER', 'buryar313@gmail.com')}>`,
+        from: `"${mailFromName}" <${mailFromAddress}>`,
         to: email,
         subject: 'Welcome to FAYO Healthcare!',
         html: this.generateWelcomeEmailTemplate(firstName),

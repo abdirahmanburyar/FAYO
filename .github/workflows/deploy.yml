@@ -298,10 +298,16 @@ jobs:
               'OTP_EXPIRES_IN=300000' \
               'OTP_LENGTH=6' \
               '' \
-              '# Email (configure these)' \
-              'EMAIL_USER=' \
-              'EMAIL_PASS=' \
-              'DEFAULT_EMAIL=' \
+              '# Mail Configuration (SMTP)' \
+              'MAIL_MAILER=smtp' \
+              'MAIL_HOST=smtp.gmail.com' \
+              'MAIL_PORT=587' \
+              'MAIL_USERNAME=buryar313@gmail.com' \
+              'MAIL_PASSWORD=fjmnakpupnytzsah' \
+              'MAIL_ENCRYPTION=tls' \
+              'MAIL_FROM_ADDRESS=buryar313@gmail.com' \
+              'MAIL_FROM_NAME=FAYO Healthcare' \
+              'DEFAULT_EMAIL=buryar313@gmail.com' \
               '' \
               '# SMS (configure these)' \
               'SMS_API_KEY=' \

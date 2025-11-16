@@ -103,9 +103,15 @@ services:
       SERVICE_NAME: user-service
       OTP_EXPIRES_IN: ${OTP_EXPIRES_IN:-300000}
       OTP_LENGTH: ${OTP_LENGTH:-6}
-      EMAIL_USER: ${EMAIL_USER:-}
-      EMAIL_PASS: ${EMAIL_PASS:-}
-      DEFAULT_EMAIL: ${DEFAULT_EMAIL:-}
+      MAIL_MAILER: ${MAIL_MAILER:-smtp}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-buryar313@gmail.com}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-fjmnakpupnytzsah}
+      MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-tls}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-buryar313@gmail.com}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-FAYO Healthcare}
+      DEFAULT_EMAIL: ${DEFAULT_EMAIL:-buryar313@gmail.com}
     depends_on:
       postgres:
         condition: service_healthy
