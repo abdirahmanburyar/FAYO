@@ -40,6 +40,10 @@ export class DoctorsService {
         return (Array.isArray(allSpecs) ? allSpecs : []).filter((s: any) => specialtyIds.includes(s.id));
       }
       return await response.json();
+    } catch (error) {
+      // If fetch fails (network error, timeout, etc.), return empty array
+      console.warn(`Failed to fetch specialties from shared-service: ${error.message}`);
+      return [];
     } finally {
       clearTimeout(timeoutId);
     }
@@ -94,10 +98,27 @@ export class DoctorsService {
     });
 
       // Enrich each doctor with specialty details from shared-service
-      const enrichedDoctors = await Promise.all(doctors.map(doctor => this.enrichDoctorWithSpecialties(doctor)));
+      const enrichedDoctors = await Promise.all(doctors.map(async (doctor) => {
+        try {
+          return await this.enrichDoctorWithSpecialties(doctor);
+        } catch (error) {
+          // If enrichment fails, return doctor without specialty details
+          console.error(`Error enriching doctor ${doctor.id} with specialties:`, error.message);
+          return {
+            ...doctor,
+            specialties: [],
+          };
+        }
+      }));
 
       // Check user service health first
-      const isUserServiceHealthy = await this.checkUserServiceHealth();
+      let isUserServiceHealthy = false;
+      try {
+        isUserServiceHealthy = await this.checkUserServiceHealth();
+      } catch (error) {
+        console.warn(`Error checking user service health: ${error.message}`);
+        isUserServiceHealthy = false;
+      }
       
       // Fetch user data for each doctor
       const doctorsWithUsers = await Promise.all(enrichedDoctors.map(async (doctor) => {
@@ -145,10 +166,26 @@ export class DoctorsService {
     }
 
       // Enrich doctor with specialty details from shared-service
-      const enrichedDoctor = await this.enrichDoctorWithSpecialties(doctor);
+      let enrichedDoctor;
+      try {
+        enrichedDoctor = await this.enrichDoctorWithSpecialties(doctor);
+      } catch (error) {
+        // If enrichment fails, return doctor without specialty details
+        console.error(`Error enriching doctor ${doctor.id} with specialties:`, error.message);
+        enrichedDoctor = {
+          ...doctor,
+          specialties: [],
+        };
+      }
       
       // Check user service health first
-      const isUserServiceHealthy = await this.checkUserServiceHealth();
+      let isUserServiceHealthy = false;
+      try {
+        isUserServiceHealthy = await this.checkUserServiceHealth();
+      } catch (error) {
+        console.warn(`Error checking user service health: ${error.message}`);
+        isUserServiceHealthy = false;
+      }
       
       // Fetch user data
       if (!isUserServiceHealthy) {
