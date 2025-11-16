@@ -64,7 +64,8 @@ const prisma = new PrismaClient();
 
 echo "🗄️ Running Prisma migrations..."
 # Check if migrations directory exists and has content
-if [ -d "/app/prisma/migrations" ] && [ -n \"\$(ls -A /app/prisma/migrations 2>/dev/null)\" ]; then
+MIGRATIONS_DIR="/app/prisma/migrations"
+if [ -d "$MIGRATIONS_DIR" ] && [ "$(ls -A "$MIGRATIONS_DIR" 2>/dev/null | head -1)" ]; then
   echo "📦 Migration files found, using migrate deploy..."
   if npx prisma migrate deploy 2>&1; then
     echo "✅ Migrations applied successfully"
