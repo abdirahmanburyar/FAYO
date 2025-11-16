@@ -2,7 +2,6 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
-import * as cors from 'cors';
 import { AppModule } from './app.module';
 import { WebSocketServerService } from './websocket/websocket-server';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -25,9 +24,16 @@ async function bootstrap() {
     crossOriginEmbedderPolicy: false,
   }));
 
-  // CORS configuration - Allow all origins in production for mobile app access
-  app.use(cors({
-    origin: process.env.NODE_ENV === 'production' ? true : (origin, callback) => {
+  // CORS configuration - Allow all origins in production for mobile app and admin panel access
+  app.enableCors({
+    origin: (origin, callback) => {
+      // In production, allow all origins (for mobile app and admin panel)
+      if (process.env.NODE_ENV === 'production') {
+        callback(null, true);
+        return;
+      }
+      
+      // In development, restrict to localhost and configured origins
       const allowedOrigins = [
         'http://localhost:3000',
         'http://localhost:3001',
@@ -35,7 +41,8 @@ async function bootstrap() {
         process.env.ADMIN_PANEL_URL,
         process.env.USER_SERVICE_URL,
       ].filter(Boolean);
-
+      
+      // Allow requests with no origin (like mobile apps or Postman)
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -44,8 +51,11 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  }));
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    exposedHeaders: ['Content-Type', 'Authorization'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
+  });
 
   // Global validation pipe
   app.useGlobalPipes(new ValidationPipe({
