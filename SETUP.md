@@ -115,20 +115,6 @@ npm install
 npm run start:dev
 ```
 
-### 5. Setup Gateway
-
-```bash
-cd services/gateway
-
-# Copy environment file
-cp env.example .env
-
-# Install dependencies
-npm install
-
-# Start the service
-npm run start:dev
-```
 
 ### 6. Setup Flutter App
 
@@ -308,10 +294,6 @@ docker-compose up -d
 - `POST /api/v1/triage` - Create triage request
 - `POST /api/v1/triage/predict` - Predict specialty
 
-- `GET /api/v1/health` - Health check
-- `POST /api/v1/auth/validate` - Validate JWT token
-- `GET /api/v1/users/*` - Proxy to User Service
-- `GET /api/v1/appointments/*` - Proxy to Appointment Service
 
 ## 🎯 Next Steps
 
