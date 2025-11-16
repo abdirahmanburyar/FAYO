@@ -558,43 +558,52 @@ export class DoctorsService {
 
   private async getCachedSpecialtiesByIds(specialtyIds: string[]): Promise<any[]> {
     if (!Array.isArray(specialtyIds) || specialtyIds.length === 0) return [];
-    // 1) Serve from cache if present
-    const cachedNow = Date.now();
-    const isExpired = (cachedNow - this.lastCacheUpdate) > this.cacheExpiry;
-    const resultsFromCache: any[] = [];
-    const missingIds: string[] = [];
-    for (const id of specialtyIds) {
-      const cached = !isExpired ? this.specialtiesCache.get(id) : undefined;
-      if (cached) resultsFromCache.push(cached); else missingIds.push(id);
-    }
-    // 2) Fetch missing via HTTP, then update cache
-    let fetched: any[] = [];
-    if (missingIds.length > 0 || isExpired) {
-      const toFetch = isExpired ? specialtyIds : missingIds;
-      try {
-        fetched = await this.fetchSpecialtiesByIdsHttp(toFetch);
-        const now = Date.now();
-        if (isExpired) this.specialtiesCache.clear();
-        for (const s of fetched) this.specialtiesCache.set(s.id, s);
-        this.lastCacheUpdate = now;
-      } catch (error) {
-        // If HTTP fails, try MQ client if available (non-blocking)
+    
+    try {
+      // 1) Serve from cache if present
+      const cachedNow = Date.now();
+      const isExpired = (cachedNow - this.lastCacheUpdate) > this.cacheExpiry;
+      const resultsFromCache: any[] = [];
+      const missingIds: string[] = [];
+      for (const id of specialtyIds) {
+        const cached = !isExpired ? this.specialtiesCache.get(id) : undefined;
+        if (cached) resultsFromCache.push(cached); else missingIds.push(id);
+      }
+      
+      // 2) Fetch missing via HTTP, then update cache
+      let fetched: any[] = [];
+      if (missingIds.length > 0 || isExpired) {
+        const toFetch = isExpired ? specialtyIds : missingIds;
         try {
-          fetched = await this.sharedServiceClient.getSpecialtiesByIds(toFetch);
+          fetched = await this.fetchSpecialtiesByIdsHttp(toFetch);
+          const now = Date.now();
+          if (isExpired) this.specialtiesCache.clear();
           for (const s of fetched) this.specialtiesCache.set(s.id, s);
-        } catch (mqError) {
-          // If both fail, return what we have from cache
-          console.warn(`Failed to fetch specialties from shared-service (HTTP and MQ both failed): ${error.message}`);
-          // Return cached results if available, otherwise empty array
-          return resultsFromCache;
+          this.lastCacheUpdate = now;
+        } catch (error) {
+          // If HTTP fails, try MQ client if available (non-blocking)
+          try {
+            fetched = await this.sharedServiceClient.getSpecialtiesByIds(toFetch);
+            for (const s of fetched) this.specialtiesCache.set(s.id, s);
+          } catch (mqError) {
+            // If both fail, return what we have from cache
+            console.warn(`Failed to fetch specialties from shared-service (HTTP and MQ both failed): ${error.message}`);
+            // Return cached results if available, otherwise empty array
+            return resultsFromCache;
+          }
         }
       }
+      
+      // 3) Return in requested order
+      const mergedMap = new Map<string, any>();
+      for (const s of resultsFromCache) mergedMap.set(s.id, s);
+      for (const s of fetched) mergedMap.set(s.id, s);
+      return specialtyIds.map(id => mergedMap.get(id)).filter(Boolean);
+    } catch (error) {
+      // If everything fails, return empty array
+      console.error(`Error in getCachedSpecialtiesByIds: ${error.message}`);
+      return [];
     }
-    // 3) Return in requested order
-    const mergedMap = new Map<string, any>();
-    for (const s of resultsFromCache) mergedMap.set(s.id, s);
-    for (const s of fetched) mergedMap.set(s.id, s);
-    return specialtyIds.map(id => mergedMap.get(id)).filter(Boolean);
   }
 
   private async verifySpecialtiesExist(specialtyIds: string[]): Promise<void> {
