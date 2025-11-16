@@ -46,6 +46,8 @@ RUN (npm ci --omit=dev || npm install --omit=dev --legacy-peer-deps || npm insta
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+# Ensure migrations directory exists (even if empty, it's needed for prisma migrate deploy)
+RUN mkdir -p /app/prisma/migrations
 
 # Copy startup script
 COPY --chown=nestjs:nodejs start.sh /app/start.sh

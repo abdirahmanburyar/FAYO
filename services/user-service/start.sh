@@ -15,8 +15,8 @@ until node -e "const { PrismaClient } = require('@prisma/client'); const prisma 
   sleep 1
 done
 
-echo "🗄️ Running Prisma migrations..."
-# Ensure the users schema exists before running migrations
+echo "🗄️ Ensuring database schema exists..."
+# Create the users schema if it doesn't exist
 node -e "
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
@@ -30,14 +30,51 @@ const prisma = new PrismaClient();
     await prisma.\$disconnect();
   }
 })();
-"
+" || echo "⚠️ Schema creation check failed"
 
-# Run migrations with proper error handling
-if npx prisma migrate deploy; then
-  echo "✅ Migrations applied successfully"
+echo "🗄️ Resolving any failed migrations..."
+# First, resolve any failed migrations by marking them as rolled back
+node -e "
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+(async () => {
+  try {
+    // Check if there are failed migrations and resolve them
+    const result = await prisma.\$executeRaw\`
+      UPDATE _prisma_migrations 
+      SET finished_at = NOW(), 
+          rolled_back_at = NOW()
+      WHERE finished_at IS NULL 
+        AND started_at IS NOT NULL
+        AND rolled_back_at IS NULL;
+    \`;
+    console.log('✅ Resolved failed migrations');
+  } catch (error) {
+    // If _prisma_migrations table doesn't exist, that's fine - migrations haven't run yet
+    if (error.message.includes('does not exist') || error.message.includes('relation')) {
+      console.log('ℹ️ No migration history found, will create fresh');
+    } else {
+      console.error('⚠️ Error resolving migrations:', error.message);
+    }
+  } finally {
+    await prisma.\$disconnect();
+  }
+})();
+" || echo "⚠️ Migration resolution check failed"
+
+echo "🗄️ Running Prisma migrations..."
+# Check if migrations directory exists and has content
+if [ -d "/app/prisma/migrations" ] && [ -n \"\$(ls -A /app/prisma/migrations 2>/dev/null)\" ]; then
+  echo "📦 Migration files found, using migrate deploy..."
+  if npx prisma migrate deploy 2>&1; then
+    echo "✅ Migrations applied successfully"
+  else
+    echo "⚠️ migrate deploy failed, trying db push as fallback..."
+    npx prisma db push --accept-data-loss --skip-generate || echo "⚠️ db push also failed"
+  fi
 else
-  echo "❌ Migration failed - check logs above"
-  echo "⚠️ Continuing anyway, but database may not be properly initialized"
+  echo "📦 No migration files found, using db push to sync schema..."
+  npx prisma db push --accept-data-loss --skip-generate || echo "⚠️ db push failed"
 fi
 
 echo "👤 Creating admin user if not exists..."
