@@ -16,9 +16,28 @@ until node -e "const { PrismaClient } = require('@prisma/client'); const prisma 
 done
 
 echo "🗄️ Running Prisma migrations..."
-npx prisma migrate deploy
-if [ $? -ne 0 ]; then
-  echo "⚠️ Migration failed, but continuing..."
+# Ensure the users schema exists before running migrations
+node -e "
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+(async () => {
+  try {
+    await prisma.\$executeRaw\`CREATE SCHEMA IF NOT EXISTS users;\`;
+    console.log('✅ Schema users created or already exists');
+  } catch (error) {
+    console.error('⚠️ Error creating schema:', error.message);
+  } finally {
+    await prisma.\$disconnect();
+  }
+})();
+"
+
+# Run migrations with proper error handling
+if npx prisma migrate deploy; then
+  echo "✅ Migrations applied successfully"
+else
+  echo "❌ Migration failed - check logs above"
+  echo "⚠️ Continuing anyway, but database may not be properly initialized"
 fi
 
 echo "👤 Creating admin user if not exists..."
