@@ -9,9 +9,9 @@ async function bootstrap() {
   // Security middleware
   app.use(helmet());
   
-  // CORS configuration
+  // CORS configuration - Allow all origins in production for mobile app access
   app.enableCors({
-    origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+    origin: process.env.NODE_ENV === 'production' ? true : (process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000']),
     credentials: true,
   });
   

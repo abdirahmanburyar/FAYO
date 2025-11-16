@@ -25,9 +25,9 @@ async function bootstrap() {
     crossOriginEmbedderPolicy: false,
   }));
 
-  // CORS configuration
+  // CORS configuration - Allow all origins in production for mobile app access
   app.use(cors({
-    origin: (origin, callback) => {
+    origin: process.env.NODE_ENV === 'production' ? true : (origin, callback) => {
       const allowedOrigins = [
         'http://localhost:3000',
         'http://localhost:3001',
