@@ -577,12 +577,17 @@ export class DoctorsService {
         if (isExpired) this.specialtiesCache.clear();
         for (const s of fetched) this.specialtiesCache.set(s.id, s);
         this.lastCacheUpdate = now;
-      } catch (_) {
-        // As a last resort, try MQ client if available (non-blocking)
+      } catch (error) {
+        // If HTTP fails, try MQ client if available (non-blocking)
         try {
           fetched = await this.sharedServiceClient.getSpecialtiesByIds(toFetch);
           for (const s of fetched) this.specialtiesCache.set(s.id, s);
-        } catch { /* swallow */ }
+        } catch (mqError) {
+          // If both fail, return what we have from cache
+          console.warn(`Failed to fetch specialties from shared-service (HTTP and MQ both failed): ${error.message}`);
+          // Return cached results if available, otherwise empty array
+          return resultsFromCache;
+        }
       }
     }
     // 3) Return in requested order
