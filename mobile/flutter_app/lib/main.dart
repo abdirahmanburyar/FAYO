@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/auth_service.dart';
+import 'services/call_socket_service.dart';
 
 void main() {
   runApp(const FayoApp());
@@ -19,6 +20,10 @@ class FayoApp extends StatelessWidget {
       ],
       child: Consumer<AuthService>(
         builder: (context, authService, child) {
+          // Initialize call socket when user is authenticated
+          if (authService.isAuthenticated && authService.token != null) {
+            CallSocketService().connect(authService.token!);
+          }
           return MaterialApp(
             title: 'FAYO Healthcare',
             debugShowCheckedModeBanner: false,

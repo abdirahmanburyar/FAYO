@@ -230,6 +230,48 @@ services:
       retries: 3
       start_period: 40s
 
+  call-service:
+    build:
+      context: ./services/call-service
+      dockerfile: Dockerfile
+    container_name: call-service
+    ports:
+      - '3010:3010'
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${CALL_SERVICE_DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/fayo?schema=call}
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-https://fayo.health}
+      JWT_ISSUER: ${JWT_ISSUER:-fayo-auth}
+      AGORA_APP_ID: ${AGORA_APP_ID:-}
+      AGORA_APP_CERTIFICATE: ${AGORA_APP_CERTIFICATE:-}
+      AGORA_TOKEN_TTL: ${AGORA_TOKEN_TTL:-3600}
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_CLIENT_ID: call-service
+      KAFKA_CALLS_TOPIC: ${KAFKA_CALLS_TOPIC:-calls.events}
+      RABBITMQ_URI: amqp://guest:guest@rabbitmq:5672
+      RABBITMQ_CALLS_EXCHANGE: ${RABBITMQ_CALLS_EXCHANGE:-calls.commands}
+      WS_ALLOWED_ORIGINS: ${WS_ALLOWED_ORIGINS:-*}
+      PORT: 3010
+      HOST: 0.0.0.0
+      SERVICE_NAME: call-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    networks:
+      - fayo-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3010/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   admin-panel:
     build:
       context: ./web/admin-panel
@@ -243,7 +285,9 @@ services:
       HOSPITAL_SERVICE_URL: ${HOSPITAL_SERVICE_URL:-http://31.97.58.62:3002}
       DOCTOR_SERVICE_URL: ${DOCTOR_SERVICE_URL:-http://31.97.58.62:3003}
       SHARED_SERVICE_URL: ${SHARED_SERVICE_URL:-http://31.97.58.62:3004}
+      CALL_SERVICE_URL: ${CALL_SERVICE_URL:-http://31.97.58.62:3010}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://31.97.58.62:3001/api/v1}
+      NEXT_PUBLIC_CALL_SERVICE_URL: ${NEXT_PUBLIC_CALL_SERVICE_URL:-http://31.97.58.62:3010}
     depends_on:
       - user-service
       - hospital-service

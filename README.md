@@ -19,6 +19,7 @@ Each service has its own Dockerfile and can be built/run independently:
 | **hospital-service** | 3002 | Hospital and clinic management | ✅ |
 | **doctor-service** | 3003 | Doctor profiles and specialties | ✅ |
 | **shared-service** | 3004 | Categories, utilities, common data | ✅ |
+| **call-service** | 3010 | Realtime voice/video calls, Agora tokens, signaling | ✅ |
 | **admin-panel** | 3000 | Next.js web admin interface | ✅ |
 
 ### Mobile App

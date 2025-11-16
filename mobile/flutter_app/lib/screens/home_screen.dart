@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../services/call_socket_service.dart';
+import '../services/call_service.dart';
+import 'call_screen.dart';
 import 'login_screen.dart';
 import 'edit_profile_screen.dart';
 import 'hospitals_screen.dart';
@@ -35,6 +38,37 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     
+    // Listen for call invitations
+    final authService = Provider.of<AuthService>(context, listen: false);
+    if (authService.token != null) {
+      CallSocketService().inviteStream.listen((invite) async {
+        if (!mounted) return;
+        final shouldAccept = await _showIncomingCallDialog(context);
+        if (!shouldAccept) return;
+
+        try {
+          final credential = await CallService().joinCall(
+            accessToken: authService.token!,
+            sessionId: invite.sessionId,
+            asHost: false,
+          );
+          if (!mounted) return;
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => CallScreen(credential: credential),
+            ),
+          );
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to join call: $e'),
+            ),
+          );
+        }
+      });
+    }
+
     // Drawer slide animation
     _drawerAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
@@ -716,6 +750,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         );
       },
     );
+  }
+
+  Future<bool> _showIncomingCallDialog(BuildContext context) async {
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Incoming Video Call'),
+            content: const Text('You have an incoming video call from an administrator.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Decline'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Accept'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   void _showComingSoon(BuildContext context, String feature) {

@@ -16,9 +16,11 @@ import {
   Mail,
   Phone,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Video,
 } from 'lucide-react';
 import { usersApi, User } from '@/services/usersApi';
+import { createCallSession } from '@/services/callApi';
 import CreateUserModal from '@/components/CreateUserModal';
 import { SkeletonStats, SkeletonTable } from '@/components/skeletons';
 import { SearchableSelect, SelectOption } from '@/components/ui';
@@ -31,6 +33,32 @@ export default function UsersPage() {
   const [filterRole, setFilterRole] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [callingUserId, setCallingUserId] = useState<string | null>(null);
+  const [callError, setCallError] = useState<string | null>(null);
+
+  const handleStartCall = async (user: User) => {
+    try {
+      setCallError(null);
+      setCallingUserId(user.id);
+
+      const accessToken = typeof window !== 'undefined'
+        ? localStorage.getItem('adminToken')
+        : null;
+
+      if (!accessToken) {
+        setCallError('Admin token not found. Please login again.');
+        return;
+      }
+
+      await createCallSession(accessToken, user.id, 'VIDEO');
+      alert(`Calling ${user.firstName} ${user.lastName}. The user will receive a video call invite in the mobile app.`);
+    } catch (error) {
+      console.error('Error starting call:', error);
+      setCallError('Failed to start call. Please try again.');
+    } finally {
+      setCallingUserId(null);
+    }
+  };
 
   // Fetch users from API
   const fetchUsers = async () => {
@@ -369,6 +397,16 @@ export default function UsersPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
+                      <button
+                        className="text-purple-600 hover:text-purple-900 p-1 flex items-center"
+                        onClick={() => handleStartCall(user)}
+                        disabled={callingUserId === user.id}
+                      >
+                        <Video className="w-4 h-4 mr-1" />
+                        <span className="hidden sm:inline">
+                          {callingUserId === user.id ? 'Calling...' : 'Call'}
+                        </span>
+                      </button>
                       <button className="text-blue-600 hover:text-blue-900 p-1">
                         <Eye className="w-4 h-4" />
                       </button>
@@ -394,6 +432,16 @@ export default function UsersPage() {
           </div>
         )}
       </div>
+
+      {/* Call error */}
+      {callError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-4">
+          <div className="flex items-center">
+            <AlertCircle className="w-4 h-4 text-red-500 mr-2" />
+            <p className="text-sm text-red-700">{callError}</p>
+          </div>
+        </div>
+      )}
 
       {/* Create User Modal */}
       <CreateUserModal

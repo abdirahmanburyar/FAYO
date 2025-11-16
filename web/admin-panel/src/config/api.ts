@@ -4,6 +4,7 @@ export const API_CONFIG = {
   HOSPITAL_SERVICE_URL: process.env.HOSPITAL_SERVICE_URL || 'http://31.97.58.62:3002',
   DOCTOR_SERVICE_URL: process.env.DOCTOR_SERVICE_URL || 'http://31.97.58.62:3003',
   SHARED_SERVICE_URL: process.env.SHARED_SERVICE_URL || 'http://31.97.58.62:3004',
+  CALL_SERVICE_URL: process.env.CALL_SERVICE_URL || 'http://31.97.58.62:3010',
   ENDPOINTS: {
     ADMIN_LOGIN: '/api/v1/auth/admin-login',
     USERS: '/api/v1/users',

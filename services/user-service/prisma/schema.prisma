@@ -67,7 +67,6 @@ enum UserType {
 enum Gender {
   MALE
   FEMALE
-  OTHER
 
   @@schema("users")
 }
