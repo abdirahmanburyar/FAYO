@@ -60,6 +60,33 @@ export class ProxyController {
     res.status(result.status).json(result.data);
   }
 
+  @All('auth/*')
+  async proxyAuthToUserService(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Body() body: any,
+    @Headers() headers: any,
+    @Query() query: any,
+  ) {
+    const path = req.path.replace('/auth', '/auth');
+    const method = req.method;
+    
+    // Forward authorization header
+    const authHeaders = {
+      ...headers,
+      authorization: headers.authorization,
+    };
+
+    const result = await this.proxyService.proxyToUserService(
+      path,
+      method,
+      body,
+      authHeaders,
+    );
+
+    res.status(result.status).json(result.data);
+  }
+
   @All('triage/*')
   async proxyToTriageService(
     @Req() req: Request,
