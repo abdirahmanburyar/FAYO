@@ -16,6 +16,9 @@ RUN (npm ci || npm install --legacy-peer-deps || npm install --force) && npm cac
 # Copy source code
 COPY . .
 
+# Remove any leftover message-queue directory (safety check)
+RUN rm -rf src/common/message-queue || true
+
 # Generate Prisma client
 RUN npx prisma generate
 
