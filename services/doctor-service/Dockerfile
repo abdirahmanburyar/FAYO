@@ -14,14 +14,27 @@ RUN npm ci || npm install --legacy-peer-deps || npm install --force
 # Copy source code
 COPY . .
 
+# Copy prisma schema
+COPY prisma ./prisma/
+
 # Generate Prisma client
 RUN npx prisma generate
 
 # Build the application
 RUN npm run build
 
+# Create startup script that runs migrations then starts the app
+RUN cat > /app/start.sh << 'SCRIPT_END' && chmod +x /app/start.sh
+#!/bin/sh
+set -e
+echo "🗄️ Running Prisma migrations..."
+npx prisma migrate deploy || echo "⚠️ Migration failed or already applied"
+echo "🚀 Starting application..."
+exec npm run start:prod
+SCRIPT_END
+
 # Expose port
 EXPOSE 3003
 
 # Start the application
-CMD ["npm", "run", "start:prod"]
+CMD ["/app/start.sh"]

@@ -6,7 +6,6 @@ import { SpecialtiesModule } from './specialties/specialties.module';
 import { ServicesModule } from './services/services.module';
 import { UtilitiesModule } from './utilities/utilities.module';
 import { HealthModule } from './health/health.module';
-import { MessageQueueModule } from './common/message-queue/message-queue.module';
 
 @Module({
   imports: [
@@ -24,7 +23,6 @@ import { MessageQueueModule } from './common/message-queue/message-queue.module'
     ServicesModule,
     UtilitiesModule,
     HealthModule,
-    MessageQueueModule,
   ],
 })
 export class AppModule {}

@@ -26,13 +26,14 @@ The Shared Service provides centralized management of data that is used across m
 - **Status Management**: Enable/disable categories
 
 ### 🔧 System Features
-- **RESTful API**: Complete CRUD operations for all entities
+- **RESTful API**: Complete CRUD operations for all entities (HTTP-only, no message queue)
 - **Swagger Documentation**: Interactive API documentation
 - **Rate Limiting**: Built-in protection against abuse
 - **Security**: JWT authentication and CORS protection
 - **Health Checks**: Monitoring and health status endpoints
 - **Database**: PostgreSQL with Prisma ORM
 - **Caching**: Redis integration for performance
+- **Simple Architecture**: HTTP-based communication for easy integration
 
 ## API Endpoints
 

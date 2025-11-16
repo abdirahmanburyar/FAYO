@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { MessageQueueService } from './message-queue.service';
 
 export interface Specialty {
   id: string;
@@ -22,21 +21,27 @@ export interface Service {
 @Injectable()
 export class SharedServiceClient {
   private readonly logger = new Logger(SharedServiceClient.name);
+  private readonly baseUrl: string;
 
-  constructor(private readonly messageQueue: MessageQueueService) {}
+  constructor() {
+    this.baseUrl = process.env.SHARED_SERVICE_URL || 'http://localhost:3004';
+  }
 
   /**
-   * Get all specialties from shared service
+   * Get all specialties from shared service via HTTP
    */
   async getSpecialties(): Promise<Specialty[]> {
     try {
-      const response = await this.messageQueue.sendMessage('shared.specialties.get', {});
+      const response = await fetch(`${this.baseUrl}/api/v1/specialties`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
       
-      if (!response.success) {
-        throw new Error(`Failed to fetch specialties: ${response.error}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch specialties: ${response.status} ${response.statusText}`);
       }
 
-      return response.data || [];
+      return await response.json();
     } catch (error) {
       this.logger.error(`Error fetching specialties: ${error.message}`);
       throw error;
@@ -44,19 +49,37 @@ export class SharedServiceClient {
   }
 
   /**
-   * Get specialties by IDs
+   * Get specialties by IDs via HTTP
    */
   async getSpecialtiesByIds(specialtyIds: string[]): Promise<Specialty[]> {
+    if (!Array.isArray(specialtyIds) || specialtyIds.length === 0) {
+      return [];
+    }
+
     try {
-      const response = await this.messageQueue.sendMessage('shared.specialties.getByIds', {
-        specialtyIds,
+      // Try bulk endpoint first, fallback to fetching all
+      const urlWithIds = `${this.baseUrl}/api/v1/specialties?ids=${encodeURIComponent(specialtyIds.join(','))}`;
+      let response = await fetch(urlWithIds, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
       });
       
-      if (!response.success) {
-        throw new Error(`Failed to fetch specialties by IDs: ${response.error}`);
+      if (!response.ok) {
+        // Fallback to fetching all and filtering
+        response = await fetch(`${this.baseUrl}/api/v1/specialties`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch specialties: ${response.status} ${response.statusText}`);
+        }
+        
+        const allSpecialties = await response.json();
+        return (Array.isArray(allSpecialties) ? allSpecialties : []).filter((s: Specialty) => specialtyIds.includes(s.id));
       }
 
-      return response.data || [];
+      return await response.json();
     } catch (error) {
       this.logger.error(`Error fetching specialties by IDs: ${error.message}`);
       throw error;
@@ -80,17 +103,20 @@ export class SharedServiceClient {
   }
 
   /**
-   * Get all services from shared service
+   * Get all services from shared service via HTTP
    */
   async getServices(): Promise<Service[]> {
     try {
-      const response = await this.messageQueue.sendMessage('shared.services.get', {});
+      const response = await fetch(`${this.baseUrl}/api/v1/services`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
       
-      if (!response.success) {
-        throw new Error(`Failed to fetch services: ${response.error}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch services: ${response.status} ${response.statusText}`);
       }
 
-      return response.data || [];
+      return await response.json();
     } catch (error) {
       this.logger.error(`Error fetching services: ${error.message}`);
       throw error;
@@ -98,19 +124,37 @@ export class SharedServiceClient {
   }
 
   /**
-   * Get services by IDs
+   * Get services by IDs via HTTP
    */
   async getServicesByIds(serviceIds: string[]): Promise<Service[]> {
+    if (!Array.isArray(serviceIds) || serviceIds.length === 0) {
+      return [];
+    }
+
     try {
-      const response = await this.messageQueue.sendMessage('shared.services.getByIds', {
-        serviceIds,
+      // Try bulk endpoint first, fallback to fetching all
+      const urlWithIds = `${this.baseUrl}/api/v1/services?ids=${encodeURIComponent(serviceIds.join(','))}`;
+      let response = await fetch(urlWithIds, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
       });
       
-      if (!response.success) {
-        throw new Error(`Failed to fetch services by IDs: ${response.error}`);
+      if (!response.ok) {
+        // Fallback to fetching all and filtering
+        response = await fetch(`${this.baseUrl}/api/v1/services`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch services: ${response.status} ${response.statusText}`);
+        }
+        
+        const allServices = await response.json();
+        return (Array.isArray(allServices) ? allServices : []).filter((s: Service) => serviceIds.includes(s.id));
       }
 
-      return response.data || [];
+      return await response.json();
     } catch (error) {
       this.logger.error(`Error fetching services by IDs: ${error.message}`);
       throw error;
@@ -118,14 +162,17 @@ export class SharedServiceClient {
   }
 
   /**
-   * Health check for shared service
+   * Health check for shared service via HTTP
    */
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await this.messageQueue.sendMessage('shared.health.check', {});
+      const response = await fetch(`${this.baseUrl}/api/v1/health`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
       
-      if (!response.success) {
-        this.logger.warn(`Health check failed: ${response.error}`);
+      if (!response.ok) {
+        this.logger.warn(`Health check failed: ${response.status}`);
         return false;
       }
 
