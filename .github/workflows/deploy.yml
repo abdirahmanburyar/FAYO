@@ -343,9 +343,13 @@ jobs:
             exit 1
           fi
           
-          # Stop existing containers
-          echo "Stopping existing containers..."
-          $COMPOSE_CMD -f docker-compose.prod.yml down || true
+          # Stop and remove existing containers
+          echo "Stopping and removing existing containers..."
+          $COMPOSE_CMD -f docker-compose.prod.yml down --remove-orphans || true
+          
+          # Force remove any containers with conflicting names (in case they exist outside compose)
+          echo "Cleaning up any orphaned containers..."
+          docker rm -f fayo-kafka fayo-postgres fayo-redis fayo-rabbitmq fayo-user-service fayo-hospital-service fayo-doctor-service fayo-shared-service fayo-admin-panel 2>/dev/null || true
           
           # Build images
           echo "Building Docker images..."
@@ -353,7 +357,7 @@ jobs:
           
           # Start services
           echo "Starting services..."
-          $COMPOSE_CMD -f docker-compose.prod.yml up -d
+          $COMPOSE_CMD -f docker-compose.prod.yml up -d --remove-orphans
           
           # Wait a bit for services to initialize
           sleep 10
