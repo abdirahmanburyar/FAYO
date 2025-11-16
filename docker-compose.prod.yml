@@ -143,6 +143,7 @@ services:
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
       KAFKA_BROKER: kafka:9092
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      HOST: 0.0.0.0
       PORT: 3002
       SERVICE_NAME: hospital-service
     depends_on:
@@ -201,10 +202,12 @@ services:
     ports:
       - '3004:3004'
     environment:
+      NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/shared_service?schema=public}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      HOST: 0.0.0.0
       PORT: 3004
       SERVICE_NAME: shared-service
     depends_on:
