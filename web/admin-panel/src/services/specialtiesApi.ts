@@ -67,15 +67,17 @@ class SpecialtiesApiService {
       console.error('❌ [SPECIALTIES_API] Error fetching specialties:', error);
       
       // Provide a more user-friendly error message
-      if (error.name === 'AbortError' || error.message?.includes('aborted')) {
-        throw new Error('Request timed out. Please check if the shared service is running and try again.');
+      if (error instanceof Error) {
+        if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+          throw new Error('Request timed out. Please check if the shared service is running and try again.');
+        }
+        
+        if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+          throw new Error('Cannot connect to shared service. Please check your network connection and ensure the service is running.');
+        }
       }
       
-      if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
-        throw new Error('Cannot connect to shared service. Please check your network connection and ensure the service is running.');
-      }
-      
-      throw error;
+      throw error instanceof Error ? error : new Error('An unknown error occurred while fetching specialties');
     }
   }
 
