@@ -19,7 +19,6 @@ Each service has its own Dockerfile and can be built/run independently:
 | **hospital-service** | 3002 | Hospital and clinic management | ✅ |
 | **doctor-service** | 3003 | Doctor profiles and specialties | ✅ |
 | **shared-service** | 3004 | Categories, utilities, common data | ✅ |
-| **gateway** | 3006 | API Gateway and routing | ✅ |
 | **admin-panel** | 3000 | Next.js web admin interface | ✅ |
 
 ### Mobile App
@@ -100,7 +99,6 @@ FAYO AI - APP/
 │   ├── hospital-service/    # Hospital management
 │   ├── doctor-service/      # Doctor management
 │   ├── shared-service/      # Categories & utilities
-│   ├── gateway/             # API Gateway
 ├── web/
 │   └── admin-panel/         # Next.js admin interface
 ├── mobile/

@@ -9,7 +9,7 @@ RUN apk add --no-cache openssl libc6-compat
 COPY package*.json ./
 
 # Install all dependencies (including dev for build)
-RUN npm ci || npm install --legacy-peer-deps
+RUN npm ci || npm install --legacy-peer-deps || npm install --force
 
 # Copy source code
 COPY . .

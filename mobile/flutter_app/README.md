@@ -41,9 +41,16 @@ This is the Flutter mobile application for the FAYO Healthcare platform. It prov
    ```
 
 ### Configuration
-Update the API base URL in `lib/services/api_service.dart`:
+Update the API base URLs in `lib/config/api_config.dart`:
 ```dart
-static const String baseUrl = 'http://your-gateway-url/api/v1';
+// User Service (for authentication and user operations)
+static const String baseUrl = 'http://your-vps-ip:3001/api/v1';
+
+// Hospital Service (for hospital operations)
+static const String _hospitalServiceUrl = 'http://your-vps-ip:3002/api/v1';
+
+// WebSocket (for real-time updates)
+static const String socketUrl = 'ws://your-vps-ip:3002/api/v1/ws';
 ```
 
 ## Project Structure

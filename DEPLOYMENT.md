@@ -86,7 +86,6 @@ The system consists of the following services:
 
 ### Application Services
 - **Admin Panel** (Port 3000) - Next.js web interface
-- **Gateway** (Port 3006) - API Gateway
 - **User Service** (Port 3001) - User management
 - **Hospital Service** (Port 3002) - Hospital management
 - **Doctor Service** (Port 3003) - Doctor management
@@ -96,7 +95,6 @@ The system consists of the following services:
 After deployment, services are available at:
 
 - **Admin Panel**: http://31.97.58.62:3000
-- **API Gateway**: http://31.97.58.62:3006
 - **User Service**: http://31.97.58.62:3001
 - **Hospital Service**: http://31.97.58.62:3002
 - **Doctor Service**: http://31.97.58.62:3003

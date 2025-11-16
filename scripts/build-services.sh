@@ -28,7 +28,6 @@ build_service "user-service" "./services/user-service" "3001"
 build_service "hospital-service" "./services/hospital-service" "3002"
 build_service "doctor-service" "./services/doctor-service" "3003"
 build_service "shared-service" "./services/shared-service" "3004"
-build_service "gateway" "./services/gateway" "3006"
 build_service "admin-panel" "./web/admin-panel" "3000"
 
 echo "🎉 All services built successfully!"
