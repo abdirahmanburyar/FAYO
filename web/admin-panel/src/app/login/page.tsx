@@ -39,7 +39,8 @@ export default function AdminLoginPage() {
     setError('');
 
     try {
-      const response = await fetch('/api/auth/admin-login', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://31.97.58.62:3006';
+      const response = await fetch(`${apiUrl}/api/v1/auth/admin-login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
