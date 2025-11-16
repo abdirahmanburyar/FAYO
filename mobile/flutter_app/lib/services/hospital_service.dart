@@ -8,8 +8,8 @@ class HospitalService {
   factory HospitalService() => _instance;
   HospitalService._internal();
 
-  // Hospital Service URL (different from user service)
-  static const String _hospitalServiceUrl = 'http://10.153.4.69:3002/api/v1';
+  // Hospital Service URL - Using gateway endpoint
+  static const String _hospitalServiceUrl = 'http://31.97.58.62:3006/api/v1';
 
   Future<List<Hospital>> getHospitals() async {
     try {
