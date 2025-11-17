@@ -38,36 +38,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     
-    // Listen for call invitations
-    final authService = Provider.of<AuthService>(context, listen: false);
-    if (authService.token != null) {
-      CallSocketService().inviteStream.listen((invite) async {
-        if (!mounted) return;
-        final shouldAccept = await _showIncomingCallDialog(context);
-        if (!shouldAccept) return;
-
-        try {
-          final credential = await CallService().joinCall(
-            accessToken: authService.token!,
-            sessionId: invite.sessionId,
-            asHost: false,
-          );
-          if (!mounted) return;
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => CallScreen(credential: credential),
-            ),
-          );
-        } catch (e) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to join call: $e'),
-            ),
-          );
-        }
-      });
-    }
+    // Initialize call listener after first frame
+    _initializeCallListener();
 
     // Drawer slide animation
     _drawerAnimationController = AnimationController(
@@ -752,20 +724,88 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  void _initializeCallListener() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      if (authService.token != null) {
+        // Connect to call socket service
+        CallSocketService().connect(authService.token!).catchError((error) {
+          print('❌ [HOME] Failed to connect call socket: $error');
+        });
+
+        // Listen for call invitations
+        CallSocketService().inviteStream.listen((invite) async {
+          if (!mounted) return;
+          
+          print('📞 [HOME] Received call invitation: ${invite.sessionId}');
+          
+          final shouldAccept = await _showIncomingCallDialog(context);
+          if (!shouldAccept) {
+            print('📞 [HOME] User declined the call');
+            return;
+          }
+
+          print('📞 [HOME] User accepted the call, joining...');
+          
+          try {
+            final credential = await CallService().joinCall(
+              accessToken: authService.token!,
+              sessionId: invite.sessionId,
+              asHost: false,
+            );
+            
+            if (!mounted) return;
+            
+            print('✅ [HOME] Call credential received, navigating to call screen');
+            
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => CallScreen(credential: credential),
+              ),
+            );
+          } catch (e) {
+            print('❌ [HOME] Failed to join call: $e');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to join call: $e'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          }
+        });
+      }
+    });
+  }
+
   Future<bool> _showIncomingCallDialog(BuildContext context) async {
     return await showDialog<bool>(
           context: context,
           barrierDismissible: false,
           builder: (ctx) => AlertDialog(
-            title: const Text('Incoming Video Call'),
-            content: const Text('You have an incoming video call from an administrator.'),
+            title: const Row(
+              children: [
+                Icon(Icons.videocam, color: Color(0xFF1E40AF)),
+                SizedBox(width: 8),
+                Text('Incoming Video Call'),
+              ],
+            ),
+            content: const Text(
+              'You have an incoming video call from an administrator.',
+              style: TextStyle(fontSize: 16),
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Decline'),
+                child: const Text('Decline', style: TextStyle(color: Colors.red)),
               ),
               ElevatedButton(
                 onPressed: () => Navigator.of(ctx).pop(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E40AF),
+                  foregroundColor: Colors.white,
+                ),
                 child: const Text('Accept'),
               ),
             ],

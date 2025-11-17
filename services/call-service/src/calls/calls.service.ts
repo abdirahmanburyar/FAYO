@@ -29,30 +29,39 @@ export class CallsService {
   ) {}
 
   async createSession(initiatorId: string, dto: CreateCallSessionDto) {
-    const channelName = dto.channelName?.trim() || this.generateChannelName(initiatorId);
-    const expiresAt = this.calculateExpiry();
+    try {
+      this.logger.log(`Creating call session: initiator=${initiatorId}, recipient=${dto.recipientId}`);
+      
+      const channelName = dto.channelName?.trim() || this.generateChannelName(initiatorId);
+      const expiresAt = this.calculateExpiry();
 
-    const session = await this.prisma.callSession.create({
-      data: {
-        channelName,
-        initiatorId,
-        recipientId: dto.recipientId,
-        callType: dto.callType ?? CallType.VIDEO,
-        expiresAt,
-        metadata: dto.metadata as Prisma.InputJsonValue,
-      },
-    });
+      const session = await this.prisma.callSession.create({
+        data: {
+          channelName,
+          initiatorId,
+          recipientId: dto.recipientId,
+          callType: dto.callType ?? CallType.VIDEO,
+          expiresAt,
+          metadata: dto.metadata as Prisma.InputJsonValue,
+        },
+      });
 
-    const credential = this.buildCredential(session.channelName, initiatorId, CallParticipantRole.HOST);
+      this.logger.log(`Call session created: ${session.id}`);
 
-    await this.publishLifecycle('CALL_SESSION_CREATED', session);
-    this.eventEmitter.emit('call.session.created', { session, credential });
+      const credential = this.buildCredential(session.channelName, initiatorId, CallParticipantRole.HOST);
 
-    return {
-      message: 'Call session created',
-      session,
-      credential,
-    };
+      await this.publishLifecycle('CALL_SESSION_CREATED', session);
+      this.eventEmitter.emit('call.session.created', { session, credential });
+
+      return {
+        message: 'Call session created',
+        session,
+        credential,
+      };
+    } catch (error) {
+      this.logger.error(`Error creating call session: ${error.message}`, error.stack);
+      throw error;
+    }
   }
 
   async issueToken(sessionId: string, userId: string, role: CallParticipantRole = CallParticipantRole.HOST) {

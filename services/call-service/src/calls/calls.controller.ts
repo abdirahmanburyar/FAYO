@@ -11,8 +11,13 @@ export class CallsController {
   constructor(private readonly callsService: CallsService) {}
 
   @Post('session')
-  createSession(@Request() req, @Body() dto: CreateCallSessionDto) {
-    return this.callsService.createSession(req.user.id, dto);
+  async createSession(@Request() req, @Body() dto: CreateCallSessionDto) {
+    try {
+      return await this.callsService.createSession(req.user.id, dto);
+    } catch (error) {
+      console.error('Error creating call session:', error);
+      throw error;
+    }
   }
 
   @Post('session/:id/token')

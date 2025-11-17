@@ -91,8 +91,10 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private registerEventListeners() {
-    this.eventEmitter.on('call.session.created', ({ session }) => {
+    this.eventEmitter.on('call.session.created', (data: { session: any; credential?: any }) => {
+      const { session } = data;
       if (session.recipientId) {
+        // Emit to the recipient's user room
         this.server.to(`user:${session.recipientId}`).emit('call_invitation', session);
       }
     });

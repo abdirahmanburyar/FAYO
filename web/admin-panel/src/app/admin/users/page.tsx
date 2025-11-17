@@ -20,10 +20,11 @@ import {
   Video,
 } from 'lucide-react';
 import { usersApi, User } from '@/services/usersApi';
-import { createCallSession } from '@/services/callApi';
+import { createCallSession, CallSession, CallCredential } from '@/services/callApi';
 import CreateUserModal from '@/components/CreateUserModal';
 import { SkeletonStats, SkeletonTable } from '@/components/skeletons';
 import { SearchableSelect, SelectOption } from '@/components/ui';
+import CallOverlay from '@/components/CallOverlay';
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -35,6 +36,9 @@ export default function UsersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [callingUserId, setCallingUserId] = useState<string | null>(null);
   const [callError, setCallError] = useState<string | null>(null);
+  const [activeSession, setActiveSession] = useState<CallSession | null>(null);
+  const [activeCredential, setActiveCredential] = useState<CallCredential | null>(null);
+  const [showCallOverlay, setShowCallOverlay] = useState(false);
 
   const handleStartCall = async (user: User) => {
     try {
@@ -50,8 +54,10 @@ export default function UsersPage() {
         return;
       }
 
-      await createCallSession(accessToken, user.id, 'VIDEO');
-      alert(`Calling ${user.firstName} ${user.lastName}. The user will receive a video call invite in the mobile app.`);
+      const { session, credential } = await createCallSession(accessToken, user.id, 'VIDEO');
+      setActiveSession(session);
+      setActiveCredential(credential);
+      setShowCallOverlay(true);
     } catch (error) {
       console.error('Error starting call:', error);
       setCallError('Failed to start call. Please try again.');
@@ -185,6 +191,17 @@ export default function UsersPage() {
   }
 
   return (
+    <>
+      <CallOverlay
+        open={showCallOverlay}
+        onClose={() => {
+          setShowCallOverlay(false);
+          setActiveSession(null);
+          setActiveCredential(null);
+        }}
+        session={activeSession}
+        credential={activeCredential}
+      />
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">
@@ -443,6 +460,16 @@ export default function UsersPage() {
         </div>
       )}
 
+        {/* Call error */}
+        {callError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-4">
+            <div className="flex items-center">
+              <AlertCircle className="w-4 h-4 text-red-500 mr-2" />
+              <p className="text-sm text-red-700">{callError}</p>
+            </div>
+          </div>
+        )}
+
       {/* Create User Modal */}
       <CreateUserModal
         isOpen={showCreateModal}
@@ -453,5 +480,6 @@ export default function UsersPage() {
         }}
       />
     </div>
+    </>
   );
 }
