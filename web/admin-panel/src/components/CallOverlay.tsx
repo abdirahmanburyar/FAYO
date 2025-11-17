@@ -16,6 +16,9 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ open, onClose, session, crede
   const [localVideoTrack, setLocalVideoTrack] = useState<ICameraVideoTrack | null>(null);
   const [localAudioTrack, setLocalAudioTrack] = useState<IMicrophoneAudioTrack | null>(null);
   const [remoteUsers, setRemoteUsers] = useState<any[]>([]);
+  const [connectionState, setConnectionState] = useState<string>('disconnected');
+  const [micMuted, setMicMuted] = useState(false);
+  const [videoOff, setVideoOff] = useState(false);
 
   const localVideoRef = useRef<HTMLDivElement | null>(null);
   const remoteVideoRef = useRef<HTMLDivElement | null>(null);
@@ -27,21 +30,39 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ open, onClose, session, crede
 
     const init = async () => {
       try {
+        console.log('🎥 [CALL] Initializing Agora client...', {
+          appId: credential.appId,
+          channelName: credential.channelName,
+          hasToken: !!credential.token,
+          rtcUserId: credential.rtcUserId,
+        });
+
         const c = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
         setClient(c);
 
+        // Enable Agora debug logging
+        AgoraRTC.setLogLevel(4); // 0-4, 4 = all logs
+
         c.on('user-published', async (user, mediaType) => {
-          await c.subscribe(user, mediaType);
-          if (mediaType === 'video' && remoteVideoRef.current) {
-            user.videoTrack?.play(remoteVideoRef.current);
+          console.log('👤 [CALL] User published:', { uid: user.uid, mediaType });
+          try {
+            await c.subscribe(user, mediaType);
+            if (mediaType === 'video' && remoteVideoRef.current) {
+              console.log('📹 [CALL] Playing remote video for user:', user.uid);
+              user.videoTrack?.play(remoteVideoRef.current);
+            }
+            if (mediaType === 'audio') {
+              console.log('🔊 [CALL] Playing remote audio for user:', user.uid);
+              user.audioTrack?.play();
+            }
+            setRemoteUsers((prev) => [...prev.filter((u) => u.uid !== user.uid), user]);
+          } catch (error) {
+            console.error('❌ [CALL] Error subscribing to user:', error);
           }
-          if (mediaType === 'audio') {
-            user.audioTrack?.play();
-          }
-          setRemoteUsers((prev) => [...prev.filter((u) => u.uid !== user.uid), user]);
         });
 
         c.on('user-unpublished', (user) => {
+          console.log('👤 [CALL] User unpublished:', user.uid);
           if (user.videoTrack) {
             user.videoTrack.stop();
           }
@@ -52,6 +73,7 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ open, onClose, session, crede
         });
 
         c.on('user-left', (user) => {
+          console.log('👤 [CALL] User left:', user.uid);
           if (user.videoTrack) {
             user.videoTrack.stop();
           }
@@ -61,14 +83,40 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ open, onClose, session, crede
           setRemoteUsers((prev) => prev.filter((u) => u.uid !== user.uid));
         });
 
+        c.on('connection-state-change', (curState, revState) => {
+          console.log('🔌 [CALL] Connection state changed:', { curState, revState });
+          if (mounted) {
+            setConnectionState(curState);
+          }
+        });
+
+        c.on('exception', (evt) => {
+          console.error('❌ [CALL] Agora exception:', evt);
+        });
+
         // Join channel with token
-        // Note: Web SDK uses UID (number) or userAccount (string)
-        // Since backend generates token with user account, we can use either
-        await c.join(credential.appId, credential.channelName, credential.token || null, credential.rtcUserId || null);
+        // Note: Web SDK join() accepts: appId, channel, token, uid (number or string userAccount)
+        console.log('🚪 [CALL] Joining channel...', {
+          appId: credential.appId,
+          channel: credential.channelName,
+          uid: credential.rtcUserId,
+        });
+
+        const uid = await c.join(
+          credential.appId,
+          credential.channelName,
+          credential.token || null,
+          credential.rtcUserId || null,
+        );
+
+        console.log('✅ [CALL] Joined channel successfully, UID:', uid);
 
         // Create and publish local tracks
+        console.log('🎤 [CALL] Creating local audio/video tracks...');
         const [micTrack, camTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+        
         if (!mounted) {
+          console.log('⚠️ [CALL] Component unmounted, cleaning up tracks');
           micTrack.close();
           camTrack.close();
           return;
@@ -77,10 +125,15 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ open, onClose, session, crede
         setLocalAudioTrack(micTrack);
         setLocalVideoTrack(camTrack);
 
+        console.log('📤 [CALL] Publishing local tracks...');
         await c.publish([micTrack, camTrack]);
+        console.log('✅ [CALL] Local tracks published successfully');
 
         if (localVideoRef.current) {
+          console.log('📹 [CALL] Playing local video');
           camTrack.play(localVideoRef.current);
+        } else {
+          console.warn('⚠️ [CALL] Local video ref not available');
         }
       } catch (e) {
         // eslint-disable-next-line no-console
@@ -136,6 +189,14 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ open, onClose, session, crede
             <p className="text-lg font-semibold text-white truncate">
               Session: {session.id}
             </p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`w-2 h-2 rounded-full ${
+                connectionState === 'CONNECTED' ? 'bg-green-500' :
+                connectionState === 'CONNECTING' ? 'bg-yellow-500' :
+                'bg-red-500'
+              }`}></span>
+              <span className="text-xs text-gray-400">{connectionState}</span>
+            </div>
           </div>
           <button
             onClick={async () => {
@@ -179,9 +240,38 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ open, onClose, session, crede
               <p>Channel: {session.channelName}</p>
               <p>Status: {session.status}</p>
               <p>Role: {credential.role}</p>
+              <p>Connection: <span className={connectionState === 'CONNECTED' ? 'text-green-400' : 'text-yellow-400'}>{connectionState}</span></p>
               <p>Remote participants: {remoteUsers.length}</p>
             </div>
           </div>
+        </div>
+
+        {/* Call Controls */}
+        <div className="flex justify-center items-center gap-4 p-4 bg-gray-800 border-t border-gray-700">
+          <button
+            onClick={() => {
+              if (localAudioTrack) {
+                localAudioTrack.setEnabled(micMuted);
+                setMicMuted(!micMuted);
+              }
+            }}
+            className={`p-3 rounded-full ${micMuted ? 'bg-red-600' : 'bg-gray-700'} text-white hover:opacity-80 transition-opacity`}
+            title={micMuted ? 'Unmute' : 'Mute'}
+          >
+            {micMuted ? '🔇' : '🎤'}
+          </button>
+          <button
+            onClick={() => {
+              if (localVideoTrack) {
+                localVideoTrack.setEnabled(videoOff);
+                setVideoOff(!videoOff);
+              }
+            }}
+            className={`p-3 rounded-full ${videoOff ? 'bg-red-600' : 'bg-gray-700'} text-white hover:opacity-80 transition-opacity`}
+            title={videoOff ? 'Turn on video' : 'Turn off video'}
+          >
+            {videoOff ? '📹❌' : '📹'}
+          </button>
         </div>
       </div>
     </div>

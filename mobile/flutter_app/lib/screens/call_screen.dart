@@ -48,7 +48,8 @@ class _CallScreenState extends State<CallScreen> {
       _engine.registerEventHandler(
         RtcEngineEventHandler(
           onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
-            debugPrint("✅ [CALL] Local user joined channel: ${connection.localUid}");
+            debugPrint("✅ [CALL] Local user joined channel: ${connection.localUid}, elapsed: ${elapsed}ms");
+            debugPrint("📊 [CALL] Connection info: channelId=${connection.channelId}, localUid=${connection.localUid}");
             if (mounted) {
               setState(() {
                 _localJoined = true;
@@ -56,7 +57,8 @@ class _CallScreenState extends State<CallScreen> {
             }
           },
           onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
-            debugPrint("✅ [CALL] Remote user joined: $remoteUid");
+            debugPrint("✅ [CALL] Remote user joined: uid=$remoteUid, elapsed=${elapsed}ms");
+            debugPrint("📊 [CALL] Connection: channelId=${connection.channelId}, localUid=${connection.localUid}");
             if (mounted) {
               setState(() {
                 _remoteUid = remoteUid;
@@ -64,26 +66,39 @@ class _CallScreenState extends State<CallScreen> {
             }
           },
           onUserOffline: (RtcConnection connection, int remoteUid, UserOfflineReasonType reason) {
-            debugPrint("❌ [CALL] Remote user left: $remoteUid");
+            debugPrint("❌ [CALL] Remote user left: uid=$remoteUid, reason=$reason");
             if (mounted) {
               setState(() {
                 _remoteUid = null;
               });
             }
           },
+          onConnectionStateChanged: (RtcConnection connection, ConnectionStateType state, ConnectionChangedReasonType reason) {
+            debugPrint("🔌 [CALL] Connection state changed: state=$state, reason=$reason");
+          },
+          onNetworkQuality: (RtcConnection connection, int remoteUid, QualityType txQuality, QualityType rxQuality) {
+            debugPrint("📶 [CALL] Network quality: remoteUid=$remoteUid, tx=$txQuality, rx=$rxQuality");
+          },
           onError: (ErrorCodeType err, String msg) {
-            debugPrint("❌ [CALL] Error: $err - $msg");
+            debugPrint("❌ [CALL] Error: code=$err, message=$msg");
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Call error: $msg'),
+                  content: Text('Call error: $msg (code: $err)'),
                   backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 5),
                 ),
               );
             }
           },
           onTokenPrivilegeWillExpire: (RtcConnection connection, String token) {
-            debugPrint("⚠️ [CALL] Token will expire soon");
+            debugPrint("⚠️ [CALL] Token will expire soon, channelId=${connection.channelId}");
+          },
+          onFirstRemoteVideoDecoded: (RtcConnection connection, int remoteUid, int width, int height, int elapsed) {
+            debugPrint("🎥 [CALL] First remote video decoded: uid=$remoteUid, size=${width}x${height}, elapsed=${elapsed}ms");
+          },
+          onFirstRemoteAudioFrame: (RtcConnection connection, int remoteUid, int elapsed) {
+            debugPrint("🔊 [CALL] First remote audio frame: uid=$remoteUid, elapsed=${elapsed}ms");
           },
         ),
       );
