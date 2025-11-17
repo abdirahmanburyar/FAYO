@@ -11,6 +11,7 @@
   - Proper networking, health checks, and restart policies
 
 ### 2. GitHub Actions Workflow
+### 2. GitHub Actions Workflow
 - **File**: `.github/workflows/deploy.yml`
 - **Purpose**: Automated CI/CD pipeline
 - **Features**:
