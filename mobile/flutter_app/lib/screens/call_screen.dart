@@ -104,9 +104,21 @@ class _CallScreenState extends State<CallScreen> {
       );
 
       await _engine.enableVideo();
+      
+      // Set video codec to VP8 to match Web SDK
+      await _engine.setVideoEncoderConfiguration(
+        const VideoEncoderConfiguration(
+          codecType: VideoCodecType.videoCodecVp8,
+          dimensions: VideoDimensions(width: 640, height: 480),
+          frameRate: 15,
+          bitrate: 400,
+        ),
+      );
+      
       await _engine.startPreview();
 
       debugPrint("📞 [CALL] Joining channel: ${widget.credential.channelName} with userAccount: ${widget.credential.rtcUserId}");
+      debugPrint("📞 [CALL] Video codec: VP8 (matching Web SDK)");
       
       // Use joinChannelWithUserAccount since token was generated with user account
       final token = widget.credential.token.isEmpty ? "" : widget.credential.token;

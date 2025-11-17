@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../services/call_socket_service.dart';
 import '../services/call_service.dart';
 import 'call_screen.dart';
+import 'call_sessions_screen.dart';
 import 'login_screen.dart';
 import 'edit_profile_screen.dart';
 import 'hospitals_screen.dart';
@@ -410,6 +411,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   onTap: () {
                             _closeDrawer();
                     setState(() => _currentIndex = 4);
+                  },
+                ),
+                        _build3DDrawerItem(
+                  icon: Icons.video_call_outlined,
+                  title: 'Call Sessions',
+                  onTap: () {
+                            _closeDrawer();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const CallSessionsScreen(),
+                      ),
+                    );
                   },
                 ),
                         
