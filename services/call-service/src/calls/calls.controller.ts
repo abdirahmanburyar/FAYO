@@ -42,5 +42,10 @@ export class CallsController {
   ) {
     return this.callsService.updateStatus(sessionId, req.user.id, dto.status);
   }
+
+  @Get('sessions')
+  getUserSessions(@Request() req) {
+    return this.callsService.getUserSessions(req.user.id);
+  }
 }
 

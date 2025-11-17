@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
+import 'call_socket_service.dart';
 
 class AuthService extends ChangeNotifier {
   String? _token;
@@ -235,6 +236,17 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    // Disconnect call socket service before logout
+    try {
+      await CallSocketService().disconnect();
+      if (kDebugMode) {
+        print('✅ [AUTH] Call socket disconnected');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ [AUTH] Error disconnecting call socket: $e');
+      }
+    }
     _token = null;
     _userId = null;
     _phoneNumber = null;

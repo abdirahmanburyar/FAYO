@@ -57,7 +57,8 @@ class CallSocketService {
         wsUrl,
         IO.OptionBuilder()
             .setTransports(['websocket'])
-            .setQuery({'token': jwtToken})
+            .setAuth({'token': jwtToken}) // Use auth instead of query for better security
+            .setExtraHeaders({'Authorization': 'Bearer $jwtToken'}) // Also set header for compatibility
             .enableAutoConnect()
             .build(),
       );
@@ -99,10 +100,12 @@ class CallSocketService {
 
   Future<void> disconnect() async {
     if (_socket != null) {
+      print('📞 [CALL SOCKET] Disconnecting...');
       _socket!.disconnect();
+      _socket!.clearListeners();
       _socket!.dispose();
       _socket = null;
-      print('📞 [CALL SOCKET] Disconnected');
+      print('📞 [CALL SOCKET] Disconnected and cleaned up');
     }
   }
 

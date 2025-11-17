@@ -40,25 +40,49 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.registerEventListeners();
   }
 
-  async handleConnection(client: AuthedSocket) {
-    try {
-      const token = this.extractToken(client);
-      if (!token) {
-        throw new Error('Missing auth token');
+      async handleConnection(client: AuthedSocket) {
+        try {
+          const token = this.extractToken(client);
+          if (!token) {
+            console.warn(`⚠️ [GATEWAY] Missing auth token for connection`);
+            throw new Error('Missing auth token');
+          }
+          const payload = await this.jwtService.verifyAsync(token);
+          const userId = payload.sub ?? payload.id;
+          if (!userId) {
+            console.warn(`⚠️ [GATEWAY] Missing user ID in token payload`);
+            throw new Error('Invalid token: missing user ID');
+          }
+          
+          // Disconnect any existing connections for this user to ensure uniqueness
+          const userRoom = `user:${userId}`;
+          const existingSockets = await this.server.in(userRoom).fetchSockets();
+          if (existingSockets.length > 0) {
+            console.log(`🔄 [GATEWAY] Disconnecting ${existingSockets.length} existing socket(s) for user ${userId}`);
+            existingSockets.forEach((socket) => {
+              if (socket.id !== client.id) {
+                socket.emit('disconnected', { reason: 'New connection established' });
+                socket.disconnect(true);
+              }
+            });
+          }
+          
+          client.user = { id: userId, role: payload.role };
+          client.join(userRoom);
+          console.log(`✅ [GATEWAY] User ${userId} connected with socket ${client.id} and joined room: ${userRoom}`);
+          client.emit('connected', { message: 'Connected to call service', userId });
+        } catch (error) {
+          console.error(`❌ [GATEWAY] Connection error:`, error);
+          client.emit('error', { message: 'Unauthorized' });
+          client.disconnect(true);
+        }
       }
-      const payload = await this.jwtService.verifyAsync(token);
-      client.user = { id: payload.sub ?? payload.id, role: payload.role };
-      client.join(`user:${client.user.id}`);
-      client.emit('connected', { message: 'Connected to call service' });
-    } catch (error) {
-      client.emit('error', { message: 'Unauthorized' });
-      client.disconnect(true);
-    }
-  }
 
   async handleDisconnect(client: AuthedSocket) {
     if (client.user) {
-      client.leave(`user:${client.user.id}`);
+      const userRoom = `user:${client.user.id}`;
+      client.leave(userRoom);
+      console.log(`👋 [GATEWAY] User ${client.user.id} disconnected from room: ${userRoom}`);
     }
   }
 
@@ -94,8 +118,26 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.eventEmitter.on('call.session.created', (data: { session: any; credential?: any }) => {
       const { session } = data;
       if (session.recipientId) {
-        // Emit to the recipient's user room
-        this.server.to(`user:${session.recipientId}`).emit('call_invitation', session);
+        const recipientRoom = `user:${session.recipientId}`;
+        console.log(`📞 [GATEWAY] Emitting call_invitation to room: ${recipientRoom}`);
+        console.log(`📞 [GATEWAY] Session details:`, {
+          id: session.id,
+          channelName: session.channelName,
+          initiatorId: session.initiatorId,
+          recipientId: session.recipientId,
+          status: session.status,
+        });
+        
+        // Check if anyone is in the recipient room
+        const room = this.server.sockets.adapter.rooms.get(recipientRoom);
+        if (room && room.size > 0) {
+          console.log(`✅ [GATEWAY] Found ${room.size} socket(s) in room ${recipientRoom}`);
+          this.server.to(recipientRoom).emit('call_invitation', session);
+        } else {
+          console.warn(`⚠️ [GATEWAY] No sockets found in room ${recipientRoom}. Recipient may not be connected.`);
+        }
+      } else {
+        console.warn(`⚠️ [GATEWAY] Call session created without recipientId: ${session.id}`);
       }
     });
 
@@ -112,12 +154,20 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private extractToken(client: Socket): string | null {
+    // Try Authorization header first
     const auth = client.handshake.headers.authorization;
     if (auth?.startsWith('Bearer ')) {
       return auth.substring(7);
     }
-    if (client.handshake.query?.token) {
-      return String(client.handshake.query.token);
+    // Fallback to auth object (Socket.IO auth)
+    const authToken = client.handshake.auth?.token;
+    if (authToken && typeof authToken === 'string') {
+      return authToken;
+    }
+    // Fallback to query parameter (for compatibility)
+    const queryToken = client.handshake.query?.token;
+    if (queryToken && typeof queryToken === 'string') {
+      return queryToken;
     }
     return null;
   }

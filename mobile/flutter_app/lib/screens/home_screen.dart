@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -81,6 +82,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _callInviteSubscription?.cancel();
     _drawerAnimationController.dispose();
     _rotationController.dispose();
     super.dispose();
@@ -737,94 +739,214 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  StreamSubscription<CallInvite>? _callInviteSubscription;
+
   void _initializeCallListener() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authService = Provider.of<AuthService>(context, listen: false);
       if (authService.token != null) {
+        print('📞 [HOME] Initializing call listener...');
+        
         // Connect to call socket service
-        CallSocketService().connect(authService.token!).catchError((error) {
+        CallSocketService().connect(authService.token!).then((_) {
+          print('✅ [HOME] Call socket connected successfully');
+        }).catchError((error) {
           print('❌ [HOME] Failed to connect call socket: $error');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to connect to call service: $error'),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
         });
 
         // Listen for call invitations
-        CallSocketService().inviteStream.listen((invite) async {
-          if (!mounted) return;
+        _callInviteSubscription = CallSocketService().inviteStream.listen(
+          (invite) async {
+            if (!mounted) {
+              print('⚠️ [HOME] Widget not mounted, ignoring invitation');
+              return;
+            }
           
-          print('📞 [HOME] Received call invitation: ${invite.sessionId}');
+            print('📞 [HOME] Received call invitation: ${invite.sessionId}');
+            print('📞 [HOME] Channel: ${invite.channelName}, From: ${invite.fromUserId}');
           
-          final shouldAccept = await _showIncomingCallDialog(context);
-          if (!shouldAccept) {
-            print('📞 [HOME] User declined the call');
-            return;
-          }
+            // Show dialog on main UI thread
+            final shouldAccept = await _showIncomingCallDialog(context);
+            if (!shouldAccept) {
+              print('📞 [HOME] User declined the call');
+              return;
+            }
 
-          print('📞 [HOME] User accepted the call, joining...');
+            print('📞 [HOME] User accepted the call, joining...');
           
-          try {
-            final credential = await CallService().joinCall(
-              accessToken: authService.token!,
-              sessionId: invite.sessionId,
-              asHost: false,
-            );
+            try {
+              final credential = await CallService().joinCall(
+                accessToken: authService.token!,
+                sessionId: invite.sessionId,
+                asHost: false,
+              );
             
-            if (!mounted) return;
+              if (!mounted) return;
             
-            print('✅ [HOME] Call credential received, navigating to call screen');
+              print('✅ [HOME] Call credential received, navigating to call screen');
             
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => CallScreen(credential: credential),
-              ),
-            );
-          } catch (e) {
-            print('❌ [HOME] Failed to join call: $e');
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Failed to join call: $e'),
-                  backgroundColor: Colors.red,
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => CallScreen(credential: credential),
                 ),
               );
+            } catch (e) {
+              print('❌ [HOME] Failed to join call: $e');
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to join call: $e'),
+                    backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 5),
+                  ),
+                );
+              }
             }
-          }
-        });
+          },
+          onError: (error) {
+            print('❌ [HOME] Error in call invite stream: $error');
+          },
+          cancelOnError: false,
+        );
+        
+        print('✅ [HOME] Call invitation listener initialized');
+      } else {
+        print('⚠️ [HOME] No auth token available, skipping call listener setup');
       }
     });
   }
 
   Future<bool> _showIncomingCallDialog(BuildContext context) async {
+    print('📞 [HOME] Showing incoming call dialog');
+    
+    // Use a more prominent dialog with better UI
     return await showDialog<bool>(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) => AlertDialog(
-            title: const Row(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black54,
+      builder: (ctx) => PopScope(
+        canPop: false, // Prevent back button from dismissing
+        child: Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF1E40AF), Color(0xFF3B82F6)],
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.videocam, color: Color(0xFF1E40AF)),
-                SizedBox(width: 8),
-                Text('Incoming Video Call'),
+                // Animated video icon
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.videocam,
+                    size: 40,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Incoming Video Call',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'You have an incoming video call from an administrator.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white70,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Decline button
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          print('📞 [HOME] User declined call from dialog');
+                          Navigator.of(ctx).pop(false);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.call_end, size: 20),
+                            SizedBox(width: 8),
+                            Text('Decline', style: TextStyle(fontSize: 16)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Accept button
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          print('📞 [HOME] User accepted call from dialog');
+                          Navigator.of(ctx).pop(true);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.call, size: 20),
+                            SizedBox(width: 8),
+                            Text('Accept', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-            content: const Text(
-              'You have an incoming video call from an administrator.',
-              style: TextStyle(fontSize: 16),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Decline', style: TextStyle(color: Colors.red)),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E40AF),
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Accept'),
-              ),
-            ],
           ),
-        ) ??
-        false;
+        ),
+      ),
+    ) ?? false;
   }
 
   void _showComingSoon(BuildContext context, String feature) {

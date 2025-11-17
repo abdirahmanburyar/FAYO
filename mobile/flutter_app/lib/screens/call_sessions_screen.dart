@@ -28,47 +28,53 @@ class _CallSessionsScreenState extends State<CallSessionsScreen> {
   void _startPeriodicRefresh() {
     Future.delayed(const Duration(seconds: 5), () {
       if (mounted) {
-        _loadSessions();
+        _loadSessions(silent: true); // Silent refresh to avoid loading indicator
         _startPeriodicRefresh();
       }
     });
   }
 
-  Future<void> _loadSessions() async {
+  Future<void> _loadSessions({bool silent = false}) async {
     if (!mounted) return;
 
     final authService = Provider.of<AuthService>(context, listen: false);
     if (authService.token == null) {
-      setState(() {
-        _error = 'Not authenticated';
-        _isLoading = false;
-      });
+      if (!silent) {
+        setState(() {
+          _error = 'Not authenticated';
+          _isLoading = false;
+        });
+      }
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
 
     try {
-      // For now, we'll track sessions that the user might be part of
-      // In a real implementation, you'd have an endpoint to list available sessions
-      // For now, we'll show a message that sessions will appear here when available
+      final sessions = await _callService.getUserSessions(
+        accessToken: authService.token!,
+      );
       
-      // TODO: Add backend endpoint to list available sessions
-      // For now, we'll just show a placeholder
+      if (!mounted) return;
       
       setState(() {
-        _sessions = [];
+        _sessions = sessions;
         _isLoading = false;
+        _error = null;
       });
     } catch (e) {
       print('❌ [CALL SESSIONS] Error loading sessions: $e');
-      setState(() {
-        _error = 'Failed to load sessions: ${e.toString()}';
-        _isLoading = false;
-      });
+      if (!silent && mounted) {
+        setState(() {
+          _error = 'Failed to load sessions: ${e.toString()}';
+          _isLoading = false;
+        });
+      }
     }
   }
 

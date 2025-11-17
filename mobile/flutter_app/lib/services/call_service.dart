@@ -130,11 +130,44 @@ class CallService {
   factory CallService() => _instance;
   CallService._internal();
 
-  /// Get a specific call session by ID
-  Future<CallSession> getSession({
-    required String accessToken,
-    required String sessionId,
-  }) async {
+      /// Get all active sessions for the current user
+      Future<List<CallSession>> getUserSessions({
+        required String accessToken,
+      }) async {
+        final url = '${CallConfig.baseUrl}/calls/sessions';
+        
+        print('📞 [CALL SERVICE] Fetching user sessions: $url');
+        
+        final response = await http.get(
+          Uri.parse(url),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $accessToken',
+          },
+        );
+
+        print('📞 [CALL SERVICE] Response status: ${response.statusCode}');
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          try {
+            final data = jsonDecode(response.body) as List<dynamic>;
+            print('✅ [CALL SERVICE] Successfully fetched ${data.length} sessions');
+            return data.map((json) => CallSession.fromJson(json as Map<String, dynamic>)).toList();
+          } catch (e) {
+            print('❌ [CALL SERVICE] Failed to parse sessions: $e');
+            throw Exception('Failed to parse sessions: $e');
+          }
+        } else {
+          print('❌ [CALL SERVICE] Request failed with status ${response.statusCode}');
+          throw Exception('Failed to get sessions (${response.statusCode}): ${response.body}');
+        }
+      }
+
+      /// Get a specific call session by ID
+      Future<CallSession> getSession({
+        required String accessToken,
+        required String sessionId,
+      }) async {
     final url = '${CallConfig.baseUrl}/calls/session/$sessionId';
     
     print('📞 [CALL SERVICE] Fetching session: $url');

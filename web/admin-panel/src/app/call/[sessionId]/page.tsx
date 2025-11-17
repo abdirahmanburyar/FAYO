@@ -112,27 +112,42 @@ export default function CallPage() {
 
         // Event handlers
         c.on('user-published', async (user, mediaType) => {
-          console.log('👤 User published:', { uid: user.uid, mediaType });
+          console.log('👤 User published:', { uid: user.uid, mediaType, hasVideoTrack: !!user.videoTrack });
           try {
             await c.subscribe(user, mediaType);
-            if (mediaType === 'video') {
-              // Wait for next render to ensure ref is available
+            if (mediaType === 'video' && user.videoTrack) {
+              console.log('📹 Subscribed to video track for user:', user.uid);
+              // Update state first to trigger re-render
+              setRemoteUsers((prev) => {
+                const filtered = prev.filter((u) => u.uid !== user.uid);
+                return [...filtered, user];
+              });
+              // Play video after state update and DOM is ready
               setTimeout(() => {
                 const videoContainer = remoteVideoRefs.current.get(user.uid);
-                if (videoContainer && user.videoTrack) {
-                  user.videoTrack.play(videoContainer);
+                if (videoContainer) {
+                  console.log('🎬 Playing video for user:', user.uid);
+                  user.videoTrack.play(videoContainer).catch((err) => {
+                    console.error('❌ Error playing video:', err);
+                  });
+                } else {
+                  console.warn('⚠️ Video container not found for user:', user.uid);
                 }
-              }, 100);
+              }, 200);
             }
-            if (mediaType === 'audio') {
-              user.audioTrack?.play();
+            if (mediaType === 'audio' && user.audioTrack) {
+              console.log('🔊 Playing audio for user:', user.uid);
+              user.audioTrack.play();
             }
-            setRemoteUsers((prev) => {
-              const filtered = prev.filter((u) => u.uid !== user.uid);
-              return [...filtered, user];
-            });
+            // Update state if not already done (for audio-only)
+            if (mediaType !== 'video') {
+              setRemoteUsers((prev) => {
+                const filtered = prev.filter((u) => u.uid !== user.uid);
+                return [...filtered, user];
+              });
+            }
           } catch (error) {
-            console.error('Error subscribing:', error);
+            console.error('❌ Error subscribing:', error);
           }
         });
 
@@ -185,8 +200,12 @@ export default function CallPage() {
 
         await c.publish([micTrack, camTrack]);
 
+        // Play local video after publishing
         if (localVideoRef.current) {
-          camTrack.play(localVideoRef.current);
+          console.log('🎬 Playing local video after publish');
+          camTrack.play(localVideoRef.current).catch((err) => {
+            console.error('❌ Error playing local video:', err);
+          });
         }
 
         // Start call timer
@@ -247,8 +266,19 @@ export default function CallPage() {
 
   const toggleVideo = () => {
     if (localVideoTrack) {
-      localVideoTrack.setEnabled(videoOff);
-      setVideoOff(!videoOff);
+      const newState = !videoOff;
+      localVideoTrack.setEnabled(newState);
+      setVideoOff(!newState);
+      console.log('📹 Video toggled:', newState ? 'ON' : 'OFF');
+      
+      // Replay video if enabled and ref is available
+      if (newState && localVideoRef.current && !localVideoTrack.isPlaying) {
+        setTimeout(() => {
+          localVideoTrack.play(localVideoRef.current!).catch((err) => {
+            console.error('❌ Error replaying local video:', err);
+          });
+        }, 100);
+      }
     }
   };
 
@@ -295,17 +325,32 @@ export default function CallPage() {
     }
   };
 
-  // Handle video playback when remote users change
+  // Handle video playback when remote users change or refs become available
   useEffect(() => {
     remoteUsers.forEach((user) => {
-      if (user.videoTrack) {
+      if (user.videoTrack && !user.videoTrack.isPlaying) {
         const container = remoteVideoRefs.current.get(user.uid);
         if (container) {
-          user.videoTrack.play(container);
+          console.log('🎬 Playing video track for user:', user.uid, 'in container');
+          user.videoTrack.play(container).catch((err) => {
+            console.error('❌ Error playing video track:', err);
+          });
+        } else {
+          console.warn('⚠️ Container not ready for user:', user.uid);
         }
       }
     });
   }, [remoteUsers]);
+
+  // Ensure local video is playing when track is available
+  useEffect(() => {
+    if (localVideoTrack && localVideoRef.current && !localVideoTrack.isPlaying) {
+      console.log('🎬 Playing local video track');
+      localVideoTrack.play(localVideoRef.current).catch((err) => {
+        console.error('❌ Error playing local video:', err);
+      });
+    }
+  }, [localVideoTrack]);
 
   const formatDuration = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -413,11 +458,16 @@ export default function CallPage() {
                       if (el) {
                         remoteVideoRefs.current.set(user.uid, el);
                         // Play video if track is already available
-                        if (user.videoTrack) {
+                        if (user.videoTrack && !user.videoTrack.isPlaying) {
+                          console.log('🎬 Playing video in ref callback for user:', user.uid);
                           setTimeout(() => {
-                            user.videoTrack?.play(el);
-                          }, 100);
+                            user.videoTrack?.play(el).catch((err) => {
+                              console.error('❌ Error playing video in ref:', err);
+                            });
+                          }, 50);
                         }
+                      } else {
+                        remoteVideoRefs.current.delete(user.uid);
                       }
                     }}
                     className="w-full h-full bg-gray-950"
@@ -456,11 +506,16 @@ export default function CallPage() {
                     if (el) {
                       remoteVideoRefs.current.set(user.uid, el);
                       // Play video if track is already available
-                      if (user.videoTrack) {
+                      if (user.videoTrack && !user.videoTrack.isPlaying) {
+                        console.log('🎬 Playing video in grid ref callback for user:', user.uid);
                         setTimeout(() => {
-                          user.videoTrack?.play(el);
-                        }, 100);
+                          user.videoTrack?.play(el).catch((err) => {
+                            console.error('❌ Error playing video in grid ref:', err);
+                          });
+                        }, 50);
                       }
+                    } else {
+                      remoteVideoRefs.current.delete(user.uid);
                     }
                   }}
                   className="relative bg-gray-950 rounded-lg overflow-hidden"

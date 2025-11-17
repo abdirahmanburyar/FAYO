@@ -96,6 +96,28 @@ export class CallsService {
     return session;
   }
 
+  async getUserSessions(userId: string) {
+    const now = new Date();
+    const sessions = await this.prisma.callSession.findMany({
+      where: {
+        OR: [
+          { initiatorId: userId },
+          { recipientId: userId },
+        ],
+        status: {
+          in: [CallStatus.PENDING, CallStatus.RINGING, CallStatus.ACTIVE],
+        },
+        expiresAt: {
+          gt: now,
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+    return sessions;
+  }
+
   async updateStatus(sessionId: string, userId: string, status: CallStatus) {
     let session = await this.findSession(sessionId);
     session = await this.ensureParticipant(session, userId);

@@ -389,10 +389,10 @@ export default function UsersPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.lastLoginAt ? (
+                    {user.updatedAt ? (
                       <div className="flex items-center">
                         <Calendar className="w-3 h-3 mr-1" />
-                        {new Date(user.lastLoginAt).toLocaleDateString()}
+                        {new Date(user.updatedAt).toLocaleDateString()}
                       </div>
                     ) : (
                       'Never'
