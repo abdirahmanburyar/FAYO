@@ -13,10 +13,7 @@ COPY package*.json ./
 RUN npm ci || npm install --legacy-peer-deps || npm install --force
 
 # Copy Prisma schema and migrations (must be before generate)
-# Create prisma directory first
-RUN mkdir -p ./prisma
-COPY prisma/schema.prisma ./prisma/schema.prisma
-COPY prisma/migrations ./prisma/migrations
+COPY prisma ./prisma/
 
 # Generate Prisma client
 RUN npx prisma generate
@@ -50,25 +47,20 @@ RUN (npm ci --omit=dev || npm install --omit=dev --legacy-peer-deps || npm insta
 # Copy built application
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 
-# Copy Prisma files (schema + migrations) - explicitly copy each
-# Switch to root temporarily to create directory and copy files
-USER root
-RUN mkdir -p ./prisma
-COPY --from=builder /app/prisma/schema.prisma ./prisma/schema.prisma
-COPY --from=builder /app/prisma/migrations ./prisma/migrations
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+# Copy Prisma files (schema + migrations) - copy entire directory
+COPY --from=builder --chown=nestjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nestjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
-# Verify prisma files are copied and fix ownership
+# Verify prisma files are copied (as root, then switch back)
+USER root
 RUN ls -la /app/prisma/ && \
     test -f /app/prisma/schema.prisma && echo "✅ schema.prisma found" || echo "❌ schema.prisma missing" && \
-    chown -R nestjs:nodejs /app/prisma /app/node_modules/.prisma
+    test -d /app/prisma/migrations && echo "✅ migrations directory found" || echo "⚠️ migrations directory missing"
+USER nestjs
 
 # Copy startup script
 COPY --chown=nestjs:nodejs start.sh /app/start.sh
 RUN chmod +x /app/start.sh
-
-# Switch to non-root user
-USER nestjs
 
 # Expose port
 EXPOSE 3010
