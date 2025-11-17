@@ -15,13 +15,15 @@ export interface CallSession {
 }
 
 export interface CallCredential {
-  appId: string;
+  sdkKey: string;
   token: string;
-  channelName: string;
-  rtcUserId: string;
+  sessionName: string;
+  channelName: string; // Backward compatibility
+  userIdentity: string;
+  rtcUserId: string; // Backward compatibility
   expiresAt: string;
   expiresIn: number;
-  role: 'HOST' | 'AUDIENCE';
+  role: 'HOST' | 'PARTICIPANT';
 }
 
 export async function createCallSession(

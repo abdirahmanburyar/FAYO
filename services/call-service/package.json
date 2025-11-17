@@ -32,7 +32,7 @@
     "@nestjs/platform-socket.io": "^10.3.0",
     "@nestjs/websockets": "^10.3.0",
     "@prisma/client": "^6.19.0",
-    "agora-access-token": "^2.0.4",
+    "jsonwebtoken": "^9.0.2",
     "amqplib": "^0.10.9",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",

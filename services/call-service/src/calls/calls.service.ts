@@ -9,12 +9,11 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { CallStatus, CallType, Prisma, CallSession } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../common/database/prisma.service';
-import { AgoraService, AgoraRole } from '../agora/agora.service';
+import { ZoomService, ZoomRole } from '../zoom/zoom.service';
 import { KafkaService } from '../messaging/kafka/kafka.service';
 import { RabbitmqService } from '../messaging/rabbitmq/rabbitmq.service';
 import { CreateCallSessionDto } from './dto/create-call-session.dto';
 import { CallParticipantRole } from './dto/request-call-token.dto';
-import { RtcRole } from 'agora-access-token';
 
 @Injectable()
 export class CallsService {
@@ -22,7 +21,7 @@ export class CallsService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly agoraService: AgoraService,
+    private readonly zoomService: ZoomService,
     private readonly kafkaService: KafkaService,
     private readonly rabbitmqService: RabbitmqService,
     private readonly eventEmitter: EventEmitter2,
@@ -32,12 +31,12 @@ export class CallsService {
     try {
       this.logger.log(`Creating call session: initiator=${initiatorId}, recipient=${dto.recipientId}`);
       
-      const channelName = dto.channelName?.trim() || this.generateChannelName(initiatorId);
+      const sessionName = dto.channelName?.trim() || this.generateSessionName(initiatorId);
       const expiresAt = this.calculateExpiry();
 
       const session = await this.prisma.callSession.create({
         data: {
-          channelName,
+          channelName: sessionName, // Keep channelName in DB for backward compatibility (stores sessionName)
           initiatorId,
           recipientId: dto.recipientId,
           callType: dto.callType ?? CallType.VIDEO,
@@ -174,35 +173,30 @@ export class CallsService {
   }
 
   private calculateExpiry() {
-    return new Date(Date.now() + this.agoraService.tokenTtl * 1000);
+    return new Date(Date.now() + this.zoomService.tokenTtl * 1000);
   }
 
-  private generateChannelName(userId: string) {
-    // Agora channel names must be <= 64 bytes and only contain specific characters
+  private generateSessionName(userId: string) {
+    // Zoom session names can be longer, but we'll keep a similar format for consistency
     // Format: fayo_<shortUserId>_<shortUUID>
-    // Use first 8 chars of userId and first 8 chars of UUID to keep under 64 bytes
     const shortUserId = userId.substring(0, 8);
     const shortUuid = randomUUID().replace(/-/g, '').substring(0, 16);
-    const channelName = `fayo_${shortUserId}_${shortUuid}`;
+    const sessionName = `fayo_${shortUserId}_${shortUuid}`;
     
-    // Ensure it's exactly 64 bytes or less
-    if (channelName.length > 64) {
-      const maxLength = 64;
-      return channelName.substring(0, maxLength);
-    }
-    
-    return channelName;
+    // Zoom session names can be up to 200 characters
+    return sessionName;
   }
 
-  private buildCredential(channelName: string, userId: string, role: CallParticipantRole) {
-    const rtcRole: AgoraRole =
-      role === CallParticipantRole.HOST ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
-    const tokenPayload = this.agoraService.generateToken(channelName, userId, rtcRole);
+  private buildCredential(sessionName: string, userId: string, role: CallParticipantRole) {
+    const zoomRole = role === CallParticipantRole.HOST ? ZoomRole.HOST : ZoomRole.PARTICIPANT;
+    const tokenPayload = this.zoomService.generateToken(sessionName, userId, zoomRole);
     return {
       ...tokenPayload,
-      channelName,
+      sessionName,
+      channelName: sessionName, // Keep for backward compatibility
       role,
-      rtcUserId: userId,
+      userIdentity: userId,
+      rtcUserId: userId, // Keep for backward compatibility
     };
   }
 

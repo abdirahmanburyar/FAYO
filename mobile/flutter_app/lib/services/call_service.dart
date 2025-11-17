@@ -90,19 +90,28 @@ class CallSession {
 }
 
 class CallCredential {
-  final String appId;
+  final String sdkKey;
+  final String appId; // Backward compatibility
   final String token;
-  final String channelName;
-  final String rtcUserId;
+  final String sessionName;
+  final String channelName; // Backward compatibility
+  final String userIdentity;
+  final String rtcUserId; // Backward compatibility
   final String role;
 
   CallCredential({
-    required this.appId,
+    required this.sdkKey,
     required this.token,
-    required this.channelName,
-    required this.rtcUserId,
+    required this.sessionName,
+    required this.userIdentity,
     required this.role,
-  });
+    // Backward compatibility fields
+    String? appId,
+    String? channelName,
+    String? rtcUserId,
+  }) : appId = appId ?? sdkKey,
+       channelName = channelName ?? sessionName,
+       rtcUserId = rtcUserId ?? userIdentity;
 
   factory CallCredential.fromJson(Map<String, dynamic> json) {
     try {
@@ -111,11 +120,15 @@ class CallCredential {
       final session = json['session'] as Map<String, dynamic>;
       
       return CallCredential(
-        appId: credential['appId'] as String,
+        sdkKey: credential['sdkKey'] as String? ?? credential['appId'] as String? ?? '',
         token: credential['token'] as String,
-        channelName: session['channelName'] as String,
-        rtcUserId: credential['rtcUserId'] as String,
+        sessionName: credential['sessionName'] as String? ?? session['channelName'] as String,
+        userIdentity: credential['userIdentity'] as String? ?? credential['rtcUserId'] as String? ?? '',
         role: credential['role'] as String,
+        // Backward compatibility
+        appId: credential['appId'] as String? ?? credential['sdkKey'] as String?,
+        channelName: session['channelName'] as String? ?? credential['sessionName'] as String?,
+        rtcUserId: credential['rtcUserId'] as String? ?? credential['userIdentity'] as String?,
       );
     } catch (e) {
       print('❌ [CALL CREDENTIAL] Error parsing JSON: $e');

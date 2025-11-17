@@ -1,11 +1,11 @@
 ## FAYO Call Service
 
-This NestJS microservice issues Agora RTC tokens, tracks voice/video call sessions, and broadcasts real-time updates over WebSockets, Kafka, and RabbitMQ.
+This NestJS microservice issues Zoom Video SDK JWT tokens, tracks voice/video call sessions, and broadcasts real-time updates over WebSockets, Kafka, and RabbitMQ.
 
 ### Features
 
 - Create/join/cancel call sessions with REST endpoints (`/api/v1/calls/...`)
-- Issue short-lived Agora tokens for each participant
+- Issue short-lived Zoom Video SDK JWT tokens for each participant
 - WebSocket gateway (`/ws/calls`) for invitations, status, and control events
 - Kafka producer for analytic streams (`calls.events`)
 - RabbitMQ publisher/subscriber for command bus integration
@@ -24,7 +24,7 @@ Configure environment variables via `env.example` (copy to `.env`). At minimum s
 
 - `DATABASE_URL`
 - `JWT_SECRET`
-- `AGORA_APP_ID` / `AGORA_APP_CERTIFICATE`
+- `ZOOM_SDK_KEY` / `ZOOM_SDK_SECRET` (Get from Zoom App Marketplace)
 - `KAFKA_BROKERS`
 - `RABBITMQ_URI`
 
