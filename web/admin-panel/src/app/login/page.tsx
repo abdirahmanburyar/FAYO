@@ -39,8 +39,9 @@ export default function AdminLoginPage() {
     setError('');
 
     try {
-      const userServiceUrl = process.env.USER_SERVICE_URL || 'http://31.97.58.62:3001';
-      const response = await fetch(`${userServiceUrl}/api/v1/auth/admin-login`, {
+      // Use API_CONFIG to get the correct URL (HTTPS proxy or direct)
+      const { API_CONFIG } = await import('@/config/api');
+      const response = await fetch(`${API_CONFIG.USER_SERVICE_URL}${API_CONFIG.ENDPOINTS.ADMIN_LOGIN}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

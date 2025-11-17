@@ -19,9 +19,7 @@ DOMAIN="${DOMAIN:-}"
 ADMIN_PANEL_PORT=3000
 NGINX_CONFIG_DIR="/etc/nginx"
 SSL_DIR="/etc/nginx/ssl"
-SITES_AVAILABLE="${NGINX_CONFIG_DIR}/sites-available"
-SITES_ENABLED="${NGINX_CONFIG_DIR}/sites-enabled"
-CONFIG_FILE="fayo"
+CONFIG_FILE="fayo.conf"
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then 
@@ -29,21 +27,28 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Detect OS
+# Detect OS and set config path
 if [ -f /etc/redhat-release ]; then
     OS="centos"
     PKG_MANAGER="yum"
     NGINX_SERVICE="nginx"
+    # CentOS/RHEL uses conf.d
+    CONFIG_PATH="${NGINX_CONFIG_DIR}/conf.d/${CONFIG_FILE}"
 elif [ -f /etc/debian_version ]; then
     OS="debian"
     PKG_MANAGER="apt"
     NGINX_SERVICE="nginx"
+    # Debian/Ubuntu uses sites-available/sites-enabled
+    SITES_AVAILABLE="${NGINX_CONFIG_DIR}/sites-available"
+    SITES_ENABLED="${NGINX_CONFIG_DIR}/sites-enabled"
+    CONFIG_PATH="${SITES_AVAILABLE}/${CONFIG_FILE}"
 else
     echo -e "${RED}❌ Unsupported OS. This script supports CentOS/RHEL and Debian/Ubuntu${NC}"
     exit 1
 fi
 
 echo -e "${GREEN}✅ Detected OS: $OS${NC}"
+echo -e "${GREEN}📁 Config will be placed at: $CONFIG_PATH${NC}"
 
 # Install nginx if not installed
 if ! command -v nginx &> /dev/null; then
@@ -134,10 +139,16 @@ fi
 # Create nginx configuration
 echo -e "${YELLOW}📝 Creating nginx configuration...${NC}"
 
+# For Debian/Ubuntu, create sites-available and sites-enabled directories if they don't exist
+if [ "$OS" = "debian" ]; then
+    mkdir -p $SITES_AVAILABLE
+    mkdir -p $SITES_ENABLED
+fi
+
 # Determine server name
 SERVER_NAME="${DOMAIN:-$VPS_IP}"
 
-cat > $SITES_AVAILABLE/$CONFIG_FILE <<EOF
+cat > $CONFIG_PATH <<EOF
 # HTTP to HTTPS redirect
 server {
     listen 80;
@@ -174,6 +185,85 @@ server {
     # Increase body size for file uploads
     client_max_body_size 50M;
 
+    # API Proxy Routes - Proxy backend services via HTTPS to avoid mixed content
+    # User Service (port 3001)
+    location /api/user-service/ {
+        proxy_pass http://localhost:3001/;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # Hospital Service (port 3002)
+    location /api/hospital-service/ {
+        proxy_pass http://localhost:3002/;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # Doctor Service (port 3003)
+    location /api/doctor-service/ {
+        proxy_pass http://localhost:3003/;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # Shared Service (port 3004)
+    location /api/shared-service/ {
+        proxy_pass http://localhost:3004/;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # Call Service (port 3010)
+    location /api/call-service/ {
+        proxy_pass http://localhost:3010/;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # WebSocket proxy for Call Service
+    location /ws/calls/ {
+        proxy_pass http://localhost:3010/ws/calls/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_read_timeout 86400;
+    }
+
     # Admin Panel (Next.js) - Only proxy the admin panel
     location / {
         proxy_pass http://localhost:$ADMIN_PANEL_PORT;
@@ -194,15 +284,20 @@ server {
 }
 EOF
 
-# Enable site
-if [ -L $SITES_ENABLED/$CONFIG_FILE ]; then
-    rm $SITES_ENABLED/$CONFIG_FILE
-fi
-ln -s $SITES_AVAILABLE/$CONFIG_FILE $SITES_ENABLED/$CONFIG_FILE
-
-# Remove default site if exists
-if [ -f $SITES_ENABLED/default ]; then
-    rm $SITES_ENABLED/default
+# Enable site (only for Debian/Ubuntu - CentOS uses conf.d directly)
+if [ "$OS" = "debian" ]; then
+    if [ -L $SITES_ENABLED/$CONFIG_FILE ]; then
+        rm $SITES_ENABLED/$CONFIG_FILE
+    fi
+    ln -s $SITES_AVAILABLE/$CONFIG_FILE $SITES_ENABLED/$CONFIG_FILE
+    
+    # Remove default site if exists
+    if [ -f $SITES_ENABLED/default ]; then
+        rm $SITES_ENABLED/default
+    fi
+else
+    # CentOS: config is already in conf.d, which is auto-included
+    echo -e "${GREEN}✅ Configuration placed in conf.d (auto-included)${NC}"
 fi
 
 # Test nginx configuration
@@ -251,6 +346,10 @@ else
 fi
 echo ""
 echo -e "Nginx Status: ${GREEN}$(systemctl is-active $NGINX_SERVICE)${NC}"
-echo -e "Nginx Config: ${GREEN}$SITES_ENABLED/$CONFIG_FILE${NC}"
+if [ "$OS" = "debian" ]; then
+    echo -e "Nginx Config: ${GREEN}$SITES_ENABLED/$CONFIG_FILE${NC}"
+else
+    echo -e "Nginx Config: ${GREEN}$CONFIG_PATH${NC}"
+fi
 echo ""
 

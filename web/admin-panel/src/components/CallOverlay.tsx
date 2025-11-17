@@ -30,11 +30,25 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ open, onClose, session, crede
 
     const init = async () => {
       try {
+        // Check if we're in a secure context (HTTPS or localhost)
+        const isSecureContext = window.isSecureContext || location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        
+        if (!isSecureContext) {
+          throw new Error('Video calling requires HTTPS. Please access the admin panel via HTTPS.');
+        }
+
+        // Check if getUserMedia is available
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('getUserMedia is not supported in this browser. Please use a modern browser with camera/microphone support.');
+        }
+
         console.log('🎥 [CALL] Initializing Agora client...', {
           appId: credential.appId,
           channelName: credential.channelName,
           hasToken: !!credential.token,
           rtcUserId: credential.rtcUserId,
+          isSecureContext,
+          protocol: location.protocol,
         });
 
         const c = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
@@ -113,6 +127,18 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ open, onClose, session, crede
 
         // Create and publish local tracks
         console.log('🎤 [CALL] Creating local audio/video tracks...');
+        
+        // Request permissions first
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          // Stop the test stream
+          stream.getTracks().forEach(track => track.stop());
+          console.log('✅ [CALL] Permissions granted');
+        } catch (permError) {
+          console.error('❌ [CALL] Permission error:', permError);
+          throw new Error(`Camera/microphone access denied: ${permError instanceof Error ? permError.message : 'Unknown error'}`);
+        }
+
         const [micTrack, camTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
         
         if (!mounted) {
@@ -137,9 +163,32 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ open, onClose, session, crede
         }
       } catch (e) {
         // eslint-disable-next-line no-console
-        console.error('Failed to init Agora in admin panel:', e);
+        console.error('❌ [CALL] Failed to init Agora in admin panel:', e);
+        
         if (mounted) {
-          alert(`Failed to start video call: ${e instanceof Error ? e.message : 'Unknown error'}`);
+          let errorMessage = 'Failed to start video call';
+          
+          if (e instanceof Error) {
+            const errorMsg = e.message.toLowerCase();
+            
+            if (errorMsg.includes('getusermedia') || errorMsg.includes('not_supported')) {
+              errorMessage = 'Camera/microphone access is required for video calls.\n\n' +
+                'Please ensure:\n' +
+                '1. You are accessing via HTTPS (not HTTP)\n' +
+                '2. Camera and microphone permissions are granted\n' +
+                '3. You are using a modern browser (Chrome, Firefox, Edge, Safari)\n\n' +
+                `Current protocol: ${location.protocol}\n` +
+                `Secure context: ${window.isSecureContext ? 'Yes' : 'No'}`;
+            } else if (errorMsg.includes('https') || errorMsg.includes('secure')) {
+              errorMessage = e.message + '\n\n' +
+                `Current URL: ${location.href}\n` +
+                'Please access the admin panel via HTTPS.';
+            } else {
+              errorMessage = e.message;
+            }
+          }
+          
+          alert(errorMessage);
           onClose();
         }
       }
