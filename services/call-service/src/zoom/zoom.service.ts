@@ -14,17 +14,22 @@ export class ZoomService {
   constructor(private readonly configService: ConfigService) {}
 
   private get sdkKey(): string {
-    const key = this.configService.get<string>('ZOOM_SDK_KEY');
+    // Support both SDK_KEY and CLIENT_ID (for OAuth apps)
+    const key = this.configService.get<string>('ZOOM_SDK_KEY') || 
+                this.configService.get<string>('ZOOM_CLIENT_ID');
     if (!key) {
-      throw new InternalServerErrorException('Zoom SDK Key is not configured');
+      throw new InternalServerErrorException('Zoom SDK Key or Client ID is not configured');
     }
     return key;
   }
 
   private get sdkSecret(): string {
-    const secret = this.configService.get<string>('ZOOM_SDK_SECRET');
+    // Support SDK_SECRET, CLIENT_SECRET, or ZOOM_SECRET_TOKEN
+    const secret = this.configService.get<string>('ZOOM_SDK_SECRET') || 
+                   this.configService.get<string>('ZOOM_CLIENT_SECRET') ||
+                   this.configService.get<string>('ZOOM_SECRET_TOKEN');
     if (!secret) {
-      throw new InternalServerErrorException('Zoom SDK Secret is not configured');
+      throw new InternalServerErrorException('Zoom SDK Secret, Client Secret, or Secret Token is not configured');
     }
     return secret;
   }

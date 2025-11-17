@@ -1,6 +1,11 @@
+// IMPORTANT: This is a placeholder implementation for Zoom Video SDK
+// The flutter_zoom_videosdk package API needs to be implemented according to official docs
+// Reference: https://marketplace.zoom.us/docs/sdk/video/flutter
+// Once you verify the correct API, replace this implementation
+
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+// import 'package:flutter_zoom_videosdk/flutter_zoom_videosdk.dart';
 import '../services/call_service.dart';
 
 class CallScreen extends StatefulWidget {
@@ -13,17 +18,18 @@ class CallScreen extends StatefulWidget {
 }
 
 class _CallScreenState extends State<CallScreen> {
-  late final RtcEngine _engine;
-  int? _remoteUid;
-  bool _localJoined = false;
+  bool _isJoined = false;
+  bool _isVideoOn = true;
+  bool _isAudioOn = true;
+  bool _hasRemoteUser = false;
 
   @override
   void initState() {
     super.initState();
-    _initAgora();
+    _initZoom();
   }
 
-  Future<void> _initAgora() async {
+  Future<void> _initZoom() async {
     try {
       // Request permissions
       final statuses = await [Permission.camera, Permission.microphone].request();
@@ -40,103 +46,49 @@ class _CallScreenState extends State<CallScreen> {
         return;
       }
 
-      _engine = createAgoraRtcEngine();
-      await _engine.initialize(RtcEngineContext(
-        appId: widget.credential.appId,
-      ));
+      debugPrint("📞 [CALL] Initializing Zoom Video SDK...");
+      debugPrint("📞 [CALL] SDK Key: ${widget.credential.sdkKey}");
+      debugPrint("📞 [CALL] Session Name: ${widget.credential.sessionName}");
+      debugPrint("📞 [CALL] User Identity: ${widget.credential.userIdentity}");
+      debugPrint("📞 [CALL] Token: ${widget.credential.token.length > 20 ? widget.credential.token.substring(0, 20) + '...' : widget.credential.token}");
 
-      _engine.registerEventHandler(
-        RtcEngineEventHandler(
-          onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
-            debugPrint("✅ [CALL] Local user joined channel: ${connection.localUid}, elapsed: ${elapsed}ms");
-            debugPrint("📊 [CALL] Connection info: channelId=${connection.channelId}, localUid=${connection.localUid}");
-            if (mounted) {
-              setState(() {
-                _localJoined = true;
-              });
-            }
-          },
-          onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
-            debugPrint("✅ [CALL] Remote user joined: uid=$remoteUid, elapsed=${elapsed}ms");
-            debugPrint("📊 [CALL] Connection: channelId=${connection.channelId}, localUid=${connection.localUid}");
-            if (mounted) {
-              setState(() {
-                _remoteUid = remoteUid;
-              });
-            }
-          },
-          onUserOffline: (RtcConnection connection, int remoteUid, UserOfflineReasonType reason) {
-            debugPrint("❌ [CALL] Remote user left: uid=$remoteUid, reason=$reason");
-            if (mounted) {
-              setState(() {
-                _remoteUid = null;
-              });
-            }
-          },
-          onConnectionStateChanged: (RtcConnection connection, ConnectionStateType state, ConnectionChangedReasonType reason) {
-            debugPrint("🔌 [CALL] Connection state changed: state=$state, reason=$reason");
-          },
-          onNetworkQuality: (RtcConnection connection, int remoteUid, QualityType txQuality, QualityType rxQuality) {
-            debugPrint("📶 [CALL] Network quality: remoteUid=$remoteUid, tx=$txQuality, rx=$rxQuality");
-          },
-          onError: (ErrorCodeType err, String msg) {
-            debugPrint("❌ [CALL] Error: code=$err, message=$msg");
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Call error: $msg (code: $err)'),
-                  backgroundColor: Colors.red,
-                  duration: const Duration(seconds: 5),
-                ),
-              );
-            }
-          },
-          onTokenPrivilegeWillExpire: (RtcConnection connection, String token) {
-            debugPrint("⚠️ [CALL] Token will expire soon, channelId=${connection.channelId}");
-          },
-          onFirstRemoteVideoDecoded: (RtcConnection connection, int remoteUid, int width, int height, int elapsed) {
-            debugPrint("🎥 [CALL] First remote video decoded: uid=$remoteUid, size=${width}x${height}, elapsed=${elapsed}ms");
-          },
-          onFirstRemoteAudioFrame: (RtcConnection connection, int remoteUid, int elapsed) {
-            debugPrint("🔊 [CALL] First remote audio frame: uid=$remoteUid, elapsed=${elapsed}ms");
-          },
-        ),
-      );
+      // TODO: Implement Zoom Video SDK initialization
+      // Example implementation needed here:
+      // 1. Import the correct package
+      // 2. Initialize ZoomVideoSdk
+      // 3. Configure with initConfig
+      // 4. Set up event listeners
+      // 5. Join session with joinConfig
+      
+      // For now, show a message that SDK implementation is needed
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Zoom Video SDK implementation required. Please check the package documentation.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
 
-      await _engine.enableVideo();
-      
-      // Set video codec to VP8 to match Web SDK
-      await _engine.setVideoEncoderConfiguration(
-        const VideoEncoderConfiguration(
-          codecType: VideoCodecType.videoCodecVp8,
-          dimensions: VideoDimensions(width: 640, height: 480),
-          frameRate: 15,
-          bitrate: 400,
-        ),
-      );
-      
-      await _engine.startPreview();
+      // Simulate successful initialization for UI testing
+      await Future.delayed(const Duration(seconds: 1));
+      if (mounted) {
+        setState(() {
+          _isJoined = true;
+        });
+      }
 
-      debugPrint("📞 [CALL] Joining channel: ${widget.credential.channelName} with userAccount: ${widget.credential.rtcUserId}");
-      debugPrint("📞 [CALL] Video codec: VP8 (matching Web SDK)");
+      debugPrint("⚠️ [CALL] Zoom SDK integration incomplete - placeholder implementation active");
       
-      // Use joinChannelWithUserAccount since token was generated with user account
-      final token = widget.credential.token.isEmpty ? "" : widget.credential.token;
-      await _engine.joinChannelWithUserAccount(
-        token: token,
-        channelId: widget.credential.channelName,
-        userAccount: widget.credential.rtcUserId,
-        options: const ChannelMediaOptions(
-          clientRoleType: ClientRoleType.clientRoleBroadcaster,
-        ),
-      );
     } catch (e) {
-      debugPrint("❌ [CALL] Failed to initialize Agora: $e");
+      debugPrint("❌ [CALL] Failed to initialize Zoom: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to start call: $e'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 10),
           ),
         );
         Navigator.of(context).pop();
@@ -144,14 +96,33 @@ class _CallScreenState extends State<CallScreen> {
     }
   }
 
+  Future<void> _toggleVideo() async {
+    // TODO: Implement video toggle with Zoom SDK
+    setState(() {
+      _isVideoOn = !_isVideoOn;
+    });
+    debugPrint("📹 [CALL] Video toggled: $_isVideoOn");
+  }
+
+  Future<void> _toggleAudio() async {
+    // TODO: Implement audio toggle with Zoom SDK
+    setState(() {
+      _isAudioOn = !_isAudioOn;
+    });
+    debugPrint("🔊 [CALL] Audio toggled: $_isAudioOn");
+  }
+
+  Future<void> _leaveSession() async {
+    // TODO: Implement session leave with Zoom SDK
+    debugPrint("👋 [CALL] Leaving session");
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   void dispose() {
-    try {
-      _engine.leaveChannel();
-      _engine.release();
-    } catch (e) {
-      debugPrint("⚠️ [CALL] Error disposing engine: $e");
-    }
+    _leaveSession();
     super.dispose();
   }
 
@@ -168,85 +139,180 @@ class _CallScreenState extends State<CallScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Remote video (full screen)
+            // Remote video placeholder (full screen)
             Center(
-              child: _remoteUid != null
-                  ? AgoraVideoView(
-                      controller: VideoViewController.remote(
-                        rtcEngine: _engine,
-                        canvas: VideoCanvas(uid: _remoteUid),
-                        connection: RtcConnection(channelId: widget.credential.channelName),
+              child: _hasRemoteUser
+                  ? Container(
+                      color: Colors.grey[900],
+                      child: const Center(
+                        child: Icon(
+                          Icons.person,
+                          size: 100,
+                          color: Colors.white54,
+                        ),
                       ),
                     )
                   : Container(
                       color: Colors.black,
-                      child: const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(color: Colors.white),
-                            SizedBox(height: 16),
-                            Text(
-                              'Waiting for remote user to join...',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                              ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const CircularProgressIndicator(color: Colors.white),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Waiting for remote user to join...',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
                             ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 32),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            margin: const EdgeInsets.symmetric(horizontal: 32),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.orange),
+                            ),
+                            child: Column(
+                              children: [
+                                const Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: Colors.orange,
+                                  size: 32,
+                                ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Zoom SDK Integration Required',
+                                  style: TextStyle(
+                                    color: Colors.orange,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'This is a placeholder. Implement Zoom Video SDK according to:\nhttps://marketplace.zoom.us/docs/sdk/video/flutter',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.7),
+                                    fontSize: 12,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
             ),
-            // Local video (picture-in-picture)
-            Positioned(
-              right: 16,
-              top: 16,
-              width: 120,
-              height: 160,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: _localJoined
-                      ? AgoraVideoView(
-                          controller: VideoViewController(
-                            rtcEngine: _engine,
-                            canvas: const VideoCanvas(uid: 0),
-                          ),
-                        )
-                      : const Center(
-                          child: CircularProgressIndicator(color: Colors.white),
-                        ),
+            // Local video placeholder (picture-in-picture)
+            if (_isJoined)
+              Positioned(
+                right: 16,
+                top: 16,
+                width: 120,
+                height: 160,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey[800],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Center(
+                      child: Icon(
+                        _isVideoOn ? Icons.videocam : Icons.videocam_off,
+                        color: Colors.white54,
+                        size: 40,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
             // Call controls
             Positioned(
               bottom: 32,
               left: 0,
               right: 0,
-              child: Center(
-                child: FloatingActionButton(
-                  backgroundColor: Colors.red,
-                  onPressed: () async {
-                    try {
-                      await _engine.leaveChannel();
-                      if (mounted) {
-                        Navigator.of(context).pop();
-                      }
-                    } catch (e) {
-                      debugPrint("⚠️ [CALL] Error leaving channel: $e");
-                      if (mounted) {
-                        Navigator.of(context).pop();
-                      }
-                    }
-                  },
-                  child: const Icon(Icons.call_end, color: Colors.white),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Mute/Unmute Audio
+                  FloatingActionButton(
+                    backgroundColor: _isAudioOn ? Colors.blue : Colors.grey,
+                    onPressed: _toggleAudio,
+                    heroTag: "audio",
+                    child: Icon(
+                      _isAudioOn ? Icons.mic : Icons.mic_off,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Toggle Video
+                  FloatingActionButton(
+                    backgroundColor: _isVideoOn ? Colors.blue : Colors.grey,
+                    onPressed: _toggleVideo,
+                    heroTag: "video",
+                    child: Icon(
+                      _isVideoOn ? Icons.videocam : Icons.videocam_off,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // End Call
+                  FloatingActionButton(
+                    backgroundColor: Colors.red,
+                    onPressed: _leaveSession,
+                    heroTag: "end",
+                    child: const Icon(Icons.call_end, color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+            // SDK Info overlay
+            Positioned(
+              top: 200,
+              left: 16,
+              right: 16,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Session Info:',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Session: ${widget.credential.sessionName}',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    Text(
+                      'User: ${widget.credential.userIdentity}',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    Text(
+                      'Role: ${widget.credential.role}',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    Text(
+                      'SDK Key: ${widget.credential.sdkKey.substring(0, 10)}...',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -256,5 +322,3 @@ class _CallScreenState extends State<CallScreen> {
     );
   }
 }
-
-
