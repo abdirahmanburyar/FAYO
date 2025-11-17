@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
   Users, 
@@ -24,9 +25,9 @@ import { createCallSession, CallSession, CallCredential } from '@/services/callA
 import CreateUserModal from '@/components/CreateUserModal';
 import { SkeletonStats, SkeletonTable } from '@/components/skeletons';
 import { SearchableSelect, SelectOption } from '@/components/ui';
-import CallOverlay from '@/components/CallOverlay';
 
 export default function UsersPage() {
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,9 +37,6 @@ export default function UsersPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [callingUserId, setCallingUserId] = useState<string | null>(null);
   const [callError, setCallError] = useState<string | null>(null);
-  const [activeSession, setActiveSession] = useState<CallSession | null>(null);
-  const [activeCredential, setActiveCredential] = useState<CallCredential | null>(null);
-  const [showCallOverlay, setShowCallOverlay] = useState(false);
 
   const handleStartCall = async (user: User) => {
     try {
@@ -55,9 +53,8 @@ export default function UsersPage() {
       }
 
       const { session, credential } = await createCallSession(accessToken, user.id, 'VIDEO');
-      setActiveSession(session);
-      setActiveCredential(credential);
-      setShowCallOverlay(true);
+      // Navigate to full-page call screen
+      router.push(`/call/${session.id}`);
     } catch (error) {
       console.error('Error starting call:', error);
       setCallError('Failed to start call. Please try again.');
@@ -191,17 +188,6 @@ export default function UsersPage() {
   }
 
   return (
-    <>
-      <CallOverlay
-        open={showCallOverlay}
-        onClose={() => {
-          setShowCallOverlay(false);
-          setActiveSession(null);
-          setActiveCredential(null);
-        }}
-        session={activeSession}
-        credential={activeCredential}
-      />
     <div className="space-y-6">
       {/* Page Header */}
       <div className="flex items-center justify-between">

@@ -150,6 +150,7 @@ docker run -p 3001:3001 \
 - **Hospital Service**: `http://localhost:3002/api/v1`
 - **Doctor Service**: `http://localhost:3003/api/v1`
 - **Shared Service**: `http://localhost:3004/api/v1`
+- **Call Service**: `http://localhost:3010/api/v1`
 - **Admin Panel**: `http://localhost:3000`
 
 ### Health Checks
@@ -157,6 +158,22 @@ docker run -p 3001:3001 \
 - Hospital Service: `http://localhost:3002/health`
 - Doctor Service: `http://localhost:3003/health`
 - Shared Service: `http://localhost:3004/health`
+- Call Service: `http://localhost:3010/health`
+
+## 📞 Agora Video Calling
+
+### Documentation
+- **Implementation Guide**: [`docs/AGORA_VIDEO_CALLING_GUIDE.md`](docs/AGORA_VIDEO_CALLING_GUIDE.md)
+- **Usage Monitoring**: [`docs/AGORA_USAGE_MONITORING.md`](docs/AGORA_USAGE_MONITORING.md)
+- **Premium Features**: [`docs/AGORA_PREMIUM_FEATURES.md`](docs/AGORA_PREMIUM_FEATURES.md)
+- **Upgrade Checklist**: [`docs/AGORA_UPGRADE_CHECKLIST.md`](docs/AGORA_UPGRADE_CHECKLIST.md)
+- **Quick Reference**: [`docs/AGORA_QUICK_REFERENCE.md`](docs/AGORA_QUICK_REFERENCE.md)
+
+### Quick Links
+- **Agora Console**: https://console.agora.io/
+- **Usage Dashboard**: Check usage & billing in console
+- **Free Tier**: 10,000 minutes/month (video or voice)
+- **Pricing**: $3.99/1,000 min (video) or $0.99/1,000 min (voice) after free tier
 
 ## 🤝 Contributing
 

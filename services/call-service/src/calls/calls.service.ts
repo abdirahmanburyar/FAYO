@@ -107,6 +107,10 @@ export class CallsService {
 
     if (status === CallStatus.ACTIVE && !session.startedAt) {
       data.startedAt = new Date();
+      // Log call start for usage tracking
+      this.logger.log(
+        `📞 Call started: ${session.id}, Type: ${session.callType}, Channel: ${session.channelName}`,
+      );
     }
 
     const terminalStatuses: CallStatus[] = [
@@ -116,6 +120,21 @@ export class CallsService {
     ];
     if (terminalStatuses.includes(status)) {
       data.endedAt = new Date();
+      // Log call end and calculate duration for usage tracking
+      if (session.startedAt) {
+        const duration = Math.floor(
+          (new Date().getTime() - session.startedAt.getTime()) / 1000 / 60,
+        );
+        const participants = session.recipientId ? 2 : 1;
+        const totalMinutes = duration * participants;
+        
+        this.logger.log(
+          `📞 Call ended: ${session.id}, Duration: ${duration} min, Participants: ${participants}, Total minutes: ${totalMinutes}`,
+        );
+        
+        // TODO: Store usage metrics in database for reporting
+        // You can create a CallUsage table to track this for analytics
+      }
     }
 
     const updated = await this.prisma.callSession.update({
