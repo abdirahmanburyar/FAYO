@@ -460,16 +460,6 @@ export default function UsersPage() {
         </div>
       )}
 
-        {/* Call error */}
-        {callError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-4">
-            <div className="flex items-center">
-              <AlertCircle className="w-4 h-4 text-red-500 mr-2" />
-              <p className="text-sm text-red-700">{callError}</p>
-            </div>
-          </div>
-        )}
-
       {/* Create User Modal */}
       <CreateUserModal
         isOpen={showCreateModal}

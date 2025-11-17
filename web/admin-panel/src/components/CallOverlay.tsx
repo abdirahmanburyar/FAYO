@@ -42,13 +42,37 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ open, onClose, session, crede
         });
 
         c.on('user-unpublished', (user) => {
+          if (user.videoTrack) {
+            user.videoTrack.stop();
+          }
+          if (user.audioTrack) {
+            user.audioTrack.stop();
+          }
           setRemoteUsers((prev) => prev.filter((u) => u.uid !== user.uid));
         });
 
-        await c.join(credential.appId, credential.channelName, credential.token || null, null);
+        c.on('user-left', (user) => {
+          if (user.videoTrack) {
+            user.videoTrack.stop();
+          }
+          if (user.audioTrack) {
+            user.audioTrack.stop();
+          }
+          setRemoteUsers((prev) => prev.filter((u) => u.uid !== user.uid));
+        });
 
+        // Join channel with token
+        // Note: Web SDK uses UID (number) or userAccount (string)
+        // Since backend generates token with user account, we can use either
+        await c.join(credential.appId, credential.channelName, credential.token || null, credential.rtcUserId || null);
+
+        // Create and publish local tracks
         const [micTrack, camTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
-        if (!mounted) return;
+        if (!mounted) {
+          micTrack.close();
+          camTrack.close();
+          return;
+        }
 
         setLocalAudioTrack(micTrack);
         setLocalVideoTrack(camTrack);
@@ -61,6 +85,10 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ open, onClose, session, crede
       } catch (e) {
         // eslint-disable-next-line no-console
         console.error('Failed to init Agora in admin panel:', e);
+        if (mounted) {
+          alert(`Failed to start video call: ${e instanceof Error ? e.message : 'Unknown error'}`);
+          onClose();
+        }
       }
     };
 
@@ -70,6 +98,7 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ open, onClose, session, crede
       mounted = false;
       const cleanup = async () => {
         try {
+          // Stop and close local tracks
           if (localVideoTrack) {
             localVideoTrack.stop();
             localVideoTrack.close();
@@ -78,11 +107,17 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ open, onClose, session, crede
             localAudioTrack.stop();
             localAudioTrack.close();
           }
+          
+          // Unpublish and leave channel
           if (client) {
+            await client.unpublish();
             await client.leave();
           }
-        } catch (_) {
-          // ignore
+          
+          // Clear remote users
+          setRemoteUsers([]);
+        } catch (error) {
+          console.error('Error cleaning up Agora:', error);
         }
       };
       cleanup();
@@ -103,7 +138,22 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ open, onClose, session, crede
             </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={async () => {
+              // Cleanup before closing
+              if (localVideoTrack) {
+                localVideoTrack.stop();
+                localVideoTrack.close();
+              }
+              if (localAudioTrack) {
+                localAudioTrack.stop();
+                localAudioTrack.close();
+              }
+              if (client) {
+                await client.unpublish();
+                await client.leave();
+              }
+              onClose();
+            }}
             className="bg-red-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-red-700"
           >
             End Call

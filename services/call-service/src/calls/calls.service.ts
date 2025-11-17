@@ -137,7 +137,20 @@ export class CallsService {
   }
 
   private generateChannelName(userId: string) {
-    return `fayo_call_${userId}_${randomUUID()}`;
+    // Agora channel names must be <= 64 bytes and only contain specific characters
+    // Format: fayo_<shortUserId>_<shortUUID>
+    // Use first 8 chars of userId and first 8 chars of UUID to keep under 64 bytes
+    const shortUserId = userId.substring(0, 8);
+    const shortUuid = randomUUID().replace(/-/g, '').substring(0, 16);
+    const channelName = `fayo_${shortUserId}_${shortUuid}`;
+    
+    // Ensure it's exactly 64 bytes or less
+    if (channelName.length > 64) {
+      const maxLength = 64;
+      return channelName.substring(0, maxLength);
+    }
+    
+    return channelName;
   }
 
   private buildCredential(channelName: string, userId: string, role: CallParticipantRole) {

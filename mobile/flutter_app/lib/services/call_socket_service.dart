@@ -47,8 +47,14 @@ class CallSocketService {
       await disconnect();
 
       // Connect using Socket.IO client
+      // Note: Socket.IO automatically handles namespace '/ws/calls' if specified
+      // The full URL should be: http://host:port/ws/calls
+      final wsUrl = CallConfig.websocketUrl.endsWith('/ws/calls') 
+          ? CallConfig.websocketUrl 
+          : '${CallConfig.websocketUrl}/ws/calls';
+      
       _socket = IO.io(
-        CallConfig.websocketUrl,
+        wsUrl,
         IO.OptionBuilder()
             .setTransports(['websocket'])
             .setQuery({'token': jwtToken})

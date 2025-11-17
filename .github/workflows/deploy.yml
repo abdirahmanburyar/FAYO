@@ -271,6 +271,46 @@ jobs:
           
           echo "✅ All files copied successfully"
 
+      - name: Setup HTTPS (Nginx + SSL) for Admin Panel
+        run: |
+          echo "🔐 Setting up HTTPS for admin panel..."
+          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" \
+            ssh -o StrictHostKeyChecking=no \
+                -o LogLevel=ERROR \
+                -o ConnectTimeout=30 \
+                ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'REMOTE_HTTPS'
+          set -e
+          cd /opt/fayo
+          
+          # Check if HTTPS is already configured
+          if [ -f /etc/nginx/sites-enabled/fayo ]; then
+            echo "✅ HTTPS already configured, skipping setup"
+            exit 0
+          fi
+          
+          # Check if setup script exists
+          if [ ! -f scripts/setup-https.sh ]; then
+            echo "⚠️ setup-https.sh not found. HTTPS setup will be skipped."
+            echo "You can manually run: cd /opt/fayo && DOMAIN=yourdomain.com ./scripts/setup-https.sh"
+            exit 0
+          fi
+          
+          # Make executable
+          chmod +x scripts/setup-https.sh
+          
+          # Run HTTPS setup
+          # Use domain from secret if available, otherwise use IP (self-signed)
+          export DOMAIN="${{ secrets.DOMAIN_NAME }}"
+          export VPS_IP="${{ env.VPS_HOST }}"
+          
+          echo "Running HTTPS setup script..."
+          ./scripts/setup-https.sh || {
+            echo "⚠️ HTTPS setup had issues, but continuing deployment..."
+            echo "You can manually run: cd /opt/fayo && DOMAIN=yourdomain.com ./scripts/setup-https.sh"
+          }
+          REMOTE_HTTPS
+        continue-on-error: true
+
       - name: Create .env file on VPS
         run: |
           echo "⚙️ Creating .env file on VPS..."
@@ -434,7 +474,12 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Service | URL |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|-----|" >> $GITHUB_STEP_SUMMARY
-          echo "| Admin Panel | http://${{ env.VPS_HOST }}:3000 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Admin Panel (HTTP) | http://${{ env.VPS_HOST }}:3000 |" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ secrets.DOMAIN_NAME }}" ]; then
+            echo "| Admin Panel (HTTPS) | https://${{ secrets.DOMAIN_NAME }} |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| Admin Panel (HTTPS) | https://${{ env.VPS_HOST }} (self-signed) |" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "| User Service | http://${{ env.VPS_HOST }}:3001 |" >> $GITHUB_STEP_SUMMARY
           echo "| Hospital Service | http://${{ env.VPS_HOST }}:3002 |" >> $GITHUB_STEP_SUMMARY
           echo "| Doctor Service | http://${{ env.VPS_HOST }}:3003 |" >> $GITHUB_STEP_SUMMARY
