@@ -125,11 +125,18 @@ export default function CallPage() {
               // Play video after state update and DOM is ready
               setTimeout(() => {
                 const videoContainer = remoteVideoRefs.current.get(user.uid);
-                if (videoContainer) {
+                if (videoContainer && user.videoTrack) {
                   console.log('🎬 Playing video for user:', user.uid);
-                  user.videoTrack.play(videoContainer).catch((err) => {
+                  try {
+                    const playResult = user.videoTrack.play(videoContainer);
+                    if (playResult && typeof playResult.catch === 'function') {
+                      playResult.catch((err: any) => {
+                        console.error('❌ Error playing video:', err);
+                      });
+                    }
+                  } catch (err) {
                     console.error('❌ Error playing video:', err);
-                  });
+                  }
                 } else {
                   console.warn('⚠️ Video container not found for user:', user.uid);
                 }
@@ -203,9 +210,16 @@ export default function CallPage() {
         // Play local video after publishing
         if (localVideoRef.current) {
           console.log('🎬 Playing local video after publish');
-          camTrack.play(localVideoRef.current).catch((err) => {
+          try {
+            const playResult = camTrack.play(localVideoRef.current);
+            if (playResult && typeof playResult.catch === 'function') {
+              playResult.catch((err: any) => {
+                console.error('❌ Error playing local video:', err);
+              });
+            }
+          } catch (err) {
             console.error('❌ Error playing local video:', err);
-          });
+          }
         }
 
         // Start call timer
@@ -274,9 +288,16 @@ export default function CallPage() {
       // Replay video if enabled and ref is available
       if (newState && localVideoRef.current && !localVideoTrack.isPlaying) {
         setTimeout(() => {
-          localVideoTrack.play(localVideoRef.current!).catch((err) => {
+          try {
+            const playResult = localVideoTrack.play(localVideoRef.current!);
+            if (playResult && typeof playResult.catch === 'function') {
+              playResult.catch((err: any) => {
+                console.error('❌ Error replaying local video:', err);
+              });
+            }
+          } catch (err) {
             console.error('❌ Error replaying local video:', err);
-          });
+          }
         }, 100);
       }
     }
@@ -332,9 +353,16 @@ export default function CallPage() {
         const container = remoteVideoRefs.current.get(user.uid);
         if (container) {
           console.log('🎬 Playing video track for user:', user.uid, 'in container');
-          user.videoTrack.play(container).catch((err) => {
+          try {
+            const playResult = user.videoTrack.play(container);
+            if (playResult && typeof playResult.catch === 'function') {
+              playResult.catch((err: any) => {
+                console.error('❌ Error playing video track:', err);
+              });
+            }
+          } catch (err) {
             console.error('❌ Error playing video track:', err);
-          });
+          }
         } else {
           console.warn('⚠️ Container not ready for user:', user.uid);
         }
@@ -346,9 +374,16 @@ export default function CallPage() {
   useEffect(() => {
     if (localVideoTrack && localVideoRef.current && !localVideoTrack.isPlaying) {
       console.log('🎬 Playing local video track');
-      localVideoTrack.play(localVideoRef.current).catch((err) => {
+      try {
+        const playResult = localVideoTrack.play(localVideoRef.current);
+        if (playResult && typeof playResult.catch === 'function') {
+          playResult.catch((err: any) => {
+            console.error('❌ Error playing local video:', err);
+          });
+        }
+      } catch (err) {
         console.error('❌ Error playing local video:', err);
-      });
+      }
     }
   }, [localVideoTrack]);
 
@@ -461,9 +496,16 @@ export default function CallPage() {
                         if (user.videoTrack && !user.videoTrack.isPlaying) {
                           console.log('🎬 Playing video in ref callback for user:', user.uid);
                           setTimeout(() => {
-                            user.videoTrack?.play(el).catch((err) => {
+                            try {
+                              const playResult = user.videoTrack?.play(el);
+                              if (playResult && typeof playResult.catch === 'function') {
+                                playResult.catch((err: any) => {
+                                  console.error('❌ Error playing video in ref:', err);
+                                });
+                              }
+                            } catch (err) {
                               console.error('❌ Error playing video in ref:', err);
-                            });
+                            }
                           }, 50);
                         }
                       } else {
@@ -509,9 +551,16 @@ export default function CallPage() {
                       if (user.videoTrack && !user.videoTrack.isPlaying) {
                         console.log('🎬 Playing video in grid ref callback for user:', user.uid);
                         setTimeout(() => {
-                          user.videoTrack?.play(el).catch((err) => {
+                          try {
+                            const playResult = user.videoTrack?.play(el);
+                            if (playResult && typeof playResult.catch === 'function') {
+                              playResult.catch((err: any) => {
+                                console.error('❌ Error playing video in grid ref:', err);
+                              });
+                            }
+                          } catch (err) {
                             console.error('❌ Error playing video in grid ref:', err);
-                          });
+                          }
                         }, 50);
                       }
                     } else {
