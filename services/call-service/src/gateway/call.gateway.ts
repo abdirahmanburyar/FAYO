@@ -115,7 +115,7 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private registerEventListeners() {
-    this.eventEmitter.on('call.session.created', (data: { session: any; credential?: any }) => {
+    this.eventEmitter.on('call.session.created', async (data: { session: any; credential?: any }) => {
       const { session } = data;
       if (session.recipientId) {
         const recipientRoom = `user:${session.recipientId}`;
@@ -128,13 +128,19 @@ export class CallGateway implements OnGatewayConnection, OnGatewayDisconnect {
           status: session.status,
         });
         
-        // Check if anyone is in the recipient room
-        const room = this.server.sockets.adapter.rooms.get(recipientRoom);
-        if (room && room.size > 0) {
-          console.log(`✅ [GATEWAY] Found ${room.size} socket(s) in room ${recipientRoom}`);
+        // Check if anyone is in the recipient room using fetchSockets (async and reliable)
+        try {
+          const sockets = await this.server.in(recipientRoom).fetchSockets();
+          if (sockets.length > 0) {
+            console.log(`✅ [GATEWAY] Found ${sockets.length} socket(s) in room ${recipientRoom}`);
+            this.server.to(recipientRoom).emit('call_invitation', session);
+          } else {
+            console.warn(`⚠️ [GATEWAY] No sockets found in room ${recipientRoom}. Recipient may not be connected.`);
+          }
+        } catch (error) {
+          console.error(`❌ [GATEWAY] Error checking room ${recipientRoom}:`, error);
+          // Emit anyway - Socket.IO will handle it gracefully
           this.server.to(recipientRoom).emit('call_invitation', session);
-        } else {
-          console.warn(`⚠️ [GATEWAY] No sockets found in room ${recipientRoom}. Recipient may not be connected.`);
         }
       } else {
         console.warn(`⚠️ [GATEWAY] Call session created without recipientId: ${session.id}`);
