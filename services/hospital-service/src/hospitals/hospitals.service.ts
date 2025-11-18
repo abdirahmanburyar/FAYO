@@ -5,7 +5,6 @@ import { UpdateHospitalDto } from './dto/update-hospital.dto';
 import { KafkaService } from '../kafka/kafka.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { WebSocketServerService } from '../websocket/websocket-server';
-import { SharedServiceClient } from '../common/message-queue/shared-service.client';
 
 @Injectable()
 export class HospitalsService {
@@ -13,7 +12,6 @@ export class HospitalsService {
     private readonly prisma: PrismaService,
     private readonly kafkaService: KafkaService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly sharedServiceClient: SharedServiceClient,
   ) {}
 
   private getWebSocketServer(): WebSocketServerService | null {
@@ -133,7 +131,7 @@ export class HospitalsService {
         try {
           console.log('🔍 [DEBUG] Fetching all services via shared service client...');
           
-          const allServices = await this.sharedServiceClient.getServices();
+          const allServices: any[] = []; // shared-service removed
           console.log('✅ [DEBUG] Fetched services via shared service client:', allServices.length);
           
           // Create a map for quick lookup
@@ -213,7 +211,7 @@ export class HospitalsService {
           try {
             console.log('🔍 [DEBUG] Fetching services via shared service client...');
             
-            const allServices = await this.sharedServiceClient.getServices();
+            const allServices: any[] = []; // shared-service removed
             console.log('✅ [DEBUG] Fetched services via shared service client:', allServices.length);
             
             // Create a map for quick lookup
@@ -498,7 +496,7 @@ export class HospitalsService {
         try {
           console.log('🔍 [DEBUG] Fetching services via shared service client...');
           
-          const allServices = await this.sharedServiceClient.getServices();
+          const allServices: any[] = []; // shared-service removed
           console.log('✅ [DEBUG] Fetched services via shared service client:', allServices.length);
           
           // Create a map for quick lookup

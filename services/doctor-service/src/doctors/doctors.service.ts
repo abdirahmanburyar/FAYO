@@ -2,7 +2,6 @@ import { Injectable, NotFoundException, ConflictException } from '@nestjs/common
 import { PrismaService } from '../common/database/prisma.service';
 import { CreateDoctorDto } from './dto/create-doctor.dto';
 import { UpdateDoctorDto } from './dto/update-doctor.dto';
-import { SharedServiceClient } from '../common/message-queue/shared-service.client';
 
 @Injectable()
 export class DoctorsService {
@@ -12,42 +11,9 @@ export class DoctorsService {
 
   constructor(
     private prisma: PrismaService,
-    private sharedServiceClient: SharedServiceClient,
   ) {}
 
-  // ===== HTTP helpers for shared-service (preferred for read paths) =====
-  private async fetchSpecialtiesByIdsHttp(specialtyIds: string[]): Promise<any[]> {
-    if (!Array.isArray(specialtyIds) || specialtyIds.length === 0) {
-      return [];
-    }
-    const baseUrl = process.env.SHARED_SERVICE_URL || 'http://localhost:3004';
-    // Prefer bulk ids query if supported; otherwise fetch all and filter
-    const urlWithIds = `${baseUrl}/api/v1/specialties?ids=${encodeURIComponent(specialtyIds.join(','))}`;
-    const allUrl = `${baseUrl}/api/v1/specialties`;
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
-    try {
-      let response = await fetch(urlWithIds, { method: 'GET', headers: { 'Content-Type': 'application/json' }, signal: controller.signal });
-      if (!response.ok) {
-        // Fallback to fetching all then filter client-side
-        response = await fetch(allUrl, { method: 'GET', headers: { 'Content-Type': 'application/json' }, signal: controller.signal });
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Failed to fetch specialties: ${response.status} ${response.statusText} - ${errorText}`);
-        }
-        const allSpecs = await response.json();
-        return (Array.isArray(allSpecs) ? allSpecs : []).filter((s: any) => specialtyIds.includes(s.id));
-      }
-      return await response.json();
-    } catch (error) {
-      // If fetch fails (network error, timeout, etc.), return empty array
-      console.warn(`Failed to fetch specialties from shared-service: ${error.message}`);
-      return [];
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  }
+  // shared-service removed - specialty fetching methods removed
 
   async create(createDoctorDto: CreateDoctorDto) {
     try {
@@ -62,8 +28,10 @@ export class DoctorsService {
         throw new Error('At least one specialty must be provided');
       }
       
-      // Verify specialties exist in shared-service
-      await this.verifySpecialtiesExist(specialtyIds);
+      // Validate specialtyIds format (shared-service removed, validation simplified)
+      if (specialtyIds.some(id => !id || typeof id !== 'string')) {
+        throw new Error('All specialtyIds must be valid strings');
+      }
       
       const doctor = await this.prisma.doctor.create({
         data: {
@@ -76,10 +44,11 @@ export class DoctorsService {
         },
       });
 
-      // Fetch specialty details from shared-service
-      const enrichedDoctor = await this.enrichDoctorWithSpecialties(doctor);
-      
-      return enrichedDoctor;
+      // Return doctor with specialty IDs (shared-service removed, no enrichment)
+      return {
+        ...doctor,
+        specialties: doctor.doctorSpecialties?.map((ds: any) => ({ id: ds.specialtyId })) || [],
+      };
     } catch (error) {
       if (error.code === 'P2002') {
         throw new ConflictException('Doctor with this license number already exists');
@@ -97,18 +66,10 @@ export class DoctorsService {
       orderBy: { createdAt: 'desc' },
     });
 
-      // Enrich each doctor with specialty details from shared-service
-      const enrichedDoctors = await Promise.all(doctors.map(async (doctor) => {
-        try {
-          return await this.enrichDoctorWithSpecialties(doctor);
-        } catch (error) {
-          // If enrichment fails, return doctor without specialty details
-          console.error(`Error enriching doctor ${doctor.id} with specialties:`, error.message);
-          return {
-            ...doctor,
-            specialties: [],
-          };
-        }
+      // Return doctors with specialty IDs (shared-service removed, no enrichment)
+      const enrichedDoctors = doctors.map((doctor) => ({
+        ...doctor,
+        specialties: doctor.doctorSpecialties?.map((ds: any) => ({ id: ds.specialtyId })) || [],
       }));
 
       // Check user service health first
@@ -165,18 +126,11 @@ export class DoctorsService {
       throw new NotFoundException('Doctor not found');
     }
 
-      // Enrich doctor with specialty details from shared-service
-      let enrichedDoctor;
-      try {
-        enrichedDoctor = await this.enrichDoctorWithSpecialties(doctor);
-      } catch (error) {
-        // If enrichment fails, return doctor without specialty details
-        console.error(`Error enriching doctor ${doctor.id} with specialties:`, error.message);
-        enrichedDoctor = {
-          ...doctor,
-          specialties: [],
-        };
-      }
+      // Return doctor with specialty IDs (shared-service removed, no enrichment)
+      const enrichedDoctor = {
+        ...doctor,
+        specialties: doctor.doctorSpecialties?.map((ds: any) => ({ id: ds.specialtyId })) || [],
+      };
       
       // Check user service health first
       let isUserServiceHealthy = false;
@@ -525,35 +479,8 @@ export class DoctorsService {
   private async getCachedSpecialties(): Promise<any[]> {
     const now = Date.now();
     
-    // Check if cache is expired or empty
-    if (this.specialtiesCache.size === 0 || (now - this.lastCacheUpdate) > this.cacheExpiry) {
-      try {
-        // Use HTTP to refresh cache for read path
-        const specialties = await this.fetchSpecialtiesByIdsHttp([]).catch(async () => {
-          // If bulk endpoint doesn't support empty ids, fetch all
-          const baseUrl = process.env.SHARED_SERVICE_URL || 'http://localhost:3004';
-          const resp = await fetch(`${baseUrl}/api/v1/specialties`);
-          return await resp.json();
-        });
-        this.specialtiesCache.clear();
-        
-        // Cache specialties by ID
-        specialties.forEach(specialty => {
-          this.specialtiesCache.set(specialty.id, specialty);
-        });
-        
-        this.lastCacheUpdate = now;
-        return specialties;
-      } catch (error) {
-        // If fetch fails and we have cached data, return it
-        if (this.specialtiesCache.size > 0) {
-          return Array.from(this.specialtiesCache.values());
-        }
-        throw error;
-      }
-    }
-    
-    return Array.from(this.specialtiesCache.values());
+    // shared-service removed - return empty array
+    return [];
   }
 
   private async getCachedSpecialtiesByIds(specialtyIds: string[]): Promise<any[]> {
