@@ -58,7 +58,9 @@ export class CallsService {
         credential,
       };
     } catch (error) {
-      this.logger.error(`Error creating call session: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Error creating call session: ${errorMessage}`, errorStack);
       throw error;
     }
   }
