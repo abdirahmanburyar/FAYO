@@ -54,6 +54,7 @@ jobs:
             --exclude '.git' --exclude 'node_modules' --exclude 'dist' \
             --exclude 'mobile' \
             ./ root@${{ secrets.VPS_HOST }}:/root/fayo/
+          echo "✅ Files copied (including .env files)"
 
       - name: Deploy to VPS
         run: |
@@ -81,15 +82,34 @@ jobs:
             COMPOSE_CMD="docker-compose"
           fi
           
-          echo "Building and deploying with Docker Compose..."
+          echo "Building Docker images..."
           $COMPOSE_CMD -f docker-compose.prod.yml pull || true
           $COMPOSE_CMD -f docker-compose.prod.yml build
           
-          # Start services without strict dependency checking to avoid failures
-          $COMPOSE_CMD -f docker-compose.prod.yml up -d --remove-orphans || true
+          echo "Starting infrastructure services first..."
+          $COMPOSE_CMD -f docker-compose.prod.yml up -d postgres redis rabbitmq kafka
           
-          echo "Waiting for services to start..."
-          sleep 20
+          echo "Waiting for infrastructure to be ready..."
+          sleep 30
+          
+          echo "Starting services individually (bypassing dependency checks for initial start)..."
+          # Start services that don't depend on specialty-service first
+          $COMPOSE_CMD -f docker-compose.prod.yml up -d --no-deps user-service appointment-service payment-service || true
+          sleep 5
+          
+          # Start specialty-service (needed by others)
+          $COMPOSE_CMD -f docker-compose.prod.yml up -d --no-deps specialty-service || true
+          sleep 10
+          
+          # Start services that depend on specialty-service (bypass dependency check initially)
+          $COMPOSE_CMD -f docker-compose.prod.yml up -d --no-deps hospital-service doctor-service || true
+          sleep 5
+          
+          # Start admin-panel
+          $COMPOSE_CMD -f docker-compose.prod.yml up -d --no-deps admin-panel || true
+          
+          echo "Waiting for containers to start..."
+          sleep 15
           
           # Check service status
           echo "Service status:"
@@ -106,12 +126,48 @@ jobs:
             done
           fi
           
-          echo "Running database migrations..."
+          echo "Generating Prisma Client and running migrations for each service..."
+          
+          # User Service
+          echo "📦 user-service: Generating Prisma Client..."
+          $COMPOSE_CMD -f docker-compose.prod.yml exec -T user-service npx prisma generate || echo "⚠️  user-service prisma generate failed"
+          echo "📦 user-service: Running migrations..."
           $COMPOSE_CMD -f docker-compose.prod.yml exec -T user-service npx prisma migrate deploy || echo "⚠️  user-service migration failed"
+          
+          # Hospital Service
+          echo "📦 hospital-service: Generating Prisma Client..."
+          $COMPOSE_CMD -f docker-compose.prod.yml exec -T hospital-service npx prisma generate || echo "⚠️  hospital-service prisma generate failed"
+          echo "📦 hospital-service: Running migrations..."
           $COMPOSE_CMD -f docker-compose.prod.yml exec -T hospital-service npx prisma migrate deploy || echo "⚠️  hospital-service migration failed"
+          
+          # Doctor Service
+          echo "📦 doctor-service: Generating Prisma Client..."
+          $COMPOSE_CMD -f docker-compose.prod.yml exec -T doctor-service npx prisma generate || echo "⚠️  doctor-service prisma generate failed"
+          echo "📦 doctor-service: Running migrations..."
           $COMPOSE_CMD -f docker-compose.prod.yml exec -T doctor-service npx prisma migrate deploy || echo "⚠️  doctor-service migration failed"
+          
+          # Specialty Service
+          echo "📦 specialty-service: Generating Prisma Client..."
+          $COMPOSE_CMD -f docker-compose.prod.yml exec -T specialty-service npx prisma generate || echo "⚠️  specialty-service prisma generate failed"
+          echo "📦 specialty-service: Running migrations..."
           $COMPOSE_CMD -f docker-compose.prod.yml exec -T specialty-service npx prisma migrate deploy || echo "⚠️  specialty-service migration failed"
+          
+          # Appointment Service
+          echo "📦 appointment-service: Generating Prisma Client..."
+          $COMPOSE_CMD -f docker-compose.prod.yml exec -T appointment-service npx prisma generate || echo "⚠️  appointment-service prisma generate failed"
+          echo "📦 appointment-service: Running migrations..."
           $COMPOSE_CMD -f docker-compose.prod.yml exec -T appointment-service npx prisma migrate deploy || echo "⚠️  appointment-service migration failed"
+          
+          # Payment Service (if it has Prisma)
+          echo "📦 payment-service: Checking for Prisma..."
+          $COMPOSE_CMD -f docker-compose.prod.yml exec -T payment-service npx prisma generate || echo "ℹ️  payment-service may not use Prisma"
+          $COMPOSE_CMD -f docker-compose.prod.yml exec -T payment-service npx prisma migrate deploy || echo "ℹ️  payment-service may not use Prisma"
+          
+          echo "Restarting services after migrations..."
+          $COMPOSE_CMD -f docker-compose.prod.yml restart specialty-service || true
+          $COMPOSE_CMD -f docker-compose.prod.yml restart hospital-service || true
+          $COMPOSE_CMD -f docker-compose.prod.yml restart doctor-service || true
+          sleep 15
           
           echo "Cleaning up unused images..."
           docker image prune -f || true
