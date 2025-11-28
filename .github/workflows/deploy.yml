@@ -18,7 +18,7 @@ jobs:
       - name: Validate secrets
         run: |
           if [ -z "${{ secrets.VPS_HOST }}" ]; then
-            echo "❌ Error: VPS_HOST secret is not set!"
+            echo "❌ Error: VPS_HOST secret is not set!!"
             echo "Please add VPS_HOST secret in GitHub repository settings."
             exit 1
           fi
