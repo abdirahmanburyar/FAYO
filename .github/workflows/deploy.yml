@@ -35,12 +35,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y sshpass
 
-      - name: Create .env file on VPS
+      - name: Create directory and .env file on VPS
         run: |
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ secrets.VPS_HOST }} << 'EOF'
+          mkdir -p /root/fayo
           if [ ! -f /root/fayo/.env ]; then
             echo "Creating .env file..."
             touch /root/fayo/.env
+          else
+            echo ".env file already exists"
           fi
           EOF
 
