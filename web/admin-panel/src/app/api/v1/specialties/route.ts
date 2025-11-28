@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('Error proxying specialties request:', error);
-    const specialtyServiceUrl = process.env.SPECIALTY_SERVICE_URL || 'http://specialty-service:3004';
+    const specialtyServiceUrl = process.env.SPECIALTY_SERVICE_URL || 'http://31.97.58.62:3004';
       const errorMessage = error.name === 'AbortError' 
       ? 'Request timeout - specialty-service may be unreachable'
       : error.message || 'Internal server error';
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       { 
         message: errorMessage,
         error: error.message,
-        details: `Unable to reach ${API_CONFIG.SPECIALTY_SERVICE_URL}${API_CONFIG.ENDPOINTS.SPECIALTIES}`
+        details: `Unable to reach ${specialtyServiceUrl}${API_CONFIG.ENDPOINTS.SPECIALTIES}`
       },
       { status: 503 }
     );
