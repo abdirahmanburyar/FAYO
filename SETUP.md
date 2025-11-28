@@ -153,7 +153,7 @@ PORT=3002
 ```env
 PORT=3000
 JWT_SECRET=your-super-secret-jwt-key
-USER_SERVICE_URL=http://localhost:3001
+USER_SERVICE_URL=http://31.97.58.62:3001
 APPOINTMENT_SERVICE_URL=http://localhost:3002
 ```
 
@@ -176,17 +176,17 @@ docker exec -it fayoai-app-kafka-1 kafka-topics.sh --bootstrap-server localhost:
 
 ```bash
 # Generate OTP
-curl -X POST http://localhost:3001/api/v1/otp/generate \
+curl -X POST http://31.97.58.62:3001/api/v1/otp/generate \
   -H "Content-Type: application/json" \
   -d '{"phone": "+1234567890"}'
 
 # Verify OTP
-curl -X POST http://localhost:3001/api/v1/otp/verify \
+curl -X POST http://31.97.58.62:3001/api/v1/otp/verify \
   -H "Content-Type: application/json" \
   -d '{"phone": "+1234567890", "code": "123456"}'
 
 # Login with OTP
-curl -X POST http://localhost:3001/api/v1/auth/login/otp \
+curl -X POST http://31.97.58.62:3001/api/v1/auth/login/otp \
   -H "Content-Type: application/json" \
   -d '{"phone": "+1234567890", "code": "123456"}'
 ```
@@ -234,7 +234,7 @@ curl http://localhost:3000/api/v1/users
 ## 🔍 Monitoring & Debugging
 
 ### Service Health Checks
-- **User Service**: http://localhost:3001/api/v1/health
+- **User Service**: http://31.97.58.62:3001/api/v1/health
 - **Appointment Service**: http://localhost:3002/api/v1/health
 - **Notification Worker**: http://localhost:3004/api/v1/health
 

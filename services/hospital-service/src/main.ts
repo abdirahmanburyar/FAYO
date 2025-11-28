@@ -36,7 +36,7 @@ async function bootstrap() {
       // In development, restrict to localhost and configured origins
       const allowedOrigins = [
         'http://localhost:3000', // Admin panel
-        'http://localhost:3001', // Hospital panel (Next.js)
+        'http://31.97.58.62:3001', // Hospital panel (Next.js)
         'http://localhost:3002', // Hospital service
         'http://localhost:3003', // Doctor service
         'http://localhost:3004', // Specialty service

@@ -129,7 +129,7 @@ After fixes, when you login:
 
 ## Common Issues
 
-1. **Environment variable not set:** Admin-panel uses `localhost:3001` instead of `user-service:3001`
+1. **Environment variable not set:** Admin-panel uses `31.97.58.62:3001` instead of `user-service:3001`
    - **Fix:** Restart or recreate container
 
 2. **Network issue:** Containers can't communicate

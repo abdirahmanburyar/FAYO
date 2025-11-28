@@ -797,7 +797,7 @@ export class DoctorsService {
 
   private async checkUserServiceHealth(): Promise<boolean> {
     try {
-      const userServiceUrl = process.env.USER_SERVICE_URL || 'http://localhost:3001';
+      const userServiceUrl = process.env.USER_SERVICE_URL || 'http://31.97.58.62:3001';
       const healthUrl = `${userServiceUrl}/health`;
       
       const controller = new AbortController();
@@ -856,7 +856,7 @@ export class DoctorsService {
 
   private async fetchUserData(userId: string): Promise<any> {
     try {
-      const userServiceUrl = process.env.USER_SERVICE_URL || 'http://localhost:3001';
+      const userServiceUrl = process.env.USER_SERVICE_URL || 'http://31.97.58.62:3001';
       const fetchUrl = `${userServiceUrl}/api/v1/users/${userId}`;
       
       const controller = new AbortController();

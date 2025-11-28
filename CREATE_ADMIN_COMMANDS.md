@@ -47,12 +47,12 @@ If you get "Internal server error" when logging in:
 
 4. **Verify user-service is accessible:**
    ```bash
-   curl http://localhost:3001/api/v1/health
+   curl http://31.97.58.62:3001/api/v1/health
    ```
 
 5. **Test admin login directly:**
    ```bash
-   curl -X POST http://localhost:3001/api/v1/auth/admin-login \
+   curl -X POST http://31.97.58.62:3001/api/v1/auth/admin-login \
      -H "Content-Type: application/json" \
      -d '{"username":"0001","password":"admin123"}'
    ```
