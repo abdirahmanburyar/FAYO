@@ -51,44 +51,15 @@ class SpecialtiesApiService {
 
   async getSpecialties(includeInactive?: boolean): Promise<Specialty[]> {
     try {
-      // Try using Next.js API proxy route first (server-side, avoids CORS)
-      const proxyUrl = `/api/v1/specialties${includeInactive ? '?includeInactive=true' : ''}`;
-      console.log('[SpecialtiesApi] Fetching specialties from proxy:', proxyUrl);
+      // Use direct connection to service (skip proxy)
+      const specialtyServiceUrl = API_CONFIG.SPECIALTY_SERVICE_URL;
+      const directUrl = `${specialtyServiceUrl}/api/v1/specialties${includeInactive ? '?includeInactive=true' : ''}`;
+      console.log('[SpecialtiesApi] Fetching specialties from:', directUrl);
       
-      let response;
-      
-      try {
-        response = await fetch(proxyUrl, {
-          method: 'GET',
-          headers: this.getAuthHeaders(),
-        });
-      } catch (proxyError: any) {
-        // If proxy fails, try direct connection
-        console.warn('[SpecialtiesApi] Proxy failed, trying direct connection:', proxyError.message);
-        
-        // If it's a connection error, try direct connection
-        if (this.isConnectionError(proxyError)) {
-          const specialtyServiceUrl = API_CONFIG.SPECIALTY_SERVICE_URL;
-          const directUrl = `${specialtyServiceUrl}/api/v1/specialties${includeInactive ? '?includeInactive=true' : ''}`;
-          console.log('[SpecialtiesApi] Fetching specialties from direct URL:', directUrl);
-          
-          try {
-            response = await fetch(directUrl, {
-              method: 'GET',
-              headers: this.getAuthHeaders(),
-            });
-          } catch (directError: any) {
-            // If both proxy and direct connection fail with connection errors, throw helpful error
-            if (this.isConnectionError(directError)) {
-              throw this.createConnectionError(specialtyServiceUrl, directError);
-            }
-            throw directError;
-          }
-        } else {
-          // If it's not a connection error, re-throw the original error
-          throw proxyError;
-        }
-      }
+      const response = await fetch(directUrl, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
 
       console.log('[SpecialtiesApi] Response status:', response.status);
       console.log('[SpecialtiesApi] Response ok:', response.ok);
@@ -140,34 +111,15 @@ class SpecialtiesApiService {
 
   async getSpecialtyById(id: string): Promise<Specialty> {
     try {
-      // Try proxy route first
-      let response;
-      try {
-        response = await fetch(`/api/v1/specialties/${id}`, {
-          method: 'GET',
-          headers: this.getAuthHeaders(),
-        });
-      } catch (proxyError: any) {
-        // Fallback to direct connection
-        console.warn('[SpecialtiesApi] Proxy failed, trying direct connection:', proxyError.message);
-        
-        if (this.isConnectionError(proxyError)) {
-          const specialtyServiceUrl = API_CONFIG.SPECIALTY_SERVICE_URL;
-          try {
-            response = await fetch(`${specialtyServiceUrl}/api/v1/specialties/${id}`, {
-              method: 'GET',
-              headers: this.getAuthHeaders(),
-            });
-          } catch (directError: any) {
-            if (this.isConnectionError(directError)) {
-              throw this.createConnectionError(specialtyServiceUrl, directError);
-            }
-            throw directError;
-          }
-        } else {
-          throw proxyError;
-        }
-      }
+      // Use direct connection to service (skip proxy)
+      const specialtyServiceUrl = API_CONFIG.SPECIALTY_SERVICE_URL;
+      const directUrl = `${specialtyServiceUrl}/api/v1/specialties/${id}`;
+      console.log('[SpecialtiesApi] Fetching specialty by ID from:', directUrl);
+      
+      const response = await fetch(directUrl, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -209,36 +161,16 @@ class SpecialtiesApiService {
     isActive?: boolean;
   }): Promise<Specialty> {
     try {
-      // Try proxy route first
-      let response;
-      try {
-        response = await fetch('/api/v1/specialties', {
-          method: 'POST',
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify(specialtyData),
-        });
-      } catch (proxyError: any) {
-        // Fallback to direct connection
-        console.warn('[SpecialtiesApi] Proxy failed, trying direct connection:', proxyError.message);
-        
-        if (this.isConnectionError(proxyError)) {
-          const specialtyServiceUrl = API_CONFIG.SPECIALTY_SERVICE_URL;
-          try {
-            response = await fetch(`${specialtyServiceUrl}/api/v1/specialties`, {
-              method: 'POST',
-              headers: this.getAuthHeaders(),
-              body: JSON.stringify(specialtyData),
-            });
-          } catch (directError: any) {
-            if (this.isConnectionError(directError)) {
-              throw this.createConnectionError(specialtyServiceUrl, directError);
-            }
-            throw directError;
-          }
-        } else {
-          throw proxyError;
-        }
-      }
+      // Use direct connection to service (skip proxy)
+      const specialtyServiceUrl = API_CONFIG.SPECIALTY_SERVICE_URL;
+      const directUrl = `${specialtyServiceUrl}/api/v1/specialties`;
+      console.log('[SpecialtiesApi] Creating specialty at:', directUrl);
+      
+      const response = await fetch(directUrl, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(specialtyData),
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -265,36 +197,16 @@ class SpecialtiesApiService {
     isActive?: boolean;
   }): Promise<Specialty> {
     try {
-      // Try proxy route first
-      let response;
-      try {
-        response = await fetch(`/api/v1/specialties/${id}`, {
-          method: 'PATCH',
-          headers: this.getAuthHeaders(),
-          body: JSON.stringify(specialtyData),
-        });
-      } catch (proxyError: any) {
-        // Fallback to direct connection
-        console.warn('[SpecialtiesApi] Proxy failed, trying direct connection:', proxyError.message);
-        
-        if (this.isConnectionError(proxyError)) {
-          const specialtyServiceUrl = API_CONFIG.SPECIALTY_SERVICE_URL;
-          try {
-            response = await fetch(`${specialtyServiceUrl}/api/v1/specialties/${id}`, {
-              method: 'PATCH',
-              headers: this.getAuthHeaders(),
-              body: JSON.stringify(specialtyData),
-            });
-          } catch (directError: any) {
-            if (this.isConnectionError(directError)) {
-              throw this.createConnectionError(specialtyServiceUrl, directError);
-            }
-            throw directError;
-          }
-        } else {
-          throw proxyError;
-        }
-      }
+      // Use direct connection to service (skip proxy)
+      const specialtyServiceUrl = API_CONFIG.SPECIALTY_SERVICE_URL;
+      const directUrl = `${specialtyServiceUrl}/api/v1/specialties/${id}`;
+      console.log('[SpecialtiesApi] Updating specialty at:', directUrl);
+      
+      const response = await fetch(directUrl, {
+        method: 'PATCH',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(specialtyData),
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -317,34 +229,15 @@ class SpecialtiesApiService {
 
   async deleteSpecialty(id: string): Promise<void> {
     try {
-      // Try proxy route first
-      let response;
-      try {
-        response = await fetch(`/api/v1/specialties/${id}`, {
-          method: 'DELETE',
-          headers: this.getAuthHeaders(),
-        });
-      } catch (proxyError: any) {
-        // Fallback to direct connection
-        console.warn('[SpecialtiesApi] Proxy failed, trying direct connection:', proxyError.message);
-        
-        if (this.isConnectionError(proxyError)) {
-          const specialtyServiceUrl = API_CONFIG.SPECIALTY_SERVICE_URL;
-          try {
-            response = await fetch(`${specialtyServiceUrl}/api/v1/specialties/${id}`, {
-              method: 'DELETE',
-              headers: this.getAuthHeaders(),
-            });
-          } catch (directError: any) {
-            if (this.isConnectionError(directError)) {
-              throw this.createConnectionError(specialtyServiceUrl, directError);
-            }
-            throw directError;
-          }
-        } else {
-          throw proxyError;
-        }
-      }
+      // Use direct connection to service (skip proxy)
+      const specialtyServiceUrl = API_CONFIG.SPECIALTY_SERVICE_URL;
+      const directUrl = `${specialtyServiceUrl}/api/v1/specialties/${id}`;
+      console.log('[SpecialtiesApi] Deleting specialty at:', directUrl);
+      
+      const response = await fetch(directUrl, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders(),
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

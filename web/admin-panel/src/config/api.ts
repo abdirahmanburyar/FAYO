@@ -20,7 +20,12 @@ const getServiceUrl = (servicePath: string, directPort: string): string => {
       return `http://${window.location.hostname}:${directPort}`;
     }
     
-    // Development fallback
+    // Development fallback - use IP address for specialty-service
+    if (servicePath === 'specialty-service') {
+      // Use IP address directly instead of localhost
+      return `http://31.97.58.62:${directPort}`;
+    }
+    
     return `http://localhost:${directPort}`;
   } else {
     // Server-side: use environment variable (read at runtime)
@@ -30,6 +35,12 @@ const getServiceUrl = (servicePath: string, directPort: string): string => {
     if (envValue) {
       return envValue;
     }
+    
+    // For specialty-service, use IP address directly
+    if (servicePath === 'specialty-service') {
+      return `http://31.97.58.62:${directPort}`;
+    }
+    
     // Default to Docker service name for server-side calls
     // Use the servicePath as-is (e.g., 'user-service' -> 'user-service')
     return `http://${servicePath}:${directPort}`;
