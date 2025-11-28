@@ -3,6 +3,11 @@
 
 // Helper function to get service URL (reads env vars at runtime)
 const getServiceUrl = (servicePath: string, directPort: string): string => {
+  // Specialty-service always uses VPS IP address
+  if (servicePath === 'specialty-service') {
+    return `http://31.97.58.62:${directPort}`;
+  }
+  
   // Check if we're in browser (client-side)
   if (typeof window !== 'undefined') {
     // Client-side: use NEXT_PUBLIC_ env variable (available at build time)
@@ -20,12 +25,6 @@ const getServiceUrl = (servicePath: string, directPort: string): string => {
       return `http://${window.location.hostname}:${directPort}`;
     }
     
-    // Development fallback - use IP address for specialty-service
-    if (servicePath === 'specialty-service') {
-      // Use IP address directly instead of localhost
-      return `http://31.97.58.62:${directPort}`;
-    }
-    
     return `http://localhost:${directPort}`;
   } else {
     // Server-side: use environment variable (read at runtime)
@@ -34,11 +33,6 @@ const getServiceUrl = (servicePath: string, directPort: string): string => {
     const envValue = process.env[envKey];
     if (envValue) {
       return envValue;
-    }
-    
-    // For specialty-service, use IP address directly
-    if (servicePath === 'specialty-service') {
-      return `http://31.97.58.62:${directPort}`;
     }
     
     // Default to Docker service name for server-side calls

@@ -86,7 +86,12 @@ export default function EditDoctorModal({ isOpen, onClose, onSuccess, doctor }: 
     } catch (error) {
       console.error('Error loading specialties:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to load specialties';
-      setError(`Failed to load specialties: ${errorMessage}. Please ensure specialty-service is running on port 3004.`);
+      // Error message already includes connection details from specialtiesApi
+      if (errorMessage.includes('Cannot connect to') || errorMessage.includes('port 3004')) {
+        setError(errorMessage);
+      } else {
+        setError(`Failed to load specialties: ${errorMessage}`);
+      }
       setSpecialties([]);
     } finally {
       setLoadingSpecialties(false);

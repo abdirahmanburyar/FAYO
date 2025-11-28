@@ -202,7 +202,12 @@ export default function CreateDoctorPage() {
           error: error,
           stack: error instanceof Error ? error.stack : undefined
         });
-        setError(`Failed to load specialties: ${errorMessage}. Please ensure specialty-service is running on port 3004 and check browser console for details.`);
+        // Error message already includes connection details from specialtiesApi
+        if (errorMessage.includes('Cannot connect to') || errorMessage.includes('port 3004')) {
+          setError(errorMessage);
+        } else {
+          setError(`Failed to load specialties: ${errorMessage}. Please check browser console for details.`);
+        }
         setSpecialties([]);
       } finally {
         setSpecialtiesLoading(false);
