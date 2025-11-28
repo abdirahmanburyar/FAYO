@@ -15,22 +15,15 @@ export interface SpecialtyStats {
   inactiveSpecialties: number;
 }
 
-// Specialty Service URL - fetch from specialty-service directly
+// Specialty Service URL - use Next.js API proxy routes for client-side calls
 const getSpecialtyServiceUrl = (): string => {
   if (typeof window !== 'undefined') {
-    const isHTTPS = window.location.protocol === 'https:';
+    // Client-side: use Next.js API proxy route (avoids CORS and ensures correct routing)
     const baseUrl = window.location.origin;
-
-    if (isHTTPS) {
-      // Use nginx proxy route (HTTPS) - removes mixed content issues
-      return `${baseUrl}/api/specialty-service`;
-    } else {
-      // Development/HTTP: use direct URL or env variable
-      return process.env.NEXT_PUBLIC_SPECIALTY_SERVICE_URL || 'http://localhost:3004';
-    }
+    return `${baseUrl}/api/v1/specialties`;
   } else {
-    // Server-side: use environment variable or direct URL
-    return process.env.SPECIALTY_SERVICE_URL || 'http://localhost:3004';
+    // Server-side: use environment variable or Docker service name
+    return process.env.SPECIALTY_SERVICE_URL || 'http://specialty-service:3004';
   }
 };
 
@@ -43,21 +36,13 @@ class SpecialtiesApiService {
     };
   }
 
-  private buildUrl(endpoint: string): string {
-    const specialtyServiceUrl = getSpecialtyServiceUrl();
-    // If using nginx proxy (contains /api/specialty-service), nginx strips the prefix
-    // and forwards to backend, so we use endpoint directly (e.g., /specialties)
-    // Otherwise, use /api/v1 prefix for direct service access (e.g., /api/v1/specialties)
-    const isProxyUrl = specialtyServiceUrl.includes('/api/specialty-service');
-    const basePath = isProxyUrl ? '' : '/api/v1';
-    // Ensure endpoint starts with /
-    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    return `${specialtyServiceUrl}${basePath}${normalizedEndpoint}`;
-  }
-
   async getSpecialties(includeInactive?: boolean): Promise<Specialty[]> {
     try {
-      const url = this.buildUrl(`/specialties${includeInactive ? '?includeInactive=true' : ''}`);
+      const queryParams = includeInactive ? '?includeInactive=true' : '';
+      const baseUrl = getSpecialtyServiceUrl();
+      const url = typeof window !== 'undefined' 
+        ? `${baseUrl}${queryParams}`
+        : `${baseUrl}/api/v1/specialties${queryParams}`;
       
       console.log('[SpecialtiesApi] Fetching specialties from:', url);
       
@@ -129,14 +114,22 @@ class SpecialtiesApiService {
 
   async getSpecialtyById(id: string): Promise<Specialty> {
     try {
-      const specialties = await this.getSpecialties(true);
-      const specialty = specialties.find((s: Specialty) => s.id === id);
+      const baseUrl = getSpecialtyServiceUrl();
+      const url = typeof window !== 'undefined'
+        ? `${baseUrl}/${id}`
+        : `${baseUrl}/api/v1/specialties/${id}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
 
-      if (!specialty) {
-        throw new Error(`Specialty with ID ${id} not found`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to fetch specialty: ${response.statusText}`);
       }
 
-      return specialty;
+      return await response.json();
     } catch (error) {
       console.error('Error fetching specialty:', error);
       throw error;
@@ -164,7 +157,10 @@ class SpecialtiesApiService {
     isActive?: boolean;
   }): Promise<Specialty> {
     try {
-      const url = this.buildUrl('/specialties');
+      const baseUrl = getSpecialtyServiceUrl();
+      const url = typeof window !== 'undefined'
+        ? baseUrl
+        : `${baseUrl}/api/v1/specialties`;
       const response = await fetch(url, {
         method: 'POST',
         headers: this.getAuthHeaders(),
@@ -189,7 +185,10 @@ class SpecialtiesApiService {
     isActive?: boolean;
   }): Promise<Specialty> {
     try {
-      const url = this.buildUrl(`/specialties/${id}`);
+      const baseUrl = getSpecialtyServiceUrl();
+      const url = typeof window !== 'undefined'
+        ? `${baseUrl}/${id}`
+        : `${baseUrl}/api/v1/specialties/${id}`;
       const response = await fetch(url, {
         method: 'PATCH',
         headers: this.getAuthHeaders(),
@@ -210,7 +209,10 @@ class SpecialtiesApiService {
 
   async deleteSpecialty(id: string): Promise<void> {
     try {
-      const url = this.buildUrl(`/specialties/${id}`);
+      const baseUrl = getSpecialtyServiceUrl();
+      const url = typeof window !== 'undefined'
+        ? `${baseUrl}/${id}`
+        : `${baseUrl}/api/v1/specialties/${id}`;
       const response = await fetch(url, {
         method: 'DELETE',
         headers: this.getAuthHeaders(),
