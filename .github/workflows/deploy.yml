@@ -61,32 +61,58 @@ jobs:
           set -e
           cd /root/fayo
           
+          # Check if Docker Compose is available
+          if ! command -v docker &> /dev/null; then
+            echo "❌ Docker is not installed!"
+            exit 1
+          fi
+          
+          # Try docker compose (V2), fallback to docker-compose (V1) if needed
+          if docker compose version &> /dev/null; then
+            COMPOSE_CMD="docker compose"
+            echo "Using Docker Compose V2"
+          elif command -v docker-compose &> /dev/null; then
+            COMPOSE_CMD="docker-compose"
+            echo "Using Docker Compose V1"
+          else
+            echo "❌ Docker Compose is not installed!"
+            echo "Installing Docker Compose..."
+            curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+            chmod +x /usr/local/bin/docker-compose
+            COMPOSE_CMD="docker-compose"
+          fi
+          
           echo "Building and deploying with Docker Compose..."
-          docker-compose -f docker-compose.prod.yml pull || true
-          docker-compose -f docker-compose.prod.yml build
-          docker-compose -f docker-compose.prod.yml up -d
+          $COMPOSE_CMD -f docker-compose.prod.yml pull || true
+          $COMPOSE_CMD -f docker-compose.prod.yml build
+          $COMPOSE_CMD -f docker-compose.prod.yml up -d
           
           echo "Waiting for services to be ready..."
           sleep 15
           
           echo "Running database migrations..."
-          docker-compose -f docker-compose.prod.yml exec -T user-service npx prisma migrate deploy || true
-          docker-compose -f docker-compose.prod.yml exec -T hospital-service npx prisma migrate deploy || true
-          docker-compose -f docker-compose.prod.yml exec -T doctor-service npx prisma migrate deploy || true
-          docker-compose -f docker-compose.prod.yml exec -T specialty-service npx prisma migrate deploy || true
-          docker-compose -f docker-compose.prod.yml exec -T appointment-service npx prisma migrate deploy || true
+          $COMPOSE_CMD -f docker-compose.prod.yml exec -T user-service npx prisma migrate deploy || true
+          $COMPOSE_CMD -f docker-compose.prod.yml exec -T hospital-service npx prisma migrate deploy || true
+          $COMPOSE_CMD -f docker-compose.prod.yml exec -T doctor-service npx prisma migrate deploy || true
+          $COMPOSE_CMD -f docker-compose.prod.yml exec -T specialty-service npx prisma migrate deploy || true
+          $COMPOSE_CMD -f docker-compose.prod.yml exec -T appointment-service npx prisma migrate deploy || true
           
           echo "Cleaning up unused images..."
           docker image prune -f
           
           echo "Deployment completed successfully!"
-          docker-compose -f docker-compose.prod.yml ps
+          $COMPOSE_CMD -f docker-compose.prod.yml ps
           EOF
 
       - name: Verify deployment
         run: |
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ secrets.VPS_HOST }} << 'EOF'
           echo "Checking service status..."
-          docker-compose -f /root/fayo/docker-compose.prod.yml ps
+          # Use the same compose command detection
+          if docker compose version &> /dev/null; then
+            docker compose -f /root/fayo/docker-compose.prod.yml ps
+          else
+            docker-compose -f /root/fayo/docker-compose.prod.yml ps
+          fi
           EOF
 
