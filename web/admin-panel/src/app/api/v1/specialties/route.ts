@@ -16,10 +16,12 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const queryString = searchParams.toString();
-    const url = `${API_CONFIG.SPECIALTY_SERVICE_URL}${API_CONFIG.ENDPOINTS.SPECIALTIES}${queryString ? `?${queryString}` : ''}`;
+    // Hardcode VPS IP address for specialty-service
+    const specialtyServiceUrl = process.env.SPECIALTY_SERVICE_URL || 'http://31.97.58.62:3004';
+    const url = `${specialtyServiceUrl}${API_CONFIG.ENDPOINTS.SPECIALTIES}${queryString ? `?${queryString}` : ''}`;
     
     console.log('Proxying GET specialties request to:', url);
-    console.log('SPECIALTY_SERVICE_URL:', API_CONFIG.SPECIALTY_SERVICE_URL);
+    console.log('SPECIALTY_SERVICE_URL:', specialtyServiceUrl);
     
     // Get authorization header from request
     const authHeader = request.headers.get('authorization');
@@ -75,7 +77,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const url = `${API_CONFIG.SPECIALTY_SERVICE_URL}${API_CONFIG.ENDPOINTS.SPECIALTIES}`;
+    // Hardcode VPS IP address for specialty-service
+    const specialtyServiceUrl = process.env.SPECIALTY_SERVICE_URL || 'http://31.97.58.62:3004';
+    const url = `${specialtyServiceUrl}${API_CONFIG.ENDPOINTS.SPECIALTIES}`;
     
     console.log('Proxying POST specialties request to:', url);
     

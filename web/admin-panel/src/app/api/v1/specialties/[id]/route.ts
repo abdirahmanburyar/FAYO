@@ -17,7 +17,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const url = `${API_CONFIG.SPECIALTY_SERVICE_URL}${API_CONFIG.ENDPOINTS.SPECIALTIES}/${params.id}`;
+    // Hardcode VPS IP address for specialty-service
+    const specialtyServiceUrl = process.env.SPECIALTY_SERVICE_URL || 'http://31.97.58.62:3004';
+    const url = `${specialtyServiceUrl}${API_CONFIG.ENDPOINTS.SPECIALTIES}/${params.id}`;
     console.log('Proxying GET specialty request to:', url);
     
     const authHeader = request.headers.get('authorization');
@@ -69,7 +71,9 @@ export async function PATCH(
 ) {
   try {
     const body = await request.json();
-    const url = `${API_CONFIG.SPECIALTY_SERVICE_URL}${API_CONFIG.ENDPOINTS.SPECIALTIES}/${params.id}`;
+    // Hardcode VPS IP address for specialty-service
+    const specialtyServiceUrl = process.env.SPECIALTY_SERVICE_URL || 'http://31.97.58.62:3004';
+    const url = `${specialtyServiceUrl}${API_CONFIG.ENDPOINTS.SPECIALTIES}/${params.id}`;
     console.log('Proxying PATCH specialty request to:', url);
     
     const authHeader = request.headers.get('authorization');
@@ -121,7 +125,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const url = `${API_CONFIG.SPECIALTY_SERVICE_URL}${API_CONFIG.ENDPOINTS.SPECIALTIES}/${params.id}`;
+    // Hardcode VPS IP address for specialty-service
+    const specialtyServiceUrl = process.env.SPECIALTY_SERVICE_URL || 'http://31.97.58.62:3004';
+    const url = `${specialtyServiceUrl}${API_CONFIG.ENDPOINTS.SPECIALTIES}/${params.id}`;
     console.log('Proxying DELETE specialty request to:', url);
     
     const authHeader = request.headers.get('authorization');
