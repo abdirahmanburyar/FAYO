@@ -16,11 +16,10 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const queryString = searchParams.toString();
-    const specialtyServiceUrl = process.env.SPECIALTY_SERVICE_URL || 'http://specialty-service:3004';
-    const url = `${specialtyServiceUrl}/api/v1/specialties${queryString ? `?${queryString}` : ''}`;
+    const url = `${API_CONFIG.SPECIALTY_SERVICE_URL}${API_CONFIG.ENDPOINTS.SPECIALTIES}${queryString ? `?${queryString}` : ''}`;
     
     console.log('Proxying GET specialties request to:', url);
-    console.log('SPECIALTY_SERVICE_URL:', specialtyServiceUrl);
+    console.log('SPECIALTY_SERVICE_URL:', API_CONFIG.SPECIALTY_SERVICE_URL);
     
     // Get authorization header from request
     const authHeader = request.headers.get('authorization');
@@ -59,14 +58,14 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('Error proxying specialties request:', error);
     const specialtyServiceUrl = process.env.SPECIALTY_SERVICE_URL || 'http://specialty-service:3004';
-    const errorMessage = error.name === 'AbortError' 
+      const errorMessage = error.name === 'AbortError' 
       ? 'Request timeout - specialty-service may be unreachable'
       : error.message || 'Internal server error';
     return NextResponse.json(
       { 
         message: errorMessage,
         error: error.message,
-        details: `Unable to reach ${specialtyServiceUrl}/api/v1/specialties`
+        details: `Unable to reach ${API_CONFIG.SPECIALTY_SERVICE_URL}${API_CONFIG.ENDPOINTS.SPECIALTIES}`
       },
       { status: 503 }
     );
@@ -76,8 +75,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const specialtyServiceUrl = process.env.SPECIALTY_SERVICE_URL || 'http://specialty-service:3004';
-    const url = `${specialtyServiceUrl}/api/v1/specialties`;
+    const url = `${API_CONFIG.SPECIALTY_SERVICE_URL}${API_CONFIG.ENDPOINTS.SPECIALTIES}`;
     
     console.log('Proxying POST specialties request to:', url);
     

@@ -52,6 +52,9 @@ export const API_CONFIG = {
   get APPOINTMENT_SERVICE_URL() {
     return getServiceUrl('appointment-service', '3005');
   },
+  get SPECIALTY_SERVICE_URL() {
+    return getServiceUrl('specialty-service', '3004');
+  },
   ENDPOINTS: {
     ADMIN_LOGIN: '/api/v1/auth/admin-login',
     USERS: '/api/v1/users',
