@@ -92,30 +92,130 @@ jobs:
           echo "Waiting for infrastructure to be ready..."
           sleep 30
           
-          echo "Starting services individually (bypassing dependency checks for initial start)..."
-          # Start services that don't depend on specialty-service first
-          $COMPOSE_CMD -f docker-compose.prod.yml up -d --no-deps user-service appointment-service payment-service || true
-          sleep 5
+          # Wait for PostgreSQL to be fully ready
+          echo "Waiting for PostgreSQL to be ready..."
+          for i in {1..30}; do
+            if docker exec postgres pg_isready -U postgres > /dev/null 2>&1; then
+              echo "✅ PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
           
-          # Start specialty-service (needed by others)
-          $COMPOSE_CMD -f docker-compose.prod.yml up -d --no-deps specialty-service || true
+          echo "Starting services temporarily for migrations (they will be restarted after migrations)..."
+          # Start services temporarily just to run migrations
+          $COMPOSE_CMD -f docker-compose.prod.yml up -d --no-deps user-service hospital-service doctor-service specialty-service appointment-service payment-service || true
+          
+          echo "Waiting for containers to be ready for migrations..."
           sleep 10
           
-          # Start services that depend on specialty-service (bypass dependency check initially)
-          $COMPOSE_CMD -f docker-compose.prod.yml up -d --no-deps hospital-service doctor-service || true
+          echo "=========================================="
+          echo "🔄 Running Prisma Migrations for All Services"
+          echo "=========================================="
+          
+          # Function to run migrations for a service
+          run_migrations() {
+            local SERVICE=$1
+            local SERVICE_NAME=$2
+            
+            echo ""
+            echo "📦 $SERVICE_NAME: Starting migration process..."
+            
+            # Generate Prisma Client
+            echo "  → Generating Prisma Client..."
+            if $COMPOSE_CMD -f docker-compose.prod.yml exec -T $SERVICE npx prisma generate; then
+              echo "  ✅ Prisma Client generated successfully"
+            else
+              echo "  ❌ Failed to generate Prisma Client for $SERVICE_NAME"
+              return 1
+            fi
+            
+            # Run migrations
+            echo "  → Running database migrations..."
+            if $COMPOSE_CMD -f docker-compose.prod.yml exec -T $SERVICE npx prisma migrate deploy; then
+              echo "  ✅ Migrations completed successfully for $SERVICE_NAME"
+              return 0
+            else
+              echo "  ❌ Migration failed for $SERVICE_NAME"
+              echo "  Showing logs for $SERVICE_NAME:"
+              docker logs $SERVICE --tail 50 || true
+              return 1
+            fi
+          }
+          
+          # Track migration failures
+          MIGRATION_FAILED=0
+          
+          # Run migrations for each service
+          echo ""
+          echo "1️⃣  User Service Migrations"
+          if ! run_migrations "user-service" "user-service"; then
+            MIGRATION_FAILED=1
+          fi
+          
+          echo ""
+          echo "2️⃣  Hospital Service Migrations"
+          if ! run_migrations "hospital-service" "hospital-service"; then
+            MIGRATION_FAILED=1
+          fi
+          
+          echo ""
+          echo "3️⃣  Doctor Service Migrations"
+          if ! run_migrations "doctor-service" "doctor-service"; then
+            MIGRATION_FAILED=1
+          fi
+          
+          echo ""
+          echo "4️⃣  Specialty Service Migrations"
+          if ! run_migrations "specialty-service" "specialty-service"; then
+            MIGRATION_FAILED=1
+          fi
+          
+          echo ""
+          echo "5️⃣  Appointment Service Migrations"
+          if ! run_migrations "appointment-service" "appointment-service"; then
+            MIGRATION_FAILED=1
+          fi
+          
+          echo ""
+          echo "6️⃣  Payment Service Migrations"
+          if ! run_migrations "payment-service" "payment-service"; then
+            # Payment service might not use Prisma, so this is not critical
+            echo "  ℹ️  Payment service may not use Prisma (non-critical)"
+          fi
+          
+          echo ""
+          echo "=========================================="
+          if [ $MIGRATION_FAILED -eq 1 ]; then
+            echo "❌ Some migrations failed! Check logs above."
+            echo "Stopping services and exiting..."
+            $COMPOSE_CMD -f docker-compose.prod.yml stop user-service hospital-service doctor-service specialty-service appointment-service payment-service || true
+            exit 1
+          else
+            echo "✅ All migrations completed successfully!"
+          fi
+          echo "=========================================="
+          
+          echo ""
+          echo "Stopping temporary service instances..."
+          $COMPOSE_CMD -f docker-compose.prod.yml stop user-service hospital-service doctor-service specialty-service appointment-service payment-service || true
           sleep 5
           
-          # Start admin-panel
-          $COMPOSE_CMD -f docker-compose.prod.yml up -d --no-deps admin-panel || true
+          echo "Starting all services with proper dependencies..."
+          # Now start services properly with dependencies
+          $COMPOSE_CMD -f docker-compose.prod.yml up -d --remove-orphans
           
-          echo "Waiting for containers to start..."
-          sleep 15
+          echo "Waiting for services to start..."
+          sleep 20
           
           # Check service status
+          echo ""
           echo "Service status:"
           $COMPOSE_CMD -f docker-compose.prod.yml ps
           
           # Show logs for any unhealthy services
+          echo ""
           echo "Checking for unhealthy services..."
           UNHEALTHY=$(docker ps --filter "health=unhealthy" --format "{{.Names}}" || true)
           if [ ! -z "$UNHEALTHY" ]; then
@@ -126,44 +226,11 @@ jobs:
             done
           fi
           
-          echo "Generating Prisma Client and running migrations for each service..."
-          
-          # User Service
-          echo "📦 user-service: Generating Prisma Client..."
-          $COMPOSE_CMD -f docker-compose.prod.yml exec -T user-service npx prisma generate || echo "⚠️  user-service prisma generate failed"
-          echo "📦 user-service: Running migrations..."
-          $COMPOSE_CMD -f docker-compose.prod.yml exec -T user-service npx prisma migrate deploy || echo "⚠️  user-service migration failed"
-          
-          # Hospital Service
-          echo "📦 hospital-service: Generating Prisma Client..."
-          $COMPOSE_CMD -f docker-compose.prod.yml exec -T hospital-service npx prisma generate || echo "⚠️  hospital-service prisma generate failed"
-          echo "📦 hospital-service: Running migrations..."
-          $COMPOSE_CMD -f docker-compose.prod.yml exec -T hospital-service npx prisma migrate deploy || echo "⚠️  hospital-service migration failed"
-          
-          # Doctor Service
-          echo "📦 doctor-service: Generating Prisma Client..."
-          $COMPOSE_CMD -f docker-compose.prod.yml exec -T doctor-service npx prisma generate || echo "⚠️  doctor-service prisma generate failed"
-          echo "📦 doctor-service: Running migrations..."
-          $COMPOSE_CMD -f docker-compose.prod.yml exec -T doctor-service npx prisma migrate deploy || echo "⚠️  doctor-service migration failed"
-          
-          # Specialty Service
-          echo "📦 specialty-service: Generating Prisma Client..."
-          $COMPOSE_CMD -f docker-compose.prod.yml exec -T specialty-service npx prisma generate || echo "⚠️  specialty-service prisma generate failed"
-          echo "📦 specialty-service: Running migrations..."
-          $COMPOSE_CMD -f docker-compose.prod.yml exec -T specialty-service npx prisma migrate deploy || echo "⚠️  specialty-service migration failed"
-          
-          # Appointment Service
-          echo "📦 appointment-service: Generating Prisma Client..."
-          $COMPOSE_CMD -f docker-compose.prod.yml exec -T appointment-service npx prisma generate || echo "⚠️  appointment-service prisma generate failed"
-          echo "📦 appointment-service: Running migrations..."
-          $COMPOSE_CMD -f docker-compose.prod.yml exec -T appointment-service npx prisma migrate deploy || echo "⚠️  appointment-service migration failed"
-          
-          # Payment Service (if it has Prisma)
-          echo "📦 payment-service: Checking for Prisma..."
-          $COMPOSE_CMD -f docker-compose.prod.yml exec -T payment-service npx prisma generate || echo "ℹ️  payment-service may not use Prisma"
-          $COMPOSE_CMD -f docker-compose.prod.yml exec -T payment-service npx prisma migrate deploy || echo "ℹ️  payment-service may not use Prisma"
-          
+          echo ""
           echo "Creating admin user credentials..."
+          # Wait a bit for user-service to be fully ready
+          sleep 5
+          
           # Try using the create-admin-manual.js script if it exists, otherwise use inline command
           if $COMPOSE_CMD -f docker-compose.prod.yml exec -T user-service test -f /app/create-admin-manual.js 2>/dev/null; then
             echo "Using create-admin-manual.js script..."
@@ -172,12 +239,6 @@ jobs:
             echo "Using inline command to create admin..."
             $COMPOSE_CMD -f docker-compose.prod.yml exec -T user-service node -e "const {PrismaClient}=require('@prisma/client');const bcrypt=require('bcryptjs');const p=new PrismaClient();(async()=>{try{const e=await p.user.findFirst({where:{role:'ADMIN'}});if(e){console.log('✅ Admin exists:',e.username);}else{const h=await bcrypt.hash('admin123',10);const a=await p.user.create({data:{username:'0001',email:'admin@fayo.com',password:h,firstName:'System',lastName:'Administrator',role:'ADMIN',userType:'HOSPITAL_MANAGER',isActive:true}});console.log('✅ Admin created! Username: 0001, Password: admin123, Email: admin@fayo.com');}}catch(e){console.error('⚠️ Error:',e.message);}finally{await p.\$disconnect();}})();" || echo "⚠️  Admin creation failed"
           fi
-          
-          echo "Restarting services after migrations..."
-          $COMPOSE_CMD -f docker-compose.prod.yml restart specialty-service || true
-          $COMPOSE_CMD -f docker-compose.prod.yml restart hospital-service || true
-          $COMPOSE_CMD -f docker-compose.prod.yml restart doctor-service || true
-          sleep 15
           
           echo "Cleaning up unused images..."
           docker image prune -f || true

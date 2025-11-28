@@ -11,14 +11,15 @@
     <!-- For development: Allow HTTP only for localhost and specific IPs -->
     <!-- WARNING: Zoom SDK OAuth REQUIRES HTTPS. HTTP will NOT work for Zoom SDK calls. -->
     <!-- Only enable HTTP for non-Zoom SDK endpoints during development -->
-    <!-- Remove this entire domain-config block in production -->
+    <!-- IMPORTANT: For production, use HTTPS instead of HTTP -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">localhost</domain>
         <domain includeSubdomains="true">127.0.0.1</domain>
         <domain includeSubdomains="true">10.0.2.2</domain>
         <!-- Development server IP - allows HTTP for development -->
-        <!-- IMPORTANT: For production, remove this and use HTTPS -->
         <domain includeSubdomains="true">10.86.182.69</domain>
+        <!-- Production server IP - allows HTTP (should be changed to HTTPS in production) -->
+        <domain includeSubdomains="true">31.97.58.62</domain>
     </domain-config>
     
     <!-- Production: Only allow HTTPS -->
