@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FAYO</string>
+    
+    <!-- Splash Screen -->
+    <string name="splash_loading">Loading...</string>
+    
+    <!-- Login Screen -->
+    <string name="login_title">Welcome to FAYO</string>
+    <string name="login_subtitle">Your trusted healthcare companion</string>
+    <string name="phone_number">Phone Number</string>
+    <string name="enter_phone">Enter your phone number</string>
+    <string name="send_otp">Send OTP</string>
+    <string name="invalid_phone">Please enter a valid phone number</string>
+    
+    <!-- OTP Screen -->
+    <string name="otp_title">Verify Your Phone</string>
+    <string name="otp_subtitle">Enter the 6-digit code sent to</string>
+    <string name="verify">Verify</string>
+    <string name="resend_otp">Resend OTP</string>
+    <string name="invalid_otp">Please enter a valid 6-digit code</string>
+    
+    <!-- Home Screen -->
+    <string name="home">Home</string>
+    <string name="hospitals">Hospitals</string>
+    <string name="appointments">Appointments</string>
+    <string name="doctors">Doctors</string>
+    <string name="profile">Profile</string>
+    
+    <!-- Common -->
+    <string name="loading">Loading...</string>
+    <string name="error">Error</string>
+    <string name="retry">Retry</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="edit">Edit</string>
+    <string name="delete">Delete</string>
+    <string name="logout">Logout</string>
+</resources>
+

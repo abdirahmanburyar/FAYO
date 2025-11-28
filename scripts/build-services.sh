@@ -27,7 +27,6 @@ build_service() {
 build_service "user-service" "./services/user-service" "3001"
 build_service "hospital-service" "./services/hospital-service" "3002"
 build_service "doctor-service" "./services/doctor-service" "3003"
-build_service "shared-service" "./services/shared-service" "3004"
 build_service "admin-panel" "./web/admin-panel" "3000"
 
 echo "🎉 All services built successfully!"
@@ -39,5 +38,4 @@ echo "To run individual services:"
 echo "docker run -p 3001:3001 fayo-user-service"
 echo "docker run -p 3002:3002 fayo-hospital-service"
 echo "docker run -p 3003:3003 fayo-doctor-service"
-echo "docker run -p 3004:3004 fayo-shared-service"
 echo "docker run -p 3000:3000 fayo-admin-panel"

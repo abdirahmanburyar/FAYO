@@ -7,7 +7,7 @@ export interface User {
   phone?: string;
   firstName?: string;
   lastName?: string;
-  role: 'PATIENT' | 'DOCTOR' | 'ADMIN';
+  role: 'PATIENT' | 'DOCTOR' | 'ADMIN' | 'HOSPITAL' | 'CLINIC';
   userType: 'PATIENT' | 'DOCTOR' | 'HOSPITAL_MANAGER';
   isActive: boolean;
   createdAt: string;
@@ -54,7 +54,7 @@ export interface CreateUserDto {
   password?: string;
   firstName?: string;
   lastName?: string;
-  role: 'PATIENT' | 'DOCTOR' | 'ADMIN';
+  role: 'PATIENT' | 'DOCTOR' | 'ADMIN' | 'HOSPITAL' | 'CLINIC';
   userType: 'PATIENT' | 'DOCTOR' | 'HOSPITAL_MANAGER';
   dateOfBirth?: string;
   gender?: 'MALE' | 'FEMALE' | 'OTHER';
@@ -87,13 +87,17 @@ class UsersApiService {
   // Get all users
   async getUsers(): Promise<User[]> {
     try {
-      const response = await fetch(`${API_CONFIG.USER_SERVICE_URL}/api/v1/users`, {
+      const response = await fetch(`${API_CONFIG.USER_SERVICE_URL}${API_CONFIG.ENDPOINTS.USERS}`, {
         method: 'GET',
         headers: this.getAuthHeaders(),
+        mode: 'cors',
+        cache: 'no-cache',
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch users: ${response.statusText}`);
+        const errorText = await response.text().catch(() => response.statusText);
+        console.error('Failed to fetch users:', response.status, errorText);
+        throw new Error(`Failed to fetch users: ${response.status} ${errorText}`);
       }
 
       const users = await response.json();
@@ -110,21 +114,31 @@ class UsersApiService {
   }
 
   // Get user by ID
-  async getUserById(id: string): Promise<User> {
+  async getUserById(id: string): Promise<User | null> {
     try {
-      const response = await fetch(`${API_CONFIG.USER_SERVICE_URL}/api/v1/users/${id}`, {
+      const response = await fetch(`${API_CONFIG.USER_SERVICE_URL}${API_CONFIG.ENDPOINTS.USERS}/${id}`, {
         method: 'GET',
         headers: this.getAuthHeaders(),
+        mode: 'cors',
+        cache: 'no-cache',
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch user: ${response.statusText}`);
+        // Log error but return null instead of throwing - let caller handle gracefully
+        const errorText = await response.text().catch(() => response.statusText);
+        console.warn(`Failed to fetch user ${id}: ${response.status} ${errorText}`);
+        return null;
       }
 
       return await response.json();
     } catch (error) {
-      console.error('Error fetching user:', error);
-      throw error;
+      // Only log if it's not a network error (which is expected in some cases)
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        console.warn('Network error fetching user:', error);
+      } else {
+        console.error('Error fetching user:', error);
+      }
+      return null;
     }
   }
 
@@ -133,7 +147,7 @@ class UsersApiService {
     try {
       console.log('Sending user data:', userData);
       
-      const response = await fetch(`${API_CONFIG.USER_SERVICE_URL}/api/v1/users`, {
+      const response = await fetch(`${API_CONFIG.USER_SERVICE_URL}${API_CONFIG.ENDPOINTS.USERS}`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify(userData),
@@ -163,7 +177,7 @@ class UsersApiService {
   // Update user
   async updateUser(id: string, userData: UpdateUserDto): Promise<User> {
     try {
-      const response = await fetch(`${API_CONFIG.USER_SERVICE_URL}/api/v1/users/${id}`, {
+      const response = await fetch(`${API_CONFIG.USER_SERVICE_URL}${API_CONFIG.ENDPOINTS.USERS}/${id}`, {
         method: 'PATCH',
         headers: this.getAuthHeaders(),
         body: JSON.stringify(userData),
@@ -184,7 +198,7 @@ class UsersApiService {
   // Delete user (soft delete)
   async deleteUser(id: string): Promise<void> {
     try {
-      const response = await fetch(`${API_CONFIG.USER_SERVICE_URL}/api/v1/users/${id}`, {
+      const response = await fetch(`${API_CONFIG.USER_SERVICE_URL}${API_CONFIG.ENDPOINTS.USERS}/${id}`, {
         method: 'DELETE',
         headers: this.getAuthHeaders(),
       });

@@ -16,7 +16,8 @@
     "@mui/material": "^7.3.2",
     "@mui/x-data-grid": "^8.12.1",
     "@mui/x-date-pickers": "^8.12.0",
-    "@zoom/videosdk": "^1.11.0",
+    "@reduxjs/toolkit": "^2.10.1",
+    "agora-rtc-sdk-ng": "^4.20.0",
     "axios": "^1.12.2",
     "framer-motion": "^12.23.22",
     "lucide-react": "^0.544.0",
@@ -24,6 +25,8 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.63.0",
+    "react-redux": "^9.2.0",
+    "socket.io-client": "^4.8.1",
     "zod": "^4.1.11",
     "zustand": "^5.0.8"
   },

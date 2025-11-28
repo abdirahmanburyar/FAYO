@@ -65,6 +65,9 @@ export class OtpService {
         // Continue even if database write fails (OTP is still in Redis)
       }
 
+      // ALWAYS Log OTP to console for debugging/development
+      console.log(`\n🔑 [OTP DEBUG] Phone: ${phone} | Code: ${code} | Expires: ${expiresIn / 1000}s\n`);
+
       // Send OTP via email (non-blocking)
       await this.sendOtpViaEmail(phone, code).catch((emailError) => {
         console.warn('Email error (non-critical):', emailError);

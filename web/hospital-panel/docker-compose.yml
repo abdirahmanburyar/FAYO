@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  admin-panel:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - NODE_ENV=production
+      - PORT=8000
+      - USER_SERVICE_URL=http://user-service:3001
+      - NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
+    depends_on:
+      - user-service
+    networks:
+      - fayo-network
+
+  user-service:
+    build: ../services/user-service
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/fayo_db
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - EMAIL_USER=buryar313@gmail.com
+      - EMAIL_PASS=davoehorfrkkerei
+      - EMAIL_FROM=buryar313@gmail.com
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - fayo-network
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=fayo_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - fayo-network
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - fayo-network
+
+networks:
+  fayo-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

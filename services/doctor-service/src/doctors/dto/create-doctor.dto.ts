@@ -29,9 +29,38 @@ export class CreateDoctorDto {
   @IsNumber()
   @IsOptional()
   @Min(0)
-  consultationFee?: number;
+  selfEmployedConsultationFee?: number; // Self-employed consultation fee in cents
 
   @IsString()
   @IsOptional()
   bio?: string;
+
+  // Professional Information
+  @IsString()
+  @IsOptional()
+  education?: string;
+
+  @IsString()
+  @IsOptional()
+  certifications?: string; // JSON array string
+
+  @IsString()
+  @IsOptional()
+  languages?: string; // JSON array string
+
+  @IsString()
+  @IsOptional()
+  awards?: string; // JSON array string
+
+  @IsString()
+  @IsOptional()
+  publications?: string; // JSON array string
+
+  @IsString()
+  @IsOptional()
+  memberships?: string; // JSON array string
+
+  @IsString()
+  @IsOptional()
+  researchInterests?: string;
 }

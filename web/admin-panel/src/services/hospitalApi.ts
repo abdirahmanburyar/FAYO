@@ -58,6 +58,7 @@ export interface Doctor {
 
 // DTOs for creation
 export interface CreateHospitalDto {
+  userId?: string; // Reference to user account in user-service
   name: string;
   type: 'HOSPITAL' | 'CLINIC';
   address: string;
@@ -96,9 +97,7 @@ class HospitalApiService {
       
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: this.getAuthHeaders(),
       });
 
       console.log('Response status:', response.status);
@@ -112,6 +111,12 @@ class HospitalApiService {
 
       const hospitalsData = await response.json();
       console.log('Hospitals data received:', hospitalsData);
+      
+      // Ensure we have an array
+      if (!Array.isArray(hospitalsData)) {
+        console.error('Hospitals data is not an array:', hospitalsData);
+        throw new Error('Invalid response format: expected array of hospitals');
+      }
       
       // Transform service data for each hospital
       const transformedHospitals = hospitalsData.map((hospital: any) => ({
@@ -128,6 +133,7 @@ class HospitalApiService {
         })) || [],
       }));
       
+      console.log('Transformed hospitals:', transformedHospitals);
       return transformedHospitals;
     } catch (error) {
       console.error('Error fetching hospitals:', error);

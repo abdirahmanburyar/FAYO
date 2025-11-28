@@ -9,13 +9,10 @@ import {
   FileText,
   Settings,
   LogOut,
-  User,
-  Phone,
-  Mail,
   Stethoscope,
   Building2,
   Palette,
-  Activity
+  BookOpen
 } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -36,10 +33,10 @@ interface AdminSidebarProps {
 
 const menuItems = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: Home },
+  { name: 'Specialties', href: '/admin/specialties', icon: BookOpen },
   { name: 'Hospitals', href: '/admin/hospitals', icon: Building2 },
   { name: 'Users', href: '/admin/users', icon: Users },
   { name: 'Doctors', href: '/admin/doctors', icon: Stethoscope },
-  { name: 'Specialties', href: '/admin/specialties', icon: Activity },
   { name: 'Appointments', href: '/admin/appointments', icon: Calendar },
   { name: 'Reports', href: '/admin/reports', icon: FileText },
   { name: 'Components', href: '/admin/components', icon: Palette },
@@ -90,33 +87,16 @@ export default function AdminSidebar({ isOpen, onClose, adminUser }: AdminSideba
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">F</span>
+              <div className="w-10 h-10 flex items-center justify-center">
+                <img 
+                  src="/logo.png" 
+                  alt="FAYO Logo" 
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div>
                 <h1 className="text-lg font-bold text-gray-900">FAYO Admin</h1>
                 <p className="text-xs text-gray-500">Healthcare Panel</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Admin User Info */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
-                <User className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {adminUser.firstName} {adminUser.lastName}
-                </p>
-                <p className="text-xs text-gray-500 truncate">
-                  @{adminUser.username}
-                </p>
-                <div className="flex items-center space-x-2 mt-1">
-                  <Phone className="w-3 h-3 text-gray-400" />
-                  <span className="text-xs text-gray-500">Admin</span>
-                </div>
               </div>
             </div>
           </div>
@@ -187,8 +167,12 @@ export default function AdminSidebar({ isOpen, onClose, adminUser }: AdminSideba
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200">
                 <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">F</span>
+                  <div className="w-10 h-10 flex items-center justify-center">
+                    <img 
+                      src="/logo.png" 
+                      alt="FAYO Logo" 
+                      className="w-full h-full object-contain"
+                    />
                   </div>
                   <div>
                     <h1 className="text-lg font-bold text-gray-900">FAYO Admin</h1>
@@ -201,27 +185,6 @@ export default function AdminSidebar({ isOpen, onClose, adminUser }: AdminSideba
                 >
                   <X className="w-5 h-5 text-gray-600" />
                 </button>
-              </div>
-
-              {/* Admin User Info */}
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
-                    <User className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {adminUser.firstName} {adminUser.lastName}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">
-                      @{adminUser.username}
-                    </p>
-                    <div className="flex items-center space-x-2 mt-1">
-                      <Phone className="w-3 h-3 text-gray-400" />
-                      <span className="text-xs text-gray-500">Admin</span>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {/* Navigation Menu */}

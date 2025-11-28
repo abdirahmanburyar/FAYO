@@ -2,7 +2,7 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["multiSchema"]
   binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
 }
@@ -14,22 +14,23 @@ datasource db {
 }
 
 model Hospital {
-  id          String        @id @default(cuid())
-  name        String
-  type        HospitalType  @default(HOSPITAL)
-  address     String
-  city        String
-  phone       String?
-  email       String?
-  website     String?
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id        String       @id @default(cuid())
+  userId    String?      @unique // Reference to user account in user-service
+  name      String
+  type      HospitalType @default(HOSPITAL)
+  address   String
+  city      String
+  phone     String?
+  email     String?
+  website   String?
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   // Relationships with shared data
   specialties HospitalSpecialty[]
   services    HospitalService[]
-  
+
   // Many-to-many relationship with doctors
   hospitalDoctors HospitalDoctor[]
 
@@ -37,32 +38,47 @@ model Hospital {
   @@schema("hospitals")
 }
 
+model Service {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relationships
+  hospitalServices HospitalService[]
+
+  @@map("services")
+  @@schema("hospitals")
+}
+
 model HospitalSpecialty {
   id          String   @id @default(cuid())
   hospitalId  String
-  specialtyId String   // Reference to shared_specialties.id
-  specialtyName String // Cache the specialty name for performance
+  specialtyId String // Reference to specialty-service specialty ID
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  // Note: specialty details are fetched from specialty-service
 
   @@unique([hospitalId, specialtyId])
   @@map("hospital_specialties")
   @@schema("hospitals")
 }
 
-
 model HospitalService {
-  id        String   @id @default(cuid())
+  id         String   @id @default(cuid())
   hospitalId String
-  serviceId  String   // Reference to shared_services.id
+  serviceId  String
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  service  Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@unique([hospitalId, serviceId])
   @@map("hospital_services")
@@ -70,18 +86,22 @@ model HospitalService {
 }
 
 model HospitalDoctor {
-  id        String   @id @default(cuid())
-  doctorId  String
-  hospitalId String
-  role      String   @default("CONSULTANT") // CONSULTANT, SENIOR_CONSULTANT, HEAD_OF_DEPARTMENT, RESIDENT, INTERN, GENERAL_PRACTITIONER
-  isActive  Boolean  @default(true)
-  joinedAt  DateTime @default(now())
-  leftAt    DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String    @id @default(cuid())
+  doctorId        String
+  hospitalId      String
+  role            String    @default("CONSULTANT") // CONSULTANT, SENIOR_CONSULTANT, HEAD_OF_DEPARTMENT, RESIDENT, INTERN, GENERAL_PRACTITIONER
+  shift           String? // e.g., "MORNING", "AFTERNOON", "EVENING", "NIGHT", "FULL_DAY"
+  startTime       String? // Time format: "09:00" (24-hour format)
+  endTime         String? // Time format: "17:00" (24-hour format)
+  consultationFee Int? // Consultation fee in cents (specific to this hospital association)
+  status          String    @default("ACTIVE") // ACTIVE, INACTIVE
+  joinedAt        DateTime  @default(now())
+  leftAt          DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   // Relationships
-  doctor   Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  doctor   Doctor   @relation(fields: [doctorId], references: [id], onDelete: Cascade)
   hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
 
   @@unique([doctorId, hospitalId])
@@ -90,17 +110,17 @@ model HospitalDoctor {
 }
 
 model Doctor {
-  id            String   @id @default(cuid())
-  userId        String   @unique // Reference to user in user-service
-  specialty     String
-  licenseNumber String   @unique
-  experience    Int      // years of experience
-  isVerified    Boolean  @default(false)
-  isAvailable   Boolean  @default(true)
-  consultationFee Int?   // in cents
-  bio           String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id              String   @id @default(cuid())
+  userId          String   @unique // Reference to user in user-service
+  specialty       String
+  licenseNumber   String   @unique
+  experience      Int // years of experience
+  isVerified      Boolean  @default(false)
+  isAvailable     Boolean  @default(true)
+  consultationFee Int? // in cents
+  bio             String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Many-to-many relationship with hospitals
   hospitalDoctors HospitalDoctor[]

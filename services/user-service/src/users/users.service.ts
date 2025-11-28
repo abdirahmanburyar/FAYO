@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, NotFoundException, ConflictException }
 import { PrismaService } from '../common/database/prisma.service';
 import { CreateUserDto, UpdateUserDto, UpdateProfileDto } from './dto';
 import { User, UserRole } from '@prisma/client';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class UsersService {
@@ -9,13 +10,27 @@ export class UsersService {
 
   async create(createUserDto: CreateUserDto): Promise<User> {
     try {
+      // Hash password if provided
+      let hashedPassword: string | undefined;
+      if (createUserDto.password) {
+        const saltRounds = 10;
+        hashedPassword = await bcrypt.hash(createUserDto.password, saltRounds);
+        console.log('✅ [USER] Password hashed successfully');
+      }
+
       // Convert dateOfBirth string to Date object if provided
       const data = {
         ...createUserDto,
+        password: hashedPassword, // Use hashed password instead of plain text
         dateOfBirth: createUserDto.dateOfBirth ? new Date(createUserDto.dateOfBirth) : undefined,
       };
 
-      console.log('Creating user with data:', data);
+      // Don't log the password (even hashed) in production
+      const logData = { ...data };
+      if (logData.password) {
+        logData.password = '[HASHED]';
+      }
+      console.log('Creating user with data:', logData);
 
       // Check for existing users with same email, phone, or username
       console.log('🔍 [USER] Checking for existing users with same credentials...');
@@ -122,9 +137,18 @@ export class UsersService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
+    // Hash password if provided
+    let hashedPassword: string | undefined;
+    if (updateUserDto.password) {
+      const saltRounds = 10;
+      hashedPassword = await bcrypt.hash(updateUserDto.password, saltRounds);
+      console.log('✅ [USER] Password hashed for update');
+    }
+
     // Convert dateOfBirth string to Date object if provided
     const data = {
       ...updateUserDto,
+      password: hashedPassword || updateUserDto.password, // Use hashed password if provided
       dateOfBirth: updateUserDto.dateOfBirth ? new Date(updateUserDto.dateOfBirth) : undefined,
     };
 

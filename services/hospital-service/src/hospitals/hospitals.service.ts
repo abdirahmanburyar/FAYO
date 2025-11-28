@@ -1,10 +1,15 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../common/database/prisma.service';
+import { SpecialtyServiceClient } from '../common/specialty-service/specialty-service.client';
 import { CreateHospitalDto } from './dto/create-hospital.dto';
 import { UpdateHospitalDto } from './dto/update-hospital.dto';
+import { AddDoctorDto } from './dto/add-doctor.dto';
 import { KafkaService } from '../kafka/kafka.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { WebSocketServerService } from '../websocket/websocket-server';
+import { ConfigService } from '@nestjs/config';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class HospitalsService {
@@ -12,6 +17,9 @@ export class HospitalsService {
     private readonly prisma: PrismaService,
     private readonly kafkaService: KafkaService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly specialtyServiceClient: SpecialtyServiceClient,
+    private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
   ) {}
 
   private getWebSocketServer(): WebSocketServerService | null {
@@ -58,6 +66,8 @@ export class HospitalsService {
   }
 
   async create(createHospitalDto: CreateHospitalDto) {
+    let createdUserId: string | null = null;
+    
     try {
       // Check if hospital with same name and city already exists
       const existingHospital = await this.prisma.hospital.findFirst({
@@ -73,15 +83,63 @@ export class HospitalsService {
         );
       }
 
-      const hospital = await this.prisma.hospital.create({
-        data: createHospitalDto,
-        include: {
-          specialties: true,
-          services: true,
-        },
+      // If userId is not provided, create a new user in user-service first
+      if (!createHospitalDto.userId) {
+        console.log('[HOSPITAL-CREATE] No userId provided, creating new user in user-service...');
+        
+        const userServiceUrl = this.configService.get('USER_SERVICE_URL') || 'http://localhost:3001';
+        const createUserUrl = `${userServiceUrl}/api/v1/users`;
+        
+        try {
+          // Create user with hospital manager role
+          const userData = {
+            firstName: createHospitalDto.name,
+            lastName: 'Hospital',
+            email: createHospitalDto.email || `${createHospitalDto.name.toLowerCase().replace(/\s+/g, '_')}@hospital.com`,
+            phone: createHospitalDto.phone || '',
+            role: 'HOSPITAL',
+            userType: 'HOSPITAL_MANAGER',
+            username: Math.floor(100000 + Math.random() * 900000).toString(), // Generate 6-digit username
+            password: Math.random().toString(36).slice(-8), // Generate random password
+          };
+
+          console.log('[HOSPITAL-CREATE] Creating user:', { email: userData.email, username: userData.username });
+          
+          const userResponse = await firstValueFrom(
+            this.httpService.post(createUserUrl, userData)
+          );
+
+          if (userResponse.data && userResponse.data.id) {
+            createdUserId = userResponse.data.id;
+            createHospitalDto.userId = createdUserId;
+            console.log('[HOSPITAL-CREATE] ✅ User created successfully:', createdUserId);
+          } else {
+            throw new Error('User creation failed: No user ID returned');
+          }
+        } catch (error) {
+          console.error('[HOSPITAL-CREATE] ❌ Failed to create user:', error.response?.data || error.message);
+          throw new Error(`Failed to create user for hospital: ${error.response?.data?.message || error.message}`);
+        }
+      }
+
+      // Use Prisma transaction to create hospital atomically
+      console.log('[HOSPITAL-CREATE] Creating hospital in transaction...');
+      const hospital = await this.prisma.$transaction(async (tx) => {
+        const hospital = await tx.hospital.create({
+          data: createHospitalDto,
+          include: {
+            specialties: true,
+            services: true,
+          },
+        });
+        
+        console.log('[HOSPITAL-CREATE] ✅ Hospital created in transaction:', hospital.id);
+        return hospital;
       });
 
-      // Emit events for real-time updates
+      console.log('[HOSPITAL-CREATE] ✅ Transaction completed successfully');
+
+      // Emit events for real-time updates (only after successful transaction)
       this.eventEmitter.emit('hospital.created', hospital);
       await this.kafkaService.publishHospitalCreated(hospital);
       
@@ -90,6 +148,23 @@ export class HospitalsService {
 
       return hospital;
     } catch (error) {
+      // If hospital creation failed but user was created, delete the user (compensating transaction)
+      if (createdUserId) {
+        console.error('[HOSPITAL-CREATE] ❌ Hospital creation failed, rolling back user creation...');
+        try {
+          const userServiceUrl = this.configService.get('USER_SERVICE_URL') || 'http://localhost:3001';
+          const deleteUserUrl = `${userServiceUrl}/api/v1/users/${createdUserId}`;
+          
+          await firstValueFrom(
+            this.httpService.delete(deleteUserUrl)
+          );
+          console.log('[HOSPITAL-CREATE] ✅ User rollback successful:', createdUserId);
+        } catch (rollbackError) {
+          console.error('[HOSPITAL-CREATE] ❌ Failed to rollback user creation:', rollbackError.message);
+          // Log but don't throw - the main error is more important
+        }
+      }
+
       if (error instanceof ConflictException) {
         throw error;
       }
@@ -97,88 +172,175 @@ export class HospitalsService {
     }
   }
 
-  async findAll() {
+  async findAll(options?: { page?: number; limit?: number; search?: string }) {
     try {
-      console.log('🏥 [DEBUG] findAll called');
+      // Trim and validate search query
+      const searchQuery = options?.search?.trim();
+      const hasSearch = searchQuery && searchQuery.length > 0;
+      
+      // Use provided page (allows pagination of search results)
+      const page = options?.page || 1;
+      const limit = options?.limit;
+      
+      console.log('🏥 [DEBUG] findAll called', { 
+        page, 
+        limit, 
+        search: searchQuery, 
+        hasSearch
+      });
+      
+      // Build where clause for search using contains (LIKE) - matches anywhere in the string
+      // Note: type is an enum, so we can't use contains on it
+      // We'll search in name, city, and address fields
+      // contains with mode: 'insensitive' works like SQL: WHERE name ILIKE '%searchQuery%'
+      const where = hasSearch
+        ? {
+            OR: [
+              { name: { contains: searchQuery, mode: 'insensitive' as const } },
+              { city: { contains: searchQuery, mode: 'insensitive' as const } },
+              { address: { contains: searchQuery, mode: 'insensitive' as const } },
+            ],
+          }
+        : undefined;
+
+      console.log('🔍 [DEBUG] Where clause:', JSON.stringify(where, null, 2));
+
+      // First, get total count with the where clause to verify filtering
+      const totalCount = await this.prisma.hospital.count({
+        where,
+      }).catch((error) => {
+        console.error('❌ [DEBUG] Prisma count error:', error);
+        return 0;
+      });
+      
+      console.log('📊 [DEBUG] Total count with filter:', totalCount);
+
+      // Calculate skip for pagination
+      const skip = limit ? (page - 1) * limit : undefined;
       
       const hospitals = await this.prisma.hospital.findMany({
+        where,
         include: {
           specialties: true,
-          services: true,
+          services: {
+            include: {
+              service: true,
+            },
+          },
         },
         orderBy: {
           createdAt: 'desc',
         },
+        skip,
+        take: limit,
+      }).catch((error) => {
+        console.error('❌ [DEBUG] Prisma error in findAll:', error);
+        console.error('❌ [DEBUG] Error details:', {
+          message: error?.message,
+          code: error?.code,
+          meta: error?.meta,
+        });
+        throw error;
       });
 
       console.log('📊 [DEBUG] Found hospitals:', hospitals.length);
       
-      // Get all unique service IDs from all hospitals
-      const allServiceIds = new Set<string>();
-      hospitals.forEach(hospital => {
-        hospital.services?.forEach(service => {
-          if (service.serviceId) {
-            allServiceIds.add(service.serviceId);
-          }
-        });
+      // Debug: Log first few hospital names to verify filtering
+      if (hasSearch) {
+        console.log('🔍 [DEBUG] Search query:', searchQuery);
+        console.log('🔍 [DEBUG] Total hospitals found:', hospitals.length);
+        if (hospitals.length > 0) {
+          console.log('🔍 [DEBUG] First hospital matches:', {
+            name: hospitals[0].name,
+            city: hospitals[0].city,
+            address: hospitals[0].address,
+            type: hospitals[0].type,
+            nameContains: hospitals[0].name.toLowerCase().includes(searchQuery.toLowerCase()),
+            cityContains: hospitals[0].city.toLowerCase().includes(searchQuery.toLowerCase()),
+          });
+        } else {
+          console.log('🔍 [DEBUG] No hospitals found matching search query');
+        }
+      }
+      
+      // Fetch all specialty IDs from all hospitals
+      const allSpecialtyIds = new Set<string>();
+      hospitals.forEach((hospital: any) => {
+        if (hospital.specialties && Array.isArray(hospital.specialties)) {
+          hospital.specialties.forEach((hs: any) => {
+            if (hs.specialtyId) {
+              allSpecialtyIds.add(hs.specialtyId);
+            }
+          });
+        }
       });
 
-      console.log('🔍 [DEBUG] Unique service IDs to fetch:', Array.from(allServiceIds));
-
-      // Fetch all service details in one batch
-      const serviceDetailsMap = new Map<string, any>();
-      if (allServiceIds.size > 0) {
+      // Fetch specialty details from specialty-service
+      const specialtiesMap = new Map<string, any>();
+      if (allSpecialtyIds.size > 0) {
         try {
-          console.log('🔍 [DEBUG] Fetching all services via shared service client...');
-          
-          const allServices: any[] = []; // shared-service removed
-          console.log('✅ [DEBUG] Fetched services via shared service client:', allServices.length);
-          
-          // Create a map for quick lookup
-          allServices.forEach(service => {
-            serviceDetailsMap.set(service.id, service);
-          });
+          const specialties = await this.specialtyServiceClient.getSpecialtiesByIds(Array.from(allSpecialtyIds));
+          specialties.forEach(s => specialtiesMap.set(s.id, s));
         } catch (error) {
-          console.warn('❌ [DEBUG] Error fetching services via shared service client:', error.message);
+          console.warn('Failed to fetch specialties from specialty-service:', error);
         }
       }
 
-        // Map service details to hospital services
-        hospitals.forEach(hospital => {
-          if (hospital.services && hospital.services.length > 0) {
-            (hospital as any).services = hospital.services.map(hospitalService => {
-              const serviceDetails = serviceDetailsMap.get(hospitalService.serviceId);
-              return {
-                id: hospitalService.id,
-                hospitalId: hospitalService.hospitalId,
-                serviceId: hospitalService.serviceId,
-                name: serviceDetails?.name || 'Unknown Service',
-                description: serviceDetails?.description || '',
-                isActive: hospitalService.isActive,
-                createdAt: hospitalService.createdAt,
-                updatedAt: hospitalService.updatedAt,
-              };
-            });
-          }
-        });
+      // Enrich hospitals with specialty and service details
+      const enrichedHospitals = hospitals.map((hospital: any) => ({
+        ...hospital,
+        specialties: (hospital.specialties || []).map((hs: any) => {
+          const specialty = specialtiesMap.get(hs.specialtyId);
+          return {
+            id: hs.id,
+            hospitalId: hs.hospitalId,
+            specialtyId: hs.specialtyId,
+            name: specialty?.name || 'Unknown Specialty',
+            description: specialty?.description || null,
+            isActive: hs.isActive,
+            createdAt: hs.createdAt,
+            updatedAt: hs.updatedAt,
+          };
+        }),
+        services: (hospital.services || []).map((hs: any) => ({
+          id: hs.id,
+          hospitalId: hs.hospitalId,
+          serviceId: hs.serviceId,
+          name: hs.service?.name || 'Unknown Service',
+          description: hs.service?.description || null,
+          isActive: hs.isActive,
+          createdAt: hs.createdAt,
+          updatedAt: hs.updatedAt,
+        })),
+      }));
 
-      hospitals.forEach((hospital, index) => {
-        console.log(`🏥 [DEBUG] Hospital ${index + 1}:`, {
-          id: hospital.id,
-          name: hospital.name,
-          servicesCount: hospital.services?.length || 0,
-          services: hospital.services?.map(s => ({ 
-            id: s.id, 
-            serviceId: s.serviceId, 
-            name: (s as any).name || 'Unknown Service' 
-          })) || []
-        });
-      });
-
-      return hospitals;
+      return enrichedHospitals;
     } catch (error) {
       console.error('❌ [DEBUG] Error in findAll:', error);
       throw new Error(`Failed to fetch hospitals: ${error.message}`);
+    }
+  }
+
+  async findByUserId(userId: string) {
+    try {
+      const hospital = await this.prisma.hospital.findUnique({
+        where: { userId },
+        include: {
+          specialties: true,
+          services: true,
+        },
+      });
+
+      if (!hospital) {
+        throw new NotFoundException(`Hospital not found for user ID: ${userId}`);
+      }
+
+      return hospital;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new Error(`Failed to find hospital by user ID: ${error.message}`);
     }
   }
 
@@ -190,7 +352,11 @@ export class HospitalsService {
         where: { id },
         include: {
           specialties: true,
-          services: true,
+          services: {
+            include: {
+              service: true,
+            },
+          },
         },
       });
 
@@ -198,54 +364,46 @@ export class HospitalsService {
         throw new NotFoundException(`Hospital with ID ${id} not found`);
       }
 
-      // Fetch service details for this hospital
-      if (hospital.services && hospital.services.length > 0) {
-        console.log(`🔍 [DEBUG] Fetching service details for hospital ${hospital.name}`);
-        
-        // Get service IDs for this hospital
-        const serviceIds = hospital.services.map(s => s.serviceId).filter(Boolean);
-        
-        // Fetch service details in one batch
-        const serviceDetailsMap = new Map<string, any>();
-        if (serviceIds.length > 0) {
-          try {
-            console.log('🔍 [DEBUG] Fetching services via shared service client...');
-            
-            const allServices: any[] = []; // shared-service removed
-            console.log('✅ [DEBUG] Fetched services via shared service client:', allServices.length);
-            
-            // Create a map for quick lookup
-            allServices.forEach(service => {
-              serviceDetailsMap.set(service.id, service);
-            });
-          } catch (error) {
-            console.warn('❌ [DEBUG] Error fetching services via shared service client:', error.message);
-          }
-        }
+      // Fetch specialty details from specialty-service
+      const specialtyIds = ((hospital as any).specialties || []).map((hs: any) => hs.specialtyId).filter(Boolean);
+      const specialties = await this.specialtyServiceClient.getSpecialtiesByIds(specialtyIds);
+      const specialtiesMap = new Map(specialties.map(s => [s.id, s]));
 
-        // Map service details to hospital services
-        (hospital as any).services = hospital.services.map(hospitalService => {
-          const serviceDetails = serviceDetailsMap.get(hospitalService.serviceId);
+      // Enrich hospital with specialty and service details
+      const enrichedHospital = {
+        ...hospital,
+        specialties: ((hospital as any).specialties || []).map((hs: any) => {
+          const specialty = specialtiesMap.get(hs.specialtyId);
           return {
-            id: hospitalService.id,
-            hospitalId: hospitalService.hospitalId,
-            serviceId: hospitalService.serviceId,
-            name: serviceDetails?.name || 'Unknown Service',
-            description: serviceDetails?.description || '',
-            isActive: hospitalService.isActive,
-            createdAt: hospitalService.createdAt,
-            updatedAt: hospitalService.updatedAt,
+            id: hs.id,
+            hospitalId: hs.hospitalId,
+            specialtyId: hs.specialtyId,
+            name: specialty?.name || 'Unknown Specialty',
+            description: specialty?.description || null,
+            isActive: hs.isActive,
+            createdAt: hs.createdAt,
+            updatedAt: hs.updatedAt,
           };
-        });
-      }
+        }),
+        services: ((hospital as any).services || []).map((hs: any) => ({
+          id: hs.id,
+          hospitalId: hs.hospitalId,
+          serviceId: hs.serviceId,
+          name: hs.service?.name || 'Unknown Service',
+          description: hs.service?.description || null,
+          isActive: hs.isActive,
+          createdAt: hs.createdAt,
+          updatedAt: hs.updatedAt,
+        })),
+      };
 
       console.log('✅ [DEBUG] Hospital fetched successfully:', {
-        id: hospital.id,
-        name: hospital.name,
-        servicesCount: hospital.services?.length || 0
+        id: enrichedHospital.id,
+        name: enrichedHospital.name,
+        servicesCount: enrichedHospital.services?.length || 0
       });
 
-      return hospital;
+      return enrichedHospital;
     } catch (error) {
       console.error('❌ [DEBUG] Error in findOne:', error);
       if (error instanceof NotFoundException) {
@@ -399,15 +557,16 @@ export class HospitalsService {
         throw new ConflictException('Specialty already exists for this hospital');
       }
 
-      // TODO: Fetch specialty name from shared service
-      // For now, we'll use a placeholder
-      const specialtyName = 'Specialty Name'; // This should be fetched from shared service
+      // Verify specialty exists in specialty-service
+      const exists = await this.specialtyServiceClient.verifySpecialtyExists(specialtyId);
+      if (!exists) {
+        throw new NotFoundException(`Specialty with ID ${specialtyId} not found in specialty-service`);
+      }
 
       const hospitalSpecialty = await this.prisma.hospitalSpecialty.create({
         data: {
           hospitalId,
           specialtyId,
-          specialtyName,
         },
       });
 
@@ -467,64 +626,35 @@ export class HospitalsService {
         throw new NotFoundException(`Hospital with ID ${hospitalId} not found`);
       }
 
-      // Get all services for this hospital
-      const hospitalServices = await this.prisma.hospitalService.findMany({
+      // Fetch services with details from database
+      const servicesWithDetails = await this.prisma.hospitalService.findMany({
         where: { hospitalId },
-        select: {
-          id: true,
-          hospitalId: true,
-          serviceId: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
+        include: {
+          service: true,
         },
         orderBy: { createdAt: 'asc' },
       });
 
-      console.log('📊 [DEBUG] Found hospital services:', hospitalServices.length);
+      console.log('📊 [DEBUG] Found hospital services:', servicesWithDetails.length);
 
-      if (hospitalServices.length === 0) {
+      if (servicesWithDetails.length === 0) {
         return [];
       }
 
-      // Get service IDs for this hospital
-      const serviceIds = hospitalServices.map(s => s.serviceId).filter(Boolean);
-      
-      // Fetch service details in one batch
-      const serviceDetailsMap = new Map<string, any>();
-      if (serviceIds.length > 0) {
-        try {
-          console.log('🔍 [DEBUG] Fetching services via shared service client...');
-          
-          const allServices: any[] = []; // shared-service removed
-          console.log('✅ [DEBUG] Fetched services via shared service client:', allServices.length);
-          
-          // Create a map for quick lookup
-          allServices.forEach(service => {
-            serviceDetailsMap.set(service.id, service);
-          });
-        } catch (error) {
-          console.warn('❌ [DEBUG] Error fetching services via shared service client:', error.message);
-        }
-      }
+      // Fetch service details (services are still in hospital-service database)
+      const enrichedServices = servicesWithDetails.map(hospitalService => ({
+        id: hospitalService.id,
+        hospitalId: hospitalService.hospitalId,
+        serviceId: hospitalService.serviceId,
+        name: hospitalService.service?.name || 'Unknown Service',
+        description: hospitalService.service?.description || null,
+        isActive: hospitalService.isActive,
+        createdAt: hospitalService.createdAt,
+        updatedAt: hospitalService.updatedAt,
+      }));
 
-      // Map service details to hospital services
-      const servicesWithDetails = hospitalServices.map(hospitalService => {
-        const serviceDetails = serviceDetailsMap.get(hospitalService.serviceId);
-        return {
-          id: hospitalService.id,
-          hospitalId: hospitalService.hospitalId,
-          serviceId: hospitalService.serviceId,
-          name: serviceDetails?.name || 'Unknown Service',
-          description: serviceDetails?.description || '',
-          isActive: hospitalService.isActive,
-          createdAt: hospitalService.createdAt,
-          updatedAt: hospitalService.updatedAt,
-        };
-      });
-
-      console.log('✅ [DEBUG] Services with details:', servicesWithDetails.length);
-      return servicesWithDetails;
+      console.log('✅ [DEBUG] Services with details:', enrichedServices.length);
+      return enrichedServices;
     } catch (error) {
       console.error('❌ [DEBUG] Error in getServices:', error);
       if (error instanceof NotFoundException) {
@@ -565,27 +695,13 @@ export class HospitalsService {
       }
       console.log('✅ [DEBUG] Service does not exist, proceeding to add');
 
-      // Verify service exists in shared service
-      const sharedServiceUrl = `${process.env.SHARED_SERVICE_URL || 'http://localhost:3004'}/api/v1/services/${serviceId}`;
-      console.log('🔍 [DEBUG] Verifying service exists at:', sharedServiceUrl);
-      
-      try {
-        const sharedServiceResponse = await fetch(sharedServiceUrl);
-        console.log('📡 [DEBUG] Shared service response status:', sharedServiceResponse.status);
-        
-        if (sharedServiceResponse.ok) {
-          const serviceData = await sharedServiceResponse.json();
-          console.log('📦 [DEBUG] Service data received:', serviceData);
-          console.log('✅ [DEBUG] Service verified:', serviceData.name, 'for serviceId:', serviceId);
-        } else {
-          console.warn('❌ [DEBUG] Service not found in shared service, status:', sharedServiceResponse.status);
-          const errorText = await sharedServiceResponse.text();
-          console.warn('❌ [DEBUG] Error response:', errorText);
-          throw new Error(`Service with ID ${serviceId} not found in shared service`);
-        }
-      } catch (error) {
-        console.warn('❌ [DEBUG] Failed to verify service from shared service:', error.message);
-        throw new Error(`Failed to verify service: ${error.message}`);
+      // Verify service exists in database
+      const service = await this.prisma.service.findUnique({
+        where: { id: serviceId },
+      });
+
+      if (!service) {
+        throw new NotFoundException(`Service with ID ${serviceId} not found`);
       }
 
       console.log('💾 [DEBUG] Creating hospital service with:', { hospitalId, serviceId });
@@ -594,7 +710,10 @@ export class HospitalsService {
         data: {
           hospitalId,
           serviceId,
-        } as any,
+        },
+        include: {
+          service: true,
+        },
       });
 
       console.log('✅ [DEBUG] Hospital service created successfully:', hospitalService);
@@ -651,5 +770,370 @@ export class HospitalsService {
     }
   }
 
+  // Hospital Doctors Management
+  async getDoctors(hospitalId: string) {
+    try {
+      const hospital = await this.prisma.hospital.findUnique({
+        where: { id: hospitalId },
+      });
+
+      if (!hospital) {
+        throw new NotFoundException(`Hospital with ID ${hospitalId} not found`);
+      }
+
+      const hospitalDoctors = await this.prisma.hospitalDoctor.findMany({
+        where: { hospitalId },
+        include: {
+          doctor: true,
+        },
+      });
+
+      // Fetch doctor details from doctor-service
+      const doctorIds = hospitalDoctors.map(hd => hd.doctorId);
+      const doctorsMap = new Map();
+      
+      // Fetch doctors from doctor-service
+      if (doctorIds.length > 0) {
+        try {
+          const doctorServiceUrl = this.configService.get<string>('DOCTOR_SERVICE_URL') || 'http://localhost:3003';
+          console.log(`🏥 [DEBUG] Fetching ${doctorIds.length} doctors from doctor-service for hospital ${hospitalId}`);
+          console.log(`🏥 [DEBUG] Doctor IDs to fetch:`, doctorIds);
+          
+          const response = await firstValueFrom(
+            this.httpService.get(`${doctorServiceUrl}/api/v1/doctors`)
+          ) as any;
+          
+          // Handle different response structures (response.data or direct array)
+          const doctors = Array.isArray(response?.data) ? response.data : (Array.isArray(response) ? response : []);
+          
+          console.log(`🏥 [DEBUG] Received ${doctors.length} doctors from doctor-service`);
+          
+          // Filter and map doctors that belong to this hospital
+          doctors.forEach((doctor: any) => {
+            if (doctor && doctor.id && doctorIds.includes(doctor.id)) {
+              // Extract specialty from specialties array (doctor-service returns specialties array)
+              // Use first active specialty name, or first specialty if none are active
+              let specialtyName = '';
+              if (doctor.specialties && Array.isArray(doctor.specialties) && doctor.specialties.length > 0) {
+                const activeSpecialty = doctor.specialties.find((s: any) => s.isActive !== false);
+                specialtyName = activeSpecialty?.name || doctor.specialties[0]?.name || '';
+              } else if (doctor.specialty) {
+                // Fallback to direct specialty field if it exists
+                specialtyName = doctor.specialty;
+              }
+              
+              // Add specialty field for frontend compatibility
+              const enrichedDoctor = {
+                ...doctor,
+                specialty: specialtyName || 'General Practice' // Default if no specialty found
+              };
+              
+              doctorsMap.set(doctor.id, enrichedDoctor);
+              console.log(`✅ [DEBUG] Mapped doctor ${doctor.id} for hospital ${hospitalId}`, {
+                hasUser: !!doctor.user,
+                userId: doctor.userId,
+                specialty: enrichedDoctor.specialty,
+                specialtiesCount: doctor.specialties?.length || 0
+              });
+            }
+          });
+          
+          console.log(`🏥 [DEBUG] Successfully mapped ${doctorsMap.size} doctors for hospital ${hospitalId}`);
+          const missingDoctorIds = doctorIds.filter(id => !doctorsMap.has(id));
+          console.log(`🏥 [DEBUG] Missing doctors:`, missingDoctorIds);
+          
+          // Try to fetch missing doctors individually
+          if (missingDoctorIds.length > 0) {
+            console.log(`🔄 [DEBUG] Attempting to fetch ${missingDoctorIds.length} missing doctors individually`);
+            for (const doctorId of missingDoctorIds) {
+              try {
+                const doctorResponse = await firstValueFrom(
+                  this.httpService.get(`${doctorServiceUrl}/api/v1/doctors/${doctorId}`)
+                ) as any;
+                
+                const doctor = doctorResponse?.data || doctorResponse;
+                if (doctor && doctor.id) {
+                  // Extract specialty from specialties array
+                  let specialtyName = '';
+                  if (doctor.specialties && Array.isArray(doctor.specialties) && doctor.specialties.length > 0) {
+                    const activeSpecialty = doctor.specialties.find((s: any) => s.isActive !== false);
+                    specialtyName = activeSpecialty?.name || doctor.specialties[0]?.name || '';
+                  } else if (doctor.specialty) {
+                    specialtyName = doctor.specialty;
+                  }
+                  
+                  const enrichedDoctor = {
+                    ...doctor,
+                    specialty: specialtyName || 'General Practice'
+                  };
+                  
+                  doctorsMap.set(doctor.id, enrichedDoctor);
+                  console.log(`✅ [DEBUG] Fetched individual doctor ${doctor.id} for hospital ${hospitalId}`, {
+                    specialty: enrichedDoctor.specialty
+                  });
+                }
+              } catch (individualError) {
+                console.warn(`⚠️ [DEBUG] Failed to fetch individual doctor ${doctorId}:`, individualError.message);
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`❌ [DEBUG] Error fetching doctors from doctor-service for hospital ${hospitalId}:`, error);
+          // Continue with local doctor data if available
+        }
+      }
+
+      // Map hospital doctors with enriched doctor data
+      const enrichedHospitalDoctors = hospitalDoctors.map(hd => {
+        const enrichedDoctor = doctorsMap.get(hd.doctorId) || hd.doctor;
+        const result = {
+          ...hd,
+          doctor: enrichedDoctor,
+        };
+        
+        // Log if doctor data is missing
+        if (!enrichedDoctor) {
+          console.warn(`⚠️ [DEBUG] Hospital doctor ${hd.id} has no doctor data for doctorId ${hd.doctorId}`);
+        } else if (!enrichedDoctor.user) {
+          console.warn(`⚠️ [DEBUG] Doctor ${enrichedDoctor.id} has no user data`);
+        }
+        
+        return result;
+      });
+
+      console.log(`🏥 [DEBUG] Returning ${enrichedHospitalDoctors.length} hospital doctors for hospital ${hospitalId}`);
+      console.log(`🏥 [DEBUG] Doctors with data:`, enrichedHospitalDoctors.filter(hd => hd.doctor).length);
+      console.log(`🏥 [DEBUG] Doctors without data:`, enrichedHospitalDoctors.filter(hd => !hd.doctor).length);
+      return enrichedHospitalDoctors;
+    } catch (error) {
+      console.error('Error fetching hospital doctors:', error);
+      throw error;
+    }
+  }
+
+  async addDoctor(hospitalId: string, doctorId: string, addDoctorDto: AddDoctorDto) {
+    try {
+      console.log('🏥 [HOSPITAL_SERVICE] addDoctor called:', { hospitalId, doctorId, addDoctorDto });
+      const { role, shift, startTime, endTime, consultationFee, status } = addDoctorDto;
+
+      // Check if hospital exists
+      const hospital = await this.prisma.hospital.findUnique({
+        where: { id: hospitalId },
+      });
+
+      if (!hospital) {
+        throw new NotFoundException(`Hospital with ID ${hospitalId} not found`);
+      }
+
+      // Verify doctor exists in doctor-service and sync to local database
+      try {
+        const doctorServiceUrl = this.configService.get<string>('DOCTOR_SERVICE_URL') || 'http://localhost:3003';
+        const doctorResponse = await firstValueFrom(
+          this.httpService.get(`${doctorServiceUrl}/api/v1/doctors/${doctorId}`)
+        ) as any;
+        
+        const doctorData = doctorResponse?.data;
+        if (!doctorData) {
+          throw new NotFoundException(`Doctor with ID ${doctorId} not found`);
+        }
+
+        // Ensure doctor exists in local database (for foreign key constraint)
+        const localDoctor = await this.prisma.doctor.findUnique({
+          where: { id: doctorId },
+        });
+
+        if (!localDoctor) {
+          // Create a minimal doctor record for the foreign key relationship
+          // Note: This is a sync record, full doctor data is in doctor-service
+          await this.prisma.doctor.upsert({
+            where: { id: doctorId },
+            create: {
+              id: doctorId,
+              userId: doctorData.userId || doctorId, // Fallback if userId not available
+              specialty: doctorData.specialties?.[0]?.name || 'GENERAL', // Use first specialty or default
+              licenseNumber: doctorData.licenseNumber || `LIC-${doctorId.substring(0, 8)}`,
+              experience: doctorData.experience || 0,
+              isVerified: doctorData.isVerified || false,
+              isAvailable: doctorData.isAvailable !== false,
+            },
+            update: {
+              // Update if exists but data changed
+              userId: doctorData.userId || undefined,
+              specialty: doctorData.specialties?.[0]?.name || undefined,
+              licenseNumber: doctorData.licenseNumber || undefined,
+            },
+          });
+          console.log('✅ [HOSPITAL_SERVICE] Synced doctor to local database:', doctorId);
+        }
+      } catch (error: any) {
+        if (error instanceof NotFoundException) {
+          throw error;
+        }
+        if (error.response?.status === 404) {
+          throw new NotFoundException(`Doctor with ID ${doctorId} not found in doctor-service`);
+        }
+        console.error('❌ [HOSPITAL_SERVICE] Error verifying/syncing doctor:', error);
+        throw new NotFoundException(`Doctor with ID ${doctorId} not found: ${error?.message || 'Unknown error'}`);
+      }
+
+      // Check if association already exists
+      const existing = await this.prisma.hospitalDoctor.findUnique({
+        where: {
+          doctorId_hospitalId: {
+            doctorId,
+            hospitalId,
+          },
+        },
+      });
+
+      if (existing) {
+        throw new ConflictException('Doctor is already associated with this hospital');
+      }
+
+      // Create hospital-doctor association
+      // Note: We don't include doctor relation as it's in a different service/database
+      const hospitalDoctor = await this.prisma.hospitalDoctor.create({
+        data: {
+          doctorId,
+          hospitalId,
+          role: role || 'CONSULTANT',
+          shift: shift || null,
+          startTime: startTime || null,
+          endTime: endTime || null,
+          consultationFee: consultationFee ? Math.round(consultationFee) : null,
+          status: status || 'ACTIVE',
+        },
+      });
+
+      console.log('✅ [HOSPITAL_SERVICE] Doctor added successfully:', hospitalDoctor);
+      return hospitalDoctor;
+    } catch (error) {
+      console.error('❌ [HOSPITAL_SERVICE] Error adding doctor to hospital:', error);
+      console.error('❌ [HOSPITAL_SERVICE] Error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        code: error?.code,
+        meta: error?.meta,
+      });
+      if (error instanceof NotFoundException || error instanceof ConflictException) {
+        throw error;
+      }
+      // Re-throw with more context
+      throw new Error(`Failed to add doctor to hospital: ${error?.message || 'Unknown error'}`);
+    }
+  }
+
+  async updateDoctor(hospitalId: string, doctorId: string, updateDoctorDto: AddDoctorDto) {
+    try {
+      const { role, shift, startTime, endTime, consultationFee, status } = updateDoctorDto;
+
+      // Check if association exists
+      const existing = await this.prisma.hospitalDoctor.findUnique({
+        where: {
+          doctorId_hospitalId: {
+            doctorId,
+            hospitalId,
+          },
+        },
+      });
+
+      if (!existing) {
+        throw new NotFoundException('Doctor is not associated with this hospital');
+      }
+
+      // Update association
+      const updateData: any = {};
+      if (role !== undefined) updateData.role = role;
+      if (shift !== undefined) updateData.shift = shift;
+      if (startTime !== undefined) updateData.startTime = startTime;
+      if (endTime !== undefined) updateData.endTime = endTime;
+      if (consultationFee !== undefined) updateData.consultationFee = consultationFee ? Math.round(consultationFee) : null;
+      if (status !== undefined) updateData.status = status;
+
+      const hospitalDoctor = await this.prisma.hospitalDoctor.update({
+        where: {
+          doctorId_hospitalId: {
+            doctorId,
+            hospitalId,
+          },
+        },
+        data: updateData,
+        include: {
+          doctor: true,
+        },
+      });
+
+      return hospitalDoctor;
+    } catch (error) {
+      console.error('Error updating doctor association:', error);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw error;
+    }
+  }
+
+  async getHospitalsForDoctor(doctorId: string) {
+    try {
+      const hospitalDoctors = await this.prisma.hospitalDoctor.findMany({
+        where: { doctorId },
+        include: {
+          hospital: true,
+        },
+      });
+
+      return hospitalDoctors.map(hd => ({
+        id: hd.id,
+        doctorId: hd.doctorId,
+        hospitalId: hd.hospitalId,
+        role: hd.role,
+        shift: hd.shift,
+        startTime: hd.startTime,
+        endTime: hd.endTime,
+        consultationFee: hd.consultationFee,
+        status: hd.status,
+        joinedAt: hd.joinedAt,
+        leftAt: hd.leftAt,
+        createdAt: hd.createdAt,
+        updatedAt: hd.updatedAt,
+        hospital: hd.hospital,
+      }));
+    } catch (error) {
+      console.error('Error fetching hospitals for doctor:', error);
+      throw error;
+    }
+  }
+
+  async removeDoctor(hospitalId: string, doctorId: string) {
+    try {
+      const existing = await this.prisma.hospitalDoctor.findUnique({
+        where: {
+          doctorId_hospitalId: {
+            doctorId,
+            hospitalId,
+          },
+        },
+      });
+
+      if (!existing) {
+        throw new NotFoundException('Doctor is not associated with this hospital');
+      }
+
+      await this.prisma.hospitalDoctor.delete({
+        where: {
+          doctorId_hospitalId: {
+            doctorId,
+            hospitalId,
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Error removing doctor from hospital:', error);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw error;
+    }
+  }
 }
 

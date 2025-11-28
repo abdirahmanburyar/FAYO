@@ -7,8 +7,15 @@ export interface Doctor {
   experience: number;
   isVerified: boolean;
   isAvailable: boolean;
-  consultationFee?: number;
+  selfEmployedConsultationFee?: number;
   bio?: string;
+  education?: string;
+  certifications?: string; // JSON array string
+  languages?: string; // JSON array string
+  awards?: string; // JSON array string
+  publications?: string; // JSON array string
+  memberships?: string; // JSON array string
+  researchInterests?: string;
   createdAt: string;
   updatedAt: string;
   specialties: {
@@ -33,8 +40,17 @@ export interface CreateDoctorDto {
   specialtyIds: string[];
   licenseNumber: string;
   experience: number;
-  consultationFee?: number;
+  isVerified?: boolean;
+  isAvailable?: boolean;
+  selfEmployedConsultationFee?: number;
   bio?: string;
+  education?: string;
+  certifications?: string; // JSON array string
+  languages?: string; // JSON array string
+  awards?: string; // JSON array string
+  publications?: string; // JSON array string
+  memberships?: string; // JSON array string
+  researchInterests?: string;
 }
 
 export interface UpdateDoctorDto {
@@ -43,8 +59,15 @@ export interface UpdateDoctorDto {
   experience?: number;
   isVerified?: boolean;
   isAvailable?: boolean;
-  consultationFee?: number;
+  selfEmployedConsultationFee?: number | null; // Allow null to clear the fee
   bio?: string;
+  education?: string;
+  certifications?: string; // JSON array string
+  languages?: string; // JSON array string
+  awards?: string; // JSON array string
+  publications?: string; // JSON array string
+  memberships?: string; // JSON array string
+  researchInterests?: string;
 }
 
 class DoctorApiService {
@@ -101,29 +124,69 @@ class DoctorApiService {
   }
 
   async createDoctor(doctorData: CreateDoctorDto): Promise<Doctor> {
-    const response = await fetch(`${API_CONFIG.DOCTOR_SERVICE_URL}${API_CONFIG.ENDPOINTS.DOCTORS}`, {
-      method: 'POST',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(doctorData),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to create doctor');
+    try {
+      console.log('📝 [DOCTOR_API] Creating doctor:', doctorData);
+      
+      const response = await fetch(`${API_CONFIG.DOCTOR_SERVICE_URL}${API_CONFIG.ENDPOINTS.DOCTORS}`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(doctorData),
+      });
+      
+      console.log('📡 [DOCTOR_API] Create response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [DOCTOR_API] Error response:', errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText || `Failed to create doctor: ${response.status} ${response.statusText}` };
+        }
+        throw new Error(errorData.message || errorData.error || `Failed to create doctor: ${response.status} ${response.statusText}`);
+      }
+      
+      const createdDoctor = await response.json();
+      console.log('✅ [DOCTOR_API] Successfully created doctor:', createdDoctor.id);
+      return createdDoctor;
+    } catch (error) {
+      console.error('❌ [DOCTOR_API] Error in createDoctor:', error);
+      throw error;
     }
-    return response.json();
   }
 
   async updateDoctor(id: string, doctorData: UpdateDoctorDto): Promise<Doctor> {
-    const response = await fetch(`${API_CONFIG.DOCTOR_SERVICE_URL}${API_CONFIG.ENDPOINTS.DOCTORS}/${id}`, {
-      method: 'PATCH',
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify(doctorData),
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to update doctor');
+    try {
+      console.log('📝 [DOCTOR_API] Updating doctor:', id, doctorData);
+      
+      const response = await fetch(`${API_CONFIG.DOCTOR_SERVICE_URL}${API_CONFIG.ENDPOINTS.DOCTORS}/${id}`, {
+        method: 'PATCH',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(doctorData),
+      });
+      
+      console.log('📡 [DOCTOR_API] Update response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [DOCTOR_API] Error response:', errorText);
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText || `Failed to update doctor: ${response.status} ${response.statusText}` };
+        }
+        throw new Error(errorData.message || errorData.error || `Failed to update doctor: ${response.status} ${response.statusText}`);
+      }
+      
+      const updatedDoctor = await response.json();
+      console.log('✅ [DOCTOR_API] Successfully updated doctor:', updatedDoctor.id);
+      return updatedDoctor;
+    } catch (error) {
+      console.error('❌ [DOCTOR_API] Error in updateDoctor:', error);
+      throw error;
     }
-    return response.json();
   }
 
   async deleteDoctor(id: string): Promise<void> {

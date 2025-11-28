@@ -33,11 +33,15 @@ async function bootstrap() {
       
       // In development, restrict to localhost and configured origins
       const allowedOrigins = [
-        'http://localhost:3000',
-        'http://localhost:3001',
-        'http://localhost:3002',
-        'http://localhost:3003',
+        'http://localhost:3000', // Admin panel
+        'http://localhost:3001', // Hospital panel (Next.js)
+        'http://localhost:3002', // Hospital service
+        'http://localhost:3003', // Doctor service
+        'http://localhost:3004', // Specialty service
+        'http://localhost:3005', // Appointment service
+        'http://localhost:3006', // Payment service
         process.env.ADMIN_PANEL_URL,
+        process.env.HOSPITAL_PANEL_URL,
         process.env.USER_SERVICE_URL,
         ...(process.env.ALLOWED_ORIGINS?.split(',') || []),
       ].filter(Boolean);
@@ -67,9 +71,6 @@ async function bootstrap() {
   
   // Global prefix
   app.setGlobalPrefix('api/v1');
-  
-  // Trust proxy for rate limiting
-  app.getHttpAdapter().getInstance().set('trust proxy', 1);
   
   const port = configService.get('PORT') || 3003;
   const host = configService.get('HOST') || '0.0.0.0';

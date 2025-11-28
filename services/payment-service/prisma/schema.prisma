@@ -1,0 +1,64 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+  binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["payments"]
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  appointmentId     String
+  amount            Int           // Amount in cents
+  currency          String        @default("USD")
+  paymentMethod     PaymentMethod
+  paymentStatus     PaymentStatus @default(PAID)
+  transactionId     String?       @unique // External transaction ID (if any)
+  receiptNumber     String?       @unique // Internal receipt number
+  paidBy            String?       // User ID who made the payment
+  processedBy       String?       // Admin/staff ID who processed the payment
+  notes             String?       // Additional notes
+  paymentDate       DateTime?     // When payment was actually made
+  processedAt       DateTime?     // When payment was processed
+  refundedAt        DateTime?
+  refundReason      String?
+  refundedBy        String?
+  metadata          Json?         // Additional payment metadata
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([appointmentId])
+  @@index([paymentStatus])
+  @@index([paymentMethod])
+  @@index([transactionId])
+  @@index([receiptNumber])
+  @@index([paidBy])
+  @@index([processedBy])
+  @@index([paymentDate])
+  @@map("payments")
+  @@schema("payments")
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  MOBILE_MONEY
+  CHEQUE
+  OTHER
+
+  @@schema("payments")
+}
+
+enum PaymentStatus {
+  PAID
+  REFUNDED
+  CANCELLED
+
+  @@schema("payments")
+}
+

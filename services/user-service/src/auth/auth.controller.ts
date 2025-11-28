@@ -32,4 +32,9 @@ export class AuthController {
   async adminLogin(@Body() body: { username: string; password: string }) {
     return this.authService.adminLogin(body.username, body.password);
   }
+
+  @Post('hospital-login')
+  async hospitalLogin(@Body() body: { username: string; password: string }) {
+    return this.authService.hospitalLogin(body.username, body.password);
+  }
 }

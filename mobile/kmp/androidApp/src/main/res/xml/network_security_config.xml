@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow HTTPS connections (required for Zoom SDK OAuth) -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+    
+    <!-- For development: Allow HTTP only for localhost and specific IPs -->
+    <!-- WARNING: Zoom SDK OAuth REQUIRES HTTPS. HTTP will NOT work for Zoom SDK calls. -->
+    <!-- Only enable HTTP for non-Zoom SDK endpoints during development -->
+    <!-- Remove this entire domain-config block in production -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+        <!-- Development server IP - allows HTTP for development -->
+        <!-- IMPORTANT: For production, remove this and use HTTPS -->
+        <domain includeSubdomains="true">10.86.182.69</domain>
+    </domain-config>
+    
+    <!-- Production: Only allow HTTPS -->
+    <!-- Zoom SDK requires HTTPS for OAuth authentication -->
+</network-security-config>
+

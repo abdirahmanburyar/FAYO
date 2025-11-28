@@ -115,7 +115,7 @@ export default function DoctorsPage() {
     return 'Unknown';
   };
 
-  // Load specialties from shared service
+  // Load specialties from doctor-service
   const [specialtyOptions, setSpecialtyOptions] = useState<SelectOption[]>([
     { value: 'ALL', label: 'All Specialties' }
   ]);
@@ -133,9 +133,9 @@ export default function DoctorsPage() {
           ...specialtiesData
         ]);
       } catch (error) {
-        
+        console.error('Error loading specialties:', error);
         // Fallback to doctor specialties if API fails
-        const doctorSpecialties = Array.from(new Set(doctors.flatMap(doctor => doctor.specialties.map(s => s.name))));
+        const doctorSpecialties = Array.from(new Set(doctors.flatMap(doctor => doctor.specialties?.map(s => s.name) || [])));
         
         setSpecialtyOptions([
           { value: 'ALL', label: 'All Specialties' },
@@ -148,7 +148,7 @@ export default function DoctorsPage() {
 
     // Load specialties immediately, don't wait for doctors
     loadSpecialties();
-  }, []);
+  }, [doctors]);
   
   const statusOptions: SelectOption[] = [
     { value: 'ALL', label: 'All Status' },
@@ -443,18 +443,30 @@ export default function DoctorsPage() {
               {/* Action Bar */}
               <div className="border-t border-gray-100 bg-gray-50 px-4 py-2 flex items-center justify-center space-x-1">
                 <button 
+                  onClick={() => router.push(`/admin/doctors/${doctor.id}`)}
                   className="text-gray-400 hover:text-blue-600 p-2 rounded transition-colors"
                   title="View Profile"
                 >
                   <Eye className="w-4 h-4" />
                 </button>
                 <button 
+                  onClick={() => router.push(`/admin/doctors/${doctor.id}/create`)}
                   className="text-gray-400 hover:text-green-600 p-2 rounded transition-colors"
                   title="Edit Doctor"
                 >
                   <Edit className="w-4 h-4" />
                 </button>
                 <button 
+                  onClick={async () => {
+                    if (confirm(`Are you sure you want to delete Dr. ${doctor.user?.firstName || ''} ${doctor.user?.lastName || ''}? This action cannot be undone.`)) {
+                      try {
+                        await doctorApi.deleteDoctor(doctor.id);
+                        fetchDoctors(); // Refresh the list
+                      } catch (error) {
+                        alert(error instanceof Error ? error.message : 'Failed to delete doctor');
+                      }
+                    }
+                  }}
                   className="text-gray-400 hover:text-red-600 p-2 rounded transition-colors"
                   title="Delete Doctor"
                 >

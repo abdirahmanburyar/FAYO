@@ -1,504 +1,77 @@
-name: CI/CD Pipeline
+name: Deploy to VPS
 
 on:
   push:
     branches:
       - main
       - master
-  pull_request:
-    branches:
-      - main
-      - master
   workflow_dispatch:
 
-env:
-  VPS_HOST: 31.97.58.62
-  VPS_USER: root
-  DOCKER_COMPOSE_VERSION: 2.24.0
-
 jobs:
-  build:
-    name: Build and Test
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: |
-            services/*/package-lock.json
-            web/*/package-lock.json
-
-      - name: Install dependencies and build services
-        run: |
-          echo "🔍 Checking service dependencies..."
-          for service in services/*/; do
-            if [ -f "$service/package.json" ]; then
-              service_name=$(basename "$service")
-              echo "📦 Installing dependencies for $service_name..."
-              cd "$service"
-              if ! npm ci --legacy-peer-deps 2>/dev/null; then
-                echo "⚠️ Lock file out of sync, updating with npm install..."
-                npm install --legacy-peer-deps || npm install --force
-              fi
-              echo "✅ $service_name dependencies installed"
-              cd ../..
-            fi
-          done
-          
-          # also
-          # install dependencies for web/admin-panel
-          # install dependencies for web/admin-panel
-          # Handle web/admin-panel if it exists
-          if [ -f "web/admin-panel/package.json" ]; then
-            echo "📦 Installing dependencies for web/admin-panel..."
-            cd web/admin-panel
-            if ! npm ci --legacy-peer-deps 2>/dev/null; then
-              echo "⚠️ Lock file out of sync, updating with npm install..."
-              npm install --legacy-peer-deps || npm install --force
-            fi
-            echo "✅ web/admin-panel dependencies installed"
-            cd ../..
-          fi
-
-      - name: Lint code
-        run: |
-          echo "🔍 Running lint checks..."
-          # Add your linting commands here if needed
-          # npm run lint
-
   deploy:
-    name: Deploy to Production
-    needs: build
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install sshpass
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y sshpass
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
 
-      - name: Check VPS Password Secret
+      - name: Add VPS to known hosts
         run: |
-          if [ -z "${{ secrets.VPS_SSH_PASSWORD }}" ]; then
-            echo "::error::VPS_SSH_PASSWORD secret is not set!"
-            echo "Please add the VPS password as a GitHub secret:"
-            echo "1. Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
-            echo "2. Click 'New repository secret'"
-            echo "3. Name: VPS_SSH_PASSWORD"
-            echo "4. Value: Buryar@2020#"
-            echo "5. Click 'Add secret'"
-            exit 1
-          fi
-          echo "✅ VPS password secret is configured"
-
-      - name: Setup SSH connection
-        run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          ssh-keyscan -H ${{ env.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
-          chmod 600 ~/.ssh/known_hosts
-
-      - name: Test SSH connection
-        run: |
-          echo "🔌 Testing SSH connection..."
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" \
-            ssh -o StrictHostKeyChecking=no \
-                -o LogLevel=ERROR \
-                -o ConnectTimeout=10 \
-                ${{ env.VPS_USER }}@${{ env.VPS_HOST }} \
-            "echo '✅ SSH connection successful'"
-        continue-on-error: false
-
-      - name: Install Docker and Docker Compose on VPS
-        run: |
-          echo "🐳 Installing Docker and Docker Compose..."
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR -o ConnectTimeout=30 ${{ env.VPS_USER }}@${{ env.VPS_HOST }} 'bash -s' << 'REMOTE_SCRIPT'
-          set -e
-          
-          # Install Docker if not present
-          if ! command -v docker &> /dev/null; then
-            echo "Installing Docker..."
-            curl -fsSL https://get.docker.com -o get-docker.sh
-            sh get-docker.sh
-            systemctl enable docker
-            systemctl start docker
-            sleep 5
-          else
-            echo "Docker is already installed"
-          fi
-          
-          # Install Docker Compose if not present
-          if ! docker compose version &> /dev/null && ! command -v docker-compose &> /dev/null; then
-            echo "Installing Docker Compose..."
-            apt-get update -qq
-            apt-get install -y docker-compose-plugin 2>/dev/null || {
-              echo "Installing standalone docker-compose as fallback..."
-              COMPOSE_VERSION="v2.24.0"
-              ARCH=$(uname -m)
-              if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
-                ARCH="aarch64"
-              else
-                ARCH="x86_64"
-              fi
-              curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-${ARCH}" -o /usr/local/bin/docker-compose 2>/dev/null
-              chmod +x /usr/local/bin/docker-compose
-            }
-          else
-            echo "Docker Compose is already installed"
-          fi
-          
-          # Verify installations
-          echo "Verifying installations..."
-          docker --version
-          if docker compose version &> /dev/null; then
-            echo "Using Docker Compose plugin:"
-            docker compose version
-          elif command -v docker-compose &> /dev/null; then
-            echo "Using standalone docker-compose:"
-            docker-compose --version
-          fi
-          REMOTE_SCRIPT
-
-      - name: Create deployment directory on VPS
-        run: |
-          echo "📁 Creating deployment directory..."
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR -o ConnectTimeout=10 ${{ env.VPS_USER }}@${{ env.VPS_HOST }} 'mkdir -p /opt/fayo/services /opt/fayo/web /opt/fayo/scripts && echo "✅ Directories created"'
-
-      - name: Copy files to VPS
-        run: |
-          set -e
-          
-          echo "📤 Copying files to VPS..."
-          
-          # Copy docker-compose file
-          echo "  → Copying docker-compose.prod.yml..."
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" \
-            scp -o StrictHostKeyChecking=no \
-                -o LogLevel=ERROR \
-                -o ConnectTimeout=30 \
-                docker-compose.prod.yml \
-                ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/ 2>/dev/null
-          
-          # Create and copy services archive
-          echo "  → Creating services archive..."
-          tar --exclude='node_modules' \
-              --exclude='dist' \
-              --exclude='.git' \
-              --exclude='*.log' \
-              --exclude='*.tar.gz' \
-              -czf services.tar.gz services/ || true
-          
-          echo "  → Copying services archive..."
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" \
-            scp -o StrictHostKeyChecking=no \
-                -o LogLevel=ERROR \
-                -o ConnectTimeout=60 \
-                services.tar.gz \
-                ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/ 2>/dev/null
-          
-          echo "  → Extracting services archive on VPS..."
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" \
-            ssh -o StrictHostKeyChecking=no \
-                -o LogLevel=ERROR \
-                -o ConnectTimeout=30 \
-                ${{ env.VPS_USER }}@${{ env.VPS_HOST }} \
-            'cd /opt/fayo && tar -xzf services.tar.gz && rm -f services.tar.gz && echo "✅ Services extracted"'
-          
-          rm -f services.tar.gz
-          
-          # Handle web directory
-          if [ -d "web" ]; then
-            echo "  → Creating web archive..."
-            tar --exclude='node_modules' \
-                --exclude='.next' \
-                --exclude='.git' \
-                --exclude='*.log' \
-                --exclude='*.tar.gz' \
-                -czf web.tar.gz web/ || true
-            
-            echo "  → Copying web archive..."
-            sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" \
-              scp -o StrictHostKeyChecking=no \
-                  -o LogLevel=ERROR \
-                  -o ConnectTimeout=60 \
-                  web.tar.gz \
-                  ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/ 2>/dev/null
-            
-            echo "  → Extracting web archive on VPS..."
-            sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" \
-              ssh -o StrictHostKeyChecking=no \
-                  -o LogLevel=ERROR \
-                  -o ConnectTimeout=30 \
-                  ${{ env.VPS_USER }}@${{ env.VPS_HOST }} \
-              'cd /opt/fayo && tar -xzf web.tar.gz && rm -f web.tar.gz && echo "✅ Web extracted"'
-            
-            rm -f web.tar.gz
-          fi
-          
-          # Handle scripts
-          if [ -d "scripts" ]; then
-            echo "  → Creating scripts archive..."
-            tar --exclude='*.tar.gz' -czf scripts.tar.gz scripts/ || true
-            
-            echo "  → Copying scripts archive..."
-            sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" \
-              scp -o StrictHostKeyChecking=no \
-                  -o LogLevel=ERROR \
-                  -o ConnectTimeout=30 \
-                  scripts.tar.gz \
-                  ${{ env.VPS_USER }}@${{ env.VPS_HOST }}:/opt/fayo/ 2>/dev/null
-            
-            echo "  → Extracting scripts archive on VPS..."
-            sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" \
-              ssh -o StrictHostKeyChecking=no \
-                  -o LogLevel=ERROR \
-                  -o ConnectTimeout=30 \
-                  ${{ env.VPS_USER }}@${{ env.VPS_HOST }} \
-              'cd /opt/fayo && tar -xzf scripts.tar.gz && rm -f scripts.tar.gz && echo "✅ Scripts extracted"'
-            
-            rm -f scripts.tar.gz
-          fi
-          
-          echo "✅ All files copied successfully"
-
-      - name: Setup HTTPS (Nginx + SSL) for Admin Panel
-        run: |
-          echo "🔐 Setting up HTTPS for admin panel..."
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" \
-            ssh -o StrictHostKeyChecking=no \
-                -o LogLevel=ERROR \
-                -o ConnectTimeout=30 \
-                ${{ env.VPS_USER }}@${{ env.VPS_HOST }} << 'REMOTE_HTTPS'
-          set -e
-          cd /opt/fayo
-          
-          # Check if HTTPS is already configured
-          if [ -f /etc/nginx/sites-enabled/fayo ]; then
-            echo "✅ HTTPS already configured, skipping setup"
-            exit 0
-          fi
-          
-          # Check if setup script exists
-          if [ ! -f scripts/setup-https.sh ]; then
-            echo "⚠️ setup-https.sh not found. HTTPS setup will be skipped."
-            echo "You can manually run: cd /opt/fayo && DOMAIN=yourdomain.com ./scripts/setup-https.sh"
-            exit 0
-          fi
-          
-          # Make executable
-          chmod +x scripts/setup-https.sh
-          
-          # Run HTTPS setup
-          # Use domain from secret if available, otherwise use IP (self-signed)
-          export DOMAIN="${{ secrets.DOMAIN_NAME }}"
-          export VPS_IP="${{ env.VPS_HOST }}"
-          
-          echo "Running HTTPS setup script..."
-          ./scripts/setup-https.sh || {
-            echo "⚠️ HTTPS setup had issues, but continuing deployment..."
-            echo "You can manually run: cd /opt/fayo && DOMAIN=yourdomain.com ./scripts/setup-https.sh"
-          }
-          REMOTE_HTTPS
-        continue-on-error: true
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 
       - name: Create .env file on VPS
         run: |
-          echo "⚙️ Creating .env file on VPS..."
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR -o ConnectTimeout=10 ${{ env.VPS_USER }}@${{ env.VPS_HOST }} 'bash -s' << 'REMOTE_ENV'
-          cd /opt/fayo
-          if [ ! -f .env ]; then
-            echo "Creating new .env file..."
-            printf '%s\n' \
-              '# Database' \
-              'POSTGRES_USER=postgres' \
-              'POSTGRES_PASSWORD=postgres' \
-              'DATABASE_URL=postgresql://postgres:postgres@postgres:5432/fayo?schema=public' \
-              '' \
-              '# Redis' \
-              'REDIS_PASSWORD=' \
-              '' \
-              '# RabbitMQ' \
-              'RABBITMQ_USER=guest' \
-              'RABBITMQ_PASS=guest' \
-              '' \
-              '# JWT' \
-              'JWT_SECRET=your-super-secret-jwt-key-change-in-production-CHANGE-THIS' \
-              '' \
-              '# OTP' \
-              'OTP_EXPIRES_IN=300000' \
-              'OTP_LENGTH=6' \
-              '' \
-              '# Mail Configuration (SMTP)' \
-              'MAIL_MAILER=smtp' \
-              'MAIL_HOST=smtp.gmail.com' \
-              'MAIL_PORT=587' \
-              'MAIL_USERNAME=buryar313@gmail.com' \
-              'MAIL_PASSWORD=fjmnakpupnytzsah' \
-              'MAIL_ENCRYPTION=tls' \
-              'MAIL_FROM_ADDRESS=buryar313@gmail.com' \
-              'MAIL_FROM_NAME=FAYO Healthcare' \
-              'DEFAULT_EMAIL=buryar313@gmail.com' \
-              '' \
-              '# SMS (configure these)' \
-              'SMS_API_KEY=' \
-              'SMS_API_URL=' \
-              '' \
-              '# API URLs' \
-              'USER_SERVICE_URL=http://31.97.58.62:3001' \
-              'HOSPITAL_SERVICE_URL=http://31.97.58.62:3002' \
-              'DOCTOR_SERVICE_URL=http://31.97.58.62:3003' \
-              'SHARED_SERVICE_URL=http://31.97.58.62:3004' \
-              '' \
-              '# Call Service' \
-              'CALL_SERVICE_DATABASE_URL=postgresql://postgres:postgres@postgres:5432/fayo?schema=call' \
-              'JWT_AUDIENCE=https://fayo.health' \
-              'JWT_ISSUER=fayo-auth' \
-              'AGORA_APP_ID=' \
-              'AGORA_APP_CERTIFICATE=' \
-              'AGORA_TOKEN_TTL=3600' \
-              'KAFKA_CALLS_TOPIC=calls.events' \
-              'RABBITMQ_CALLS_EXCHANGE=calls.commands' \
-              'WS_ALLOWED_ORIGINS=*' > .env
-            echo "✅ .env file created"
-          else
-            echo "ℹ️ .env file already exists, skipping creation"
+          ssh root@${{ secrets.VPS_HOST }} << 'EOF'
+          if [ ! -f /root/fayo/.env ]; then
+            echo "Creating .env file..."
+            touch /root/fayo/.env
           fi
-          REMOTE_ENV
+          EOF
 
-      - name: Deploy with Docker Compose
+      - name: Copy files to VPS
         run: |
-          echo "🚀 Deploying services with Docker Compose..."
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR -o ConnectTimeout=30 ${{ env.VPS_USER }}@${{ env.VPS_HOST }} 'bash -s' << 'REMOTE_DEPLOY'
+          ssh root@${{ secrets.VPS_HOST }} "mkdir -p /root/fayo"
+          rsync -avz --exclude '.git' --exclude 'node_modules' --exclude 'dist' \
+            --exclude 'mobile' \
+            ./ root@${{ secrets.VPS_HOST }}:/root/fayo/
+
+      - name: Deploy to VPS
+        run: |
+          ssh root@${{ secrets.VPS_HOST }} << 'EOF'
           set -e
-          cd /opt/fayo
+          cd /root/fayo
           
-          # Determine which compose command to use
-          if docker compose version &> /dev/null; then
-            COMPOSE_CMD="docker compose"
-            echo "Using Docker Compose plugin"
-          elif command -v docker-compose &> /dev/null; then
-            COMPOSE_CMD="docker-compose"
-            echo "Using standalone docker-compose"
-          else
-            echo "❌ Docker Compose not found!"
-            exit 1
-          fi
+          echo "Building and deploying with Docker Compose..."
+          docker-compose -f docker-compose.prod.yml pull || true
+          docker-compose -f docker-compose.prod.yml build
+          docker-compose -f docker-compose.prod.yml up -d
           
-          # Stop and remove existing containers
-          echo "Stopping and removing existing containers..."
-          $COMPOSE_CMD -f docker-compose.prod.yml down --remove-orphans || true
+          echo "Waiting for services to be ready..."
+          sleep 15
           
-          # Force remove any containers with conflicting names (in case they exist outside compose)
-          echo "Cleaning up any orphaned containers..."
-          docker rm -f kafka postgres redis rabbitmq user-service hospital-service doctor-service shared-service call-service admin-panel 2>/dev/null || true
+          echo "Running database migrations..."
+          docker-compose -f docker-compose.prod.yml exec -T user-service npx prisma migrate deploy || true
+          docker-compose -f docker-compose.prod.yml exec -T hospital-service npx prisma migrate deploy || true
+          docker-compose -f docker-compose.prod.yml exec -T doctor-service npx prisma migrate deploy || true
+          docker-compose -f docker-compose.prod.yml exec -T specialty-service npx prisma migrate deploy || true
+          docker-compose -f docker-compose.prod.yml exec -T appointment-service npx prisma migrate deploy || true
           
-          # Build images
-          echo "Building Docker images..."
-          $COMPOSE_CMD -f docker-compose.prod.yml build --no-cache
+          echo "Cleaning up unused images..."
+          docker image prune -f
           
-          # Start services
-          echo "Starting services..."
-          $COMPOSE_CMD -f docker-compose.prod.yml up -d --remove-orphans
-          
-          # Wait a bit for services to initialize
-          sleep 10
-          
-          # Show container status
-          echo "=== Container Status ==="
-          $COMPOSE_CMD -f docker-compose.prod.yml ps
-          
-          echo ""
-          echo "=== Docker Container List ==="
-          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-          REMOTE_DEPLOY
+          echo "Deployment completed successfully!"
+          docker-compose -f docker-compose.prod.yml ps
+          EOF
 
-      - name: Wait for services to be healthy
+      - name: Verify deployment
         run: |
-          echo "🏥 Waiting for services to be healthy..."
-          sshpass -p "${{ secrets.VPS_SSH_PASSWORD }}" ssh -o StrictHostKeyChecking=no -o LogLevel=ERROR -o ConnectTimeout=10 ${{ env.VPS_USER }}@${{ env.VPS_HOST }} 'bash -s' << 'REMOTE_HEALTH'
-          echo "Waiting 30 seconds for services to initialize..."
-          sleep 30
-          
-          echo "Checking service health endpoints..."
-          HEALTH_CHECK_PASSED=0
-          HEALTH_CHECK_FAILED=0
-          
-          for port in 3000 3001 3002 3003 3004 3010; do
-            echo -n "Checking port $port... "
-            if timeout 15 bash -c "until curl -sf http://localhost:$port/api/v1/health 2>/dev/null || curl -sf http://localhost:$port/health 2>/dev/null; do sleep 2; done" 2>/dev/null; then
-              echo "✅ Healthy"
-              HEALTH_CHECK_PASSED=$((HEALTH_CHECK_PASSED + 1))
-            else
-              echo "⚠️ Not responding (may still be starting)"
-              HEALTH_CHECK_FAILED=$((HEALTH_CHECK_FAILED + 1))
-            fi
-          done
-          
-          echo "..."
+          ssh root@${{ secrets.VPS_HOST }} << 'EOF'
+          echo "Checking service status..."
+          docker-compose -f /root/fayo/docker-compose.prod.yml ps
+          EOF
 
-          echo "Health check summary: $HEALTH_CHECK_PASSED passed, $HEALTH_CHECK_FAILED not yet ready"
-          
-          if [ $HEALTH_CHECK_PASSED -gt 0 ]; then
-            echo "✅ At least some services are healthy"
-          else
-            echo "⚠️ No services responded to health checks yet (they may still be starting)"
-          fi
-          REMOTE_HEALTH
-        continue-on-error: true
-
-
-
-      - name: Deployment Summary
-        run: |
-          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Deployment completed successfully!**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📋 Deployment Details" >> $GITHUB_STEP_SUMMARY
-          echo "- **VPS IP**: \`${{ env.VPS_HOST }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Deployment Time**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Branch**: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🌐 Service URLs" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Service | URL |" >> $GITHUB_STEP_SUMMARY
-          echo "|---------|-----|" >> $GITHUB_STEP_SUMMARY
-          echo "| Admin Panel (HTTP) | http://${{ env.VPS_HOST }}:3000 |" >> $GITHUB_STEP_SUMMARY
-          if [ -n "${{ secrets.DOMAIN_NAME }}" ]; then
-            echo "| Admin Panel (HTTPS) | https://${{ secrets.DOMAIN_NAME }} |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| Admin Panel (HTTPS) | https://${{ env.VPS_HOST }} (self-signed) |" >> $GITHUB_STEP_SUMMARY
-          fi
-          echo "| User Service | http://${{ env.VPS_HOST }}:3001 |" >> $GITHUB_STEP_SUMMARY
-          echo "| Hospital Service | http://${{ env.VPS_HOST }}:3002 |" >> $GITHUB_STEP_SUMMARY
-          echo "| Doctor Service | http://${{ env.VPS_HOST }}:3003 |" >> $GITHUB_STEP_SUMMARY
-          echo "| Shared Service | http://${{ env.VPS_HOST }}:3004 |" >> $GITHUB_STEP_SUMMARY
-          echo "| Call Service | http://${{ env.VPS_HOST }}:3010 |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 👤 Admin Credentials" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Admin user is automatically created by user-service on startup (if it doesn't exist):" >> $GITHUB_STEP_SUMMARY
-          echo "- **Username**: \`0001\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Password**: \`admin123\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Email**: \`admin@fayo.com\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Check user-service logs to see if admin was created: \`docker logs user-service\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "⚠️ **IMPORTANT**: Change the default password after first login!" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📝 Next Steps" >> $GITHUB_STEP_SUMMARY
-          echo "1. Verify services are running: \`ssh root@${{ env.VPS_HOST }} 'cd /opt/fayo && docker compose ps'\`" >> $GITHUB_STEP_SUMMARY
-          echo "2. Check logs if needed: \`ssh root@${{ env.VPS_HOST }} 'cd /opt/fayo && docker compose logs'\`" >> $GITHUB_STEP_SUMMARY
-          echo "3. Login to admin panel at http://${{ env.VPS_HOST }}:3000 with the credentials above" >> $GITHUB_STEP_SUMMARY
-          echo "4. Update production .env file with actual credentials" >> $GITHUB_STEP_SUMMARY

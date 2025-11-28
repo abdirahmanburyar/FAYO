@@ -18,8 +18,6 @@ Each service has its own Dockerfile and can be built/run independently:
 | **user-service** | 3001 | User management, authentication, OTP | ✅ |
 | **hospital-service** | 3002 | Hospital and clinic management | ✅ |
 | **doctor-service** | 3003 | Doctor profiles and specialties | ✅ |
-| **shared-service** | 3004 | Categories, utilities, common data | ✅ |
-| **call-service** | 3010 | Realtime voice/video calls, Agora tokens, signaling | ✅ |
 | **admin-panel** | 3000 | Next.js web admin interface | ✅ |
 
 ### Mobile App
@@ -52,9 +50,6 @@ docker run -p 3002:3002 fayo-hospital-service
 
 # Doctor Service
 docker run -p 3003:3003 fayo-doctor-service
-
-# Shared Service
-docker run -p 3004:3004 fayo-shared-service
 
 # Admin Panel
 docker run -p 3000:3000 fayo-admin-panel
@@ -99,7 +94,6 @@ FAYO AI - APP/
 │   ├── user-service/        # User management
 │   ├── hospital-service/    # Hospital management
 │   ├── doctor-service/      # Doctor management
-│   ├── shared-service/      # Categories & utilities
 ├── web/
 │   └── admin-panel/         # Next.js admin interface
 ├── mobile/

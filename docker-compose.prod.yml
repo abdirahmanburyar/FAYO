@@ -146,12 +146,15 @@ services:
       HOST: 0.0.0.0
       PORT: 3002
       SERVICE_NAME: hospital-service
+      SPECIALTY_SERVICE_URL: ${SPECIALTY_SERVICE_URL:-http://specialty-service:3004}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_started
       kafka:
+        condition: service_healthy
+      specialty-service:
         condition: service_healthy
     networks:
       - fayo-network
@@ -177,18 +180,18 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
-      SHARED_SERVICE_URL: http://shared-service:3004
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       HOST: 0.0.0.0
       PORT: 3003
       SERVICE_NAME: doctor-service
+      SPECIALTY_SERVICE_URL: ${SPECIALTY_SERVICE_URL:-http://specialty-service:3004}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_started
-      shared-service:
-        condition: service_started
+      specialty-service:
+        condition: service_healthy
     networks:
       - fayo-network
     restart: unless-stopped
@@ -199,27 +202,22 @@ services:
       retries: 3
       start_period: 40s
 
-  shared-service:
+  specialty-service:
     build:
-      context: ./services/shared-service
+      context: ./services/specialty-service
       dockerfile: Dockerfile
-    container_name: shared-service
+    container_name: specialty-service
     ports:
       - '3004:3004'
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/shared_service?schema=public}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/specialty_service?schema=public}
       HOST: 0.0.0.0
       PORT: 3004
-      SERVICE_NAME: shared-service
+      SERVICE_NAME: specialty-service
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_started
     networks:
       - fayo-network
     restart: unless-stopped
@@ -230,43 +228,78 @@ services:
       retries: 3
       start_period: 40s
 
-  call-service:
+  appointment-service:
     build:
-      context: ./services/call-service
+      context: ./services/appointment-service
       dockerfile: Dockerfile
-    container_name: call-service
+    container_name: appointment-service
     ports:
-      - '3010:3010'
+      - '3005:3005'
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${CALL_SERVICE_DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/fayo?schema=call}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/appointment_service?schema=public}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      KAFKA_BROKER: kafka:9092
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
-      JWT_AUDIENCE: ${JWT_AUDIENCE:-https://fayo.health}
-      JWT_ISSUER: ${JWT_ISSUER:-fayo-auth}
-      AGORA_APP_ID: ${AGORA_APP_ID:-}
-      AGORA_APP_CERTIFICATE: ${AGORA_APP_CERTIFICATE:-}
-      AGORA_TOKEN_TTL: ${AGORA_TOKEN_TTL:-3600}
-      KAFKA_BROKERS: kafka:9092
-      KAFKA_CLIENT_ID: call-service
-      KAFKA_CALLS_TOPIC: ${KAFKA_CALLS_TOPIC:-calls.events}
-      RABBITMQ_URI: amqp://guest:guest@rabbitmq:5672
-      RABBITMQ_CALLS_EXCHANGE: ${RABBITMQ_CALLS_EXCHANGE:-calls.commands}
-      WS_ALLOWED_ORIGINS: ${WS_ALLOWED_ORIGINS:-*}
-      PORT: 3010
       HOST: 0.0.0.0
-      SERVICE_NAME: call-service
+      PORT: 3005
+      SERVICE_NAME: appointment-service
+      USER_SERVICE_URL: ${USER_SERVICE_URL:-http://user-service:3001}
+      HOSPITAL_SERVICE_URL: ${HOSPITAL_SERVICE_URL:-http://hospital-service:3002}
+      DOCTOR_SERVICE_URL: ${DOCTOR_SERVICE_URL:-http://doctor-service:3003}
+      ZOOM_SDK_KEY: ${ZOOM_SDK_KEY:-}
+      ZOOM_SDK_SECRET: ${ZOOM_SDK_SECRET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      hospital-service:
+        condition: service_healthy
+      doctor-service:
+        condition: service_healthy
+    networks:
+      - fayo-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3005/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  payment-service:
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    container_name: payment-service
+    ports:
+      - '3006:3006'
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/payment_service?schema=public}
+      PORT: 3006
+      HOST: 0.0.0.0
+      KAFKA_BROKER: kafka:9092
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001}
+      ADMIN_PANEL_URL: ${ADMIN_PANEL_URL:-http://localhost:3000}
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
         condition: service_healthy
-      rabbitmq:
-        condition: service_started
     networks:
       - fayo-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3010/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3006/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -281,18 +314,26 @@ services:
       - '3000:3000'
     environment:
       NODE_ENV: production
-      USER_SERVICE_URL: ${USER_SERVICE_URL:-http://31.97.58.62:3001}
-      HOSPITAL_SERVICE_URL: ${HOSPITAL_SERVICE_URL:-http://31.97.58.62:3002}
-      DOCTOR_SERVICE_URL: ${DOCTOR_SERVICE_URL:-http://31.97.58.62:3003}
-      SHARED_SERVICE_URL: ${SHARED_SERVICE_URL:-http://31.97.58.62:3004}
-      CALL_SERVICE_URL: ${CALL_SERVICE_URL:-http://31.97.58.62:3010}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://31.97.58.62:3001/api/v1}
-      NEXT_PUBLIC_CALL_SERVICE_URL: ${NEXT_PUBLIC_CALL_SERVICE_URL:-http://31.97.58.62:3010}
+      USER_SERVICE_URL: ${USER_SERVICE_URL:-http://localhost:3001}
+      HOSPITAL_SERVICE_URL: ${HOSPITAL_SERVICE_URL:-http://localhost:3002}
+      DOCTOR_SERVICE_URL: ${DOCTOR_SERVICE_URL:-http://localhost:3003}
+      SPECIALTY_SERVICE_URL: ${SPECIALTY_SERVICE_URL:-http://localhost:3004}
+      APPOINTMENT_SERVICE_URL: ${APPOINTMENT_SERVICE_URL:-http://localhost:3005}
+      PAYMENT_SERVICE_URL: ${PAYMENT_SERVICE_URL:-http://localhost:3006}
+      NEXT_PUBLIC_USER_SERVICE_URL: ${NEXT_PUBLIC_USER_SERVICE_URL:-http://localhost:3001}
+      NEXT_PUBLIC_HOSPITAL_SERVICE_URL: ${NEXT_PUBLIC_HOSPITAL_SERVICE_URL:-http://localhost:3002}
+      NEXT_PUBLIC_DOCTOR_SERVICE_URL: ${NEXT_PUBLIC_DOCTOR_SERVICE_URL:-http://localhost:3003}
+      NEXT_PUBLIC_SPECIALTY_SERVICE_URL: ${NEXT_PUBLIC_SPECIALTY_SERVICE_URL:-http://localhost:3004}
+      NEXT_PUBLIC_APPOINTMENT_SERVICE_URL: ${NEXT_PUBLIC_APPOINTMENT_SERVICE_URL:-http://localhost:3005}
+      NEXT_PUBLIC_PAYMENT_SERVICE_URL: ${NEXT_PUBLIC_PAYMENT_SERVICE_URL:-http://localhost:3006}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001/api/v1}
     depends_on:
       - user-service
       - hospital-service
       - doctor-service
-      - shared-service
+      - specialty-service
+      - appointment-service
+      - payment-service
     networks:
       - fayo-network
     restart: unless-stopped

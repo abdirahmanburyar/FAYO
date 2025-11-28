@@ -14,7 +14,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-VPS_IP="${VPS_IP:-31.97.58.62}"
+VPS_IP="${VPS_IP:-localhost}"
 DOMAIN="${DOMAIN:-}"
 ADMIN_PANEL_PORT=3000
 NGINX_CONFIG_DIR="/etc/nginx"
@@ -225,43 +225,7 @@ server {
         proxy_read_timeout 60s;
     }
 
-    # Shared Service (port 3004)
-    location /api/shared-service/ {
-        proxy_pass http://localhost:3004/;
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-    }
-
-    # Call Service (port 3010)
-    location /api/call-service/ {
-        proxy_pass http://localhost:3010/;
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-    }
-
-    # WebSocket proxy for Call Service
-    location /ws/calls/ {
-        proxy_pass http://localhost:3010/ws/calls/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_read_timeout 86400;
+    # shared-service and call-service have been removed
     }
 
     # Admin Panel (Next.js) - Only proxy the admin panel

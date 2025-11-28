@@ -76,14 +76,10 @@ services:
       retries: 3
 
          # Note: Application services (user-service, hospital-service, doctor-service,
-         # shared-service, admin-panel, appointment-service, gateway, notification-worker)
+         # admin-panel, appointment-service, gateway, notification-worker)
          # have their own Dockerfiles and can be run independently using:
          # docker build -t service-name ./services/service-name
          # docker run -p port:port service-name
-         
-         # Example: Run shared-service
-         # docker build -t fayo-shared-service ./services/shared-service
-         # docker run -p 3004:3004 fayo-shared-service
 
 
 networks:

@@ -15,105 +15,143 @@ export interface SpecialtyStats {
   inactiveSpecialties: number;
 }
 
+// Specialty Service URL - fetch from specialty-service directly
+const getSpecialtyServiceUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    const isHTTPS = window.location.protocol === 'https:';
+    const baseUrl = window.location.origin;
+
+    if (isHTTPS) {
+      // Use nginx proxy route (HTTPS) - removes mixed content issues
+      return `${baseUrl}/api/specialty-service`;
+    } else {
+      // Development/HTTP: use direct URL or env variable
+      return process.env.NEXT_PUBLIC_SPECIALTY_SERVICE_URL || 'http://localhost:3004';
+    }
+  } else {
+    // Server-side: use environment variable or direct URL
+    return process.env.SPECIALTY_SERVICE_URL || 'http://localhost:3004';
+  }
+};
+
 class SpecialtiesApiService {
   private getAuthHeaders() {
-    const token = localStorage.getItem('adminToken');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     return {
       'Content-Type': 'application/json',
       ...(token && { Authorization: `Bearer ${token}` }),
     };
   }
 
+  private buildUrl(endpoint: string): string {
+    const specialtyServiceUrl = getSpecialtyServiceUrl();
+    // If using nginx proxy (contains /api/specialty-service), nginx strips the prefix
+    // and forwards to backend, so we use endpoint directly (e.g., /specialties)
+    // Otherwise, use /api/v1 prefix for direct service access (e.g., /api/v1/specialties)
+    const isProxyUrl = specialtyServiceUrl.includes('/api/specialty-service');
+    const basePath = isProxyUrl ? '' : '/api/v1';
+    // Ensure endpoint starts with /
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    return `${specialtyServiceUrl}${basePath}${normalizedEndpoint}`;
+  }
+
   async getSpecialties(includeInactive?: boolean): Promise<Specialty[]> {
     try {
-      const params = new URLSearchParams();
-      if (includeInactive) params.append('includeInactive', 'true');
-
-      const url = `${API_CONFIG.SHARED_SERVICE_URL}/api/v1/specialties${params.toString() ? `?${params.toString()}` : ''}`;
-      console.log('🔍 [SPECIALTIES_API] Fetching specialties from:', url);
+      const url = this.buildUrl(`/specialties${includeInactive ? '?includeInactive=true' : ''}`);
       
-      // Use a longer timeout for the actual request (10 seconds)
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      console.log('[SpecialtiesApi] Fetching specialties from:', url);
       
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: controller.signal,
+        headers: this.getAuthHeaders(),
       });
-      
-      clearTimeout(timeoutId);
 
-      console.log('📡 [SPECIALTIES_API] Response status:', response.status);
+      console.log('[SpecialtiesApi] Response status:', response.status, response.statusText);
+      console.log('[SpecialtiesApi] Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ [SPECIALTIES_API] Error response:', errorText);
-        let errorData;
+        let errorData: any = {};
+        let errorText = '';
+        
         try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          errorData = { message: errorText };
+          // Try to get response as text first to see what we're dealing with
+          const responseText = await response.clone().text();
+          console.log('[SpecialtiesApi] Raw error response text:', responseText);
+          
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            try {
+              errorData = JSON.parse(responseText);
+            } catch (jsonError) {
+              console.error('[SpecialtiesApi] Failed to parse JSON:', jsonError);
+              errorText = responseText;
+            }
+          } else {
+            errorText = responseText;
+            console.error('[SpecialtiesApi] Non-JSON error response:', errorText);
+          }
+        } catch (parseError) {
+          console.error('[SpecialtiesApi] Failed to parse error response:', parseError);
+          errorText = `HTTP ${response.status}: ${response.statusText}`;
         }
-        throw new Error(errorData.message || `Failed to fetch specialties: ${response.status} ${response.statusText}`);
+        
+        const errorMessage = errorData?.message || errorText || `Failed to fetch specialties: ${response.status} ${response.statusText}`;
+        console.error('[SpecialtiesApi] Error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          errorText,
+          url,
+          hasErrorData: !!errorData && Object.keys(errorData).length > 0
+        });
+        throw new Error(errorMessage);
       }
 
       const specialties = await response.json();
-      console.log('✅ [SPECIALTIES_API] Successfully fetched specialties:', specialties?.length || 0);
+      console.log('[SpecialtiesApi] Received specialties:', specialties.length, specialties);
+
+      // Filter inactive if needed
+      if (!includeInactive) {
+        const activeSpecialties = specialties.filter((s: Specialty) => s.isActive);
+        console.log('[SpecialtiesApi] Active specialties:', activeSpecialties.length);
+        return activeSpecialties;
+      }
+
       return specialties;
     } catch (error) {
-      console.error('❌ [SPECIALTIES_API] Error fetching specialties:', error);
-      
-      // Provide a more user-friendly error message
-      if (error instanceof Error) {
-        if (error.name === 'AbortError' || error.message?.includes('aborted')) {
-          throw new Error('Request timed out. Please check if the shared service is running and try again.');
-        }
-        
-        if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
-          throw new Error('Cannot connect to shared service. Please check your network connection and ensure the service is running.');
-        }
+      console.error('[SpecialtiesApi] Error fetching specialties:', error);
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error(`Cannot connect to specialty-service. Please ensure it's running on port 3004. Original error: ${error.message}`);
       }
-      
-      throw error instanceof Error ? error : new Error('An unknown error occurred while fetching specialties');
+      throw error;
     }
   }
 
   async getSpecialtyById(id: string): Promise<Specialty> {
     try {
-      const response = await fetch(`${API_CONFIG.SHARED_SERVICE_URL}/api/v1/specialties/${id}`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
+      const specialties = await this.getSpecialties(true);
+      const specialty = specialties.find((s: Specialty) => s.id === id);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to fetch specialty: ${response.statusText}`);
+      if (!specialty) {
+        throw new Error(`Specialty with ID ${id} not found`);
       }
 
-      return await response.json();
+      return specialty;
     } catch (error) {
       console.error('Error fetching specialty:', error);
       throw error;
     }
   }
 
-
   async getStats(): Promise<SpecialtyStats> {
     try {
-      const response = await fetch(`${API_CONFIG.SHARED_SERVICE_URL}/api/v1/specialties/stats`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to fetch specialty stats: ${response.statusText}`);
-      }
-
-      return await response.json();
+      const specialties = await this.getSpecialties(true);
+      
+      return {
+        totalSpecialties: specialties.length,
+        activeSpecialties: specialties.filter((s: Specialty) => s.isActive).length,
+        inactiveSpecialties: specialties.filter((s: Specialty) => !s.isActive).length,
+      };
     } catch (error) {
       console.error('Error fetching specialty stats:', error);
       throw error;
@@ -126,14 +164,15 @@ class SpecialtiesApiService {
     isActive?: boolean;
   }): Promise<Specialty> {
     try {
-      const response = await fetch(`${API_CONFIG.SHARED_SERVICE_URL}/api/v1/specialties`, {
+      const url = this.buildUrl('/specialties');
+      const response = await fetch(url, {
         method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify(specialtyData),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `Failed to create specialty: ${response.statusText}`);
       }
 
@@ -150,14 +189,15 @@ class SpecialtiesApiService {
     isActive?: boolean;
   }): Promise<Specialty> {
     try {
-      const response = await fetch(`${API_CONFIG.SHARED_SERVICE_URL}/api/v1/specialties/${id}`, {
+      const url = this.buildUrl(`/specialties/${id}`);
+      const response = await fetch(url, {
         method: 'PATCH',
         headers: this.getAuthHeaders(),
         body: JSON.stringify(specialtyData),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `Failed to update specialty: ${response.statusText}`);
       }
 
@@ -170,13 +210,14 @@ class SpecialtiesApiService {
 
   async deleteSpecialty(id: string): Promise<void> {
     try {
-      const response = await fetch(`${API_CONFIG.SHARED_SERVICE_URL}/api/v1/specialties/${id}`, {
+      const url = this.buildUrl(`/specialties/${id}`);
+      const response = await fetch(url, {
         method: 'DELETE',
         headers: this.getAuthHeaders(),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.message || `Failed to delete specialty: ${response.statusText}`);
       }
     } catch (error) {
@@ -185,20 +226,15 @@ class SpecialtiesApiService {
     }
   }
 
-  // Helper method to get specialties formatted for SelectOption
   async getSpecialtiesForSelect(): Promise<Array<{ value: string; label: string }>> {
     try {
       const specialties = await this.getSpecialties();
-      // Filter only active specialties and format for select
-      return specialties
-        .filter(specialty => specialty.isActive)
-        .map(specialty => ({
+      return specialties.map((specialty: Specialty) => ({
           value: specialty.id,
           label: specialty.name,
         }));
     } catch (error) {
-      console.error('❌ [SPECIALTIES_API] Error getting specialties for select:', error);
-      // Don't use fallback - specialties must come from database
+      console.error('Error fetching specialties for select:', error);
       throw error;
     }
   }

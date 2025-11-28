@@ -2,6 +2,10 @@ import { IsString, IsOptional, IsBoolean, IsEmail, IsUrl, IsEnum } from 'class-v
 
 export class CreateHospitalDto {
   @IsString()
+  @IsOptional()
+  userId?: string; // Reference to user account in user-service
+
+  @IsString()
   name: string;
 
   @IsEnum(['HOSPITAL', 'CLINIC'])

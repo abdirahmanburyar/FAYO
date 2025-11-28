@@ -39,9 +39,8 @@ export default function AdminLoginPage() {
     setError('');
 
     try {
-      // Use API_CONFIG to get the correct URL (HTTPS proxy or direct)
-      const { API_CONFIG } = await import('@/config/api');
-      const response = await fetch(`${API_CONFIG.USER_SERVICE_URL}${API_CONFIG.ENDPOINTS.ADMIN_LOGIN}`, {
+      // Use Next.js API route to avoid CORS issues (server-side proxy)
+      const response = await fetch('/api/v1/auth/admin-login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

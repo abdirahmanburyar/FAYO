@@ -1,0 +1,56 @@
+# Mobile app (not needed for server deployment)
+mobile/
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+!README.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Dependencies (will be installed in container)
+node_modules/
+dist/
+build/
+
+# Test files
+*.test.js
+*.spec.js
+test/
+tests/
+__tests__/
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+

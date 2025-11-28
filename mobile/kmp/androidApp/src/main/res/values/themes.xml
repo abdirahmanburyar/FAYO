@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.FayoHealthcare" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <!-- Set window background to white to match splash screen -->
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
+    
+    <!-- Launcher icon background color -->
+    <color name="ic_launcher_background">#FFFFFF</color>
+</resources>
+
