@@ -15,6 +15,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Validate secrets
+        run: |
+          if [ -z "${{ secrets.VPS_HOST }}" ]; then
+            echo "❌ Error: VPS_HOST secret is not set!"
+            echo "Please add VPS_HOST secret in GitHub repository settings."
+            exit 1
+          fi
+          if [ -z "${{ secrets.VPS_PASSWORD }}" ]; then
+            echo "❌ Error: VPS_PASSWORD secret is not set!"
+            echo "Please add VPS_PASSWORD secret in GitHub repository settings."
+            exit 1
+          fi
+          echo "✅ Secrets validated successfully"
+          echo "VPS Host: ${{ secrets.VPS_HOST }}"
+
       - name: Install sshpass
         run: |
           sudo apt-get update
