@@ -163,6 +163,16 @@ jobs:
           $COMPOSE_CMD -f docker-compose.prod.yml exec -T payment-service npx prisma generate || echo "ℹ️  payment-service may not use Prisma"
           $COMPOSE_CMD -f docker-compose.prod.yml exec -T payment-service npx prisma migrate deploy || echo "ℹ️  payment-service may not use Prisma"
           
+          echo "Creating admin user credentials..."
+          # Try using the create-admin-manual.js script if it exists, otherwise use inline command
+          if $COMPOSE_CMD -f docker-compose.prod.yml exec -T user-service test -f /app/create-admin-manual.js 2>/dev/null; then
+            echo "Using create-admin-manual.js script..."
+            $COMPOSE_CMD -f docker-compose.prod.yml exec -T user-service node /app/create-admin-manual.js || echo "⚠️  Admin creation failed"
+          else
+            echo "Using inline command to create admin..."
+            $COMPOSE_CMD -f docker-compose.prod.yml exec -T user-service node -e "const {PrismaClient}=require('@prisma/client');const bcrypt=require('bcryptjs');const p=new PrismaClient();(async()=>{try{const e=await p.user.findFirst({where:{role:'ADMIN'}});if(e){console.log('✅ Admin exists:',e.username);}else{const h=await bcrypt.hash('admin123',10);const a=await p.user.create({data:{username:'0001',email:'admin@fayo.com',password:h,firstName:'System',lastName:'Administrator',role:'ADMIN',userType:'HOSPITAL_MANAGER',isActive:true}});console.log('✅ Admin created! Username: 0001, Password: admin123, Email: admin@fayo.com');}}catch(e){console.error('⚠️ Error:',e.message);}finally{await p.\$disconnect();}})();" || echo "⚠️  Admin creation failed"
+          fi
+          
           echo "Restarting services after migrations..."
           $COMPOSE_CMD -f docker-compose.prod.yml restart specialty-service || true
           $COMPOSE_CMD -f docker-compose.prod.yml restart hospital-service || true
