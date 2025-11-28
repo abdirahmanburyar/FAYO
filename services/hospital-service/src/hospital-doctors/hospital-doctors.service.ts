@@ -21,10 +21,25 @@ export class HospitalDoctorsService {
       }
 
       // Get all doctors for this hospital
+      // Explicitly select only fields that exist in the schema to avoid schema mismatch errors
       const hospitalDoctors = await this.prisma.hospitalDoctor.findMany({
         where: { hospitalId },
         include: {
-          doctor: true,
+          doctor: {
+            select: {
+              id: true,
+              userId: true,
+              specialty: true,
+              licenseNumber: true,
+              experience: true,
+              isVerified: true,
+              isAvailable: true,
+              consultationFee: true,
+              bio: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
         },
         orderBy: { joinedAt: 'desc' },
       });
@@ -80,7 +95,21 @@ export class HospitalDoctorsService {
           role: assignDoctorDto.role || 'CONSULTANT',
         },
         include: {
-          doctor: true,
+          doctor: {
+            select: {
+              id: true,
+              userId: true,
+              specialty: true,
+              licenseNumber: true,
+              experience: true,
+              isVerified: true,
+              isAvailable: true,
+              consultationFee: true,
+              bio: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
         },
       });
 
@@ -152,7 +181,21 @@ export class HospitalDoctorsService {
         },
         data: { role: updateRoleDto.role },
         include: {
-          doctor: true,
+          doctor: {
+            select: {
+              id: true,
+              userId: true,
+              specialty: true,
+              licenseNumber: true,
+              experience: true,
+              isVerified: true,
+              isAvailable: true,
+              consultationFee: true,
+              bio: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
         },
       });
     } catch (error) {

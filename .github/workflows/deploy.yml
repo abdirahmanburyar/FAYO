@@ -160,22 +160,13 @@ jobs:
             echo ""
             echo "📦 $SERVICE_NAME: Starting migration process..."
             
-            # Generate Prisma Client
-            echo "  → Generating Prisma Client..."
-            if $COMPOSE_CMD -f docker-compose.prod.yml exec -T $SERVICE npx prisma generate; then
-              echo "  ✅ Prisma Client generated successfully"
-            else
-              echo "  ❌ Failed to generate Prisma Client for $SERVICE_NAME"
-              return 1
-            fi
-            
-            # Run migrations
-            echo "  → Running database migrations..."
-            if $COMPOSE_CMD -f docker-compose.prod.yml exec -T $SERVICE npx prisma migrate deploy; then
-              echo "  ✅ Migrations completed successfully for $SERVICE_NAME"
+            # Generate Prisma Client and run migrations in the same shell context
+            echo "  → Generating Prisma Client and running migrations..."
+            if $COMPOSE_CMD -f docker-compose.prod.yml exec -T $SERVICE sh -c "cd /app && npx prisma generate && npx prisma migrate deploy"; then
+              echo "  ✅ Prisma Client generated and migrations completed successfully for $SERVICE_NAME"
               return 0
             else
-              echo "  ❌ Migration failed for $SERVICE_NAME"
+              echo "  ❌ Failed to generate Prisma Client or run migrations for $SERVICE_NAME"
               echo "  Showing logs for $SERVICE_NAME:"
               docker logs $SERVICE --tail 50 || true
               return 1

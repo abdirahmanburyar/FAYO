@@ -45,14 +45,55 @@ docker exec -i postgres psql -U postgres -d hospital_service -c 'CREATE SCHEMA I
 
 ## After Creating Databases
 
-1. Run Prisma migrations for each service:
+1. Run Prisma migrations for each service (generate client first, then migrate):
 ```bash
 cd /root/fayo
+
+# User Service
+docker compose -f docker-compose.prod.yml exec user-service sh -c "npx prisma generate && npx prisma migrate deploy"
+
+# Hospital Service
+docker compose -f docker-compose.prod.yml exec hospital-service sh -c "npx prisma generate && npx prisma migrate deploy"
+
+# Doctor Service
+docker compose -f docker-compose.prod.yml exec doctor-service sh -c "npx prisma generate && npx prisma migrate deploy"
+
+# Specialty Service
+docker compose -f docker-compose.prod.yml exec specialty-service sh -c "npx prisma generate && npx prisma migrate deploy"
+
+# Appointment Service
+docker compose -f docker-compose.prod.yml exec appointment-service sh -c "npx prisma generate && npx prisma migrate deploy"
+
+# Payment Service
+docker compose -f docker-compose.prod.yml exec payment-service sh -c "npx prisma generate && npx prisma migrate deploy"
+```
+
+**OR run them separately (recommended if one fails):**
+```bash
+cd /root/fayo
+
+# User Service
+docker compose -f docker-compose.prod.yml exec user-service npx prisma generate
 docker compose -f docker-compose.prod.yml exec user-service npx prisma migrate deploy
+
+# Hospital Service
+docker compose -f docker-compose.prod.yml exec hospital-service npx prisma generate
 docker compose -f docker-compose.prod.yml exec hospital-service npx prisma migrate deploy
+
+# Doctor Service
+docker compose -f docker-compose.prod.yml exec doctor-service npx prisma generate
 docker compose -f docker-compose.prod.yml exec doctor-service npx prisma migrate deploy
+
+# Specialty Service
+docker compose -f docker-compose.prod.yml exec specialty-service npx prisma generate
 docker compose -f docker-compose.prod.yml exec specialty-service npx prisma migrate deploy
+
+# Appointment Service
+docker compose -f docker-compose.prod.yml exec appointment-service npx prisma generate
 docker compose -f docker-compose.prod.yml exec appointment-service npx prisma migrate deploy
+
+# Payment Service
+docker compose -f docker-compose.prod.yml exec payment-service npx prisma generate
 docker compose -f docker-compose.prod.yml exec payment-service npx prisma migrate deploy
 ```
 
