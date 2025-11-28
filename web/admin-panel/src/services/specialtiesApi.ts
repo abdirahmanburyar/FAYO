@@ -51,12 +51,11 @@ class SpecialtiesApiService {
 
   async getSpecialties(includeInactive?: boolean): Promise<Specialty[]> {
     try {
-      // Use direct connection to service (skip proxy)
-      const specialtyServiceUrl = API_CONFIG.SPECIALTY_SERVICE_URL;
-      const directUrl = `${specialtyServiceUrl}/api/v1/specialties${includeInactive ? '?includeInactive=true' : ''}`;
-      console.log('[SpecialtiesApi] Fetching specialties from:', directUrl);
+      // Use Next.js API proxy route (server-side, avoids CORS)
+      const proxyUrl = `/api/v1/specialties${includeInactive ? '?includeInactive=true' : ''}`;
+      console.log('[SpecialtiesApi] Fetching specialties from proxy:', proxyUrl);
       
-      const response = await fetch(directUrl, {
+      const response = await fetch(proxyUrl, {
         method: 'GET',
         headers: this.getAuthHeaders(),
       });
@@ -111,12 +110,11 @@ class SpecialtiesApiService {
 
   async getSpecialtyById(id: string): Promise<Specialty> {
     try {
-      // Use direct connection to service (skip proxy)
-      const specialtyServiceUrl = API_CONFIG.SPECIALTY_SERVICE_URL;
-      const directUrl = `${specialtyServiceUrl}/api/v1/specialties/${id}`;
-      console.log('[SpecialtiesApi] Fetching specialty by ID from:', directUrl);
+      // Use Next.js API proxy route (server-side, avoids CORS)
+      const proxyUrl = `/api/v1/specialties/${id}`;
+      console.log('[SpecialtiesApi] Fetching specialty by ID from proxy:', proxyUrl);
       
-      const response = await fetch(directUrl, {
+      const response = await fetch(proxyUrl, {
         method: 'GET',
         headers: this.getAuthHeaders(),
       });
@@ -161,12 +159,11 @@ class SpecialtiesApiService {
     isActive?: boolean;
   }): Promise<Specialty> {
     try {
-      // Use direct connection to service (skip proxy)
-      const specialtyServiceUrl = API_CONFIG.SPECIALTY_SERVICE_URL;
-      const directUrl = `${specialtyServiceUrl}/api/v1/specialties`;
-      console.log('[SpecialtiesApi] Creating specialty at:', directUrl);
+      // Use Next.js API proxy route (server-side, avoids CORS)
+      const proxyUrl = `/api/v1/specialties`;
+      console.log('[SpecialtiesApi] Creating specialty via proxy:', proxyUrl);
       
-      const response = await fetch(directUrl, {
+      const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify(specialtyData),
@@ -197,12 +194,11 @@ class SpecialtiesApiService {
     isActive?: boolean;
   }): Promise<Specialty> {
     try {
-      // Use direct connection to service (skip proxy)
-      const specialtyServiceUrl = API_CONFIG.SPECIALTY_SERVICE_URL;
-      const directUrl = `${specialtyServiceUrl}/api/v1/specialties/${id}`;
-      console.log('[SpecialtiesApi] Updating specialty at:', directUrl);
+      // Use Next.js API proxy route (server-side, avoids CORS)
+      const proxyUrl = `/api/v1/specialties/${id}`;
+      console.log('[SpecialtiesApi] Updating specialty via proxy:', proxyUrl);
       
-      const response = await fetch(directUrl, {
+      const response = await fetch(proxyUrl, {
         method: 'PATCH',
         headers: this.getAuthHeaders(),
         body: JSON.stringify(specialtyData),
@@ -229,12 +225,11 @@ class SpecialtiesApiService {
 
   async deleteSpecialty(id: string): Promise<void> {
     try {
-      // Use direct connection to service (skip proxy)
-      const specialtyServiceUrl = API_CONFIG.SPECIALTY_SERVICE_URL;
-      const directUrl = `${specialtyServiceUrl}/api/v1/specialties/${id}`;
-      console.log('[SpecialtiesApi] Deleting specialty at:', directUrl);
+      // Use Next.js API proxy route (server-side, avoids CORS)
+      const proxyUrl = `/api/v1/specialties/${id}`;
+      console.log('[SpecialtiesApi] Deleting specialty via proxy:', proxyUrl);
       
-      const response = await fetch(directUrl, {
+      const response = await fetch(proxyUrl, {
         method: 'DELETE',
         headers: this.getAuthHeaders(),
       });
