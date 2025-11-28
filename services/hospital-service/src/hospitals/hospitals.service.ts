@@ -795,7 +795,7 @@ export class HospitalsService {
       // Fetch doctors from doctor-service
       if (doctorIds.length > 0) {
         try {
-          const doctorServiceUrl = this.configService.get<string>('DOCTOR_SERVICE_URL') || 'http://localhost:3003';
+          const doctorServiceUrl = this.configService.get<string>('DOCTOR_SERVICE_URL') || 'http://doctor-service:3003';
           console.log(`🏥 [DEBUG] Fetching ${doctorIds.length} doctors from doctor-service for hospital ${hospitalId}`);
           console.log(`🏥 [DEBUG] Doctor IDs to fetch:`, doctorIds);
           
@@ -927,7 +927,7 @@ export class HospitalsService {
 
       // Verify doctor exists in doctor-service and sync to local database
       try {
-        const doctorServiceUrl = this.configService.get<string>('DOCTOR_SERVICE_URL') || 'http://localhost:3003';
+        const doctorServiceUrl = this.configService.get<string>('DOCTOR_SERVICE_URL') || 'http://doctor-service:3003';
         const doctorResponse = await firstValueFrom(
           this.httpService.get(`${doctorServiceUrl}/api/v1/doctors/${doctorId}`)
         ) as any;
