@@ -92,40 +92,63 @@ class HospitalApiService {
   // Get all hospitals
   async getHospitals(): Promise<Hospital[]> {
     try {
-      const url = `${API_CONFIG.HOSPITAL_SERVICE_URL}${API_CONFIG.ENDPOINTS.HOSPITALS}`;
-      console.log('Fetching hospitals from:', url);
+      // Try using Next.js API proxy route first (server-side, avoids CORS)
+      const proxyUrl = '/api/v1/hospitals';
+      console.log('Fetching hospitals from proxy:', proxyUrl);
       
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
+      let response;
+      try {
+        response = await fetch(proxyUrl, {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        });
+      } catch (proxyError: any) {
+        // If proxy fails, try direct connection
+        console.warn('Proxy failed, trying direct connection:', proxyError.message);
+        const directUrl = `${API_CONFIG.HOSPITAL_SERVICE_URL}${API_CONFIG.ENDPOINTS.HOSPITALS}`;
+        console.log('Fetching hospitals from direct URL:', directUrl);
+        response = await fetch(directUrl, {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        });
+      }
 
       console.log('Response status:', response.status);
       console.log('Response ok:', response.ok);
 
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData: any = {};
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { message: response.statusText };
+        }
         console.error('Error response data:', errorData);
-        throw new Error(errorData.message || `Failed to fetch hospitals: ${response.statusText}`);
+        throw new Error(errorData.message || `Failed to fetch hospitals: ${response.status} ${response.statusText}`);
       }
 
       const hospitalsData = await response.json();
       console.log('Hospitals data received:', hospitalsData);
       
+      // Handle paginated response (if service returns { data: [], total: number })
+      const hospitalsArray = Array.isArray(hospitalsData) 
+        ? hospitalsData 
+        : (hospitalsData.data || hospitalsData.hospitals || []);
+      
       // Ensure we have an array
-      if (!Array.isArray(hospitalsData)) {
+      if (!Array.isArray(hospitalsArray)) {
         console.error('Hospitals data is not an array:', hospitalsData);
         throw new Error('Invalid response format: expected array of hospitals');
       }
       
       // Transform service data for each hospital
-      const transformedHospitals = hospitalsData.map((hospital: any) => ({
+      const transformedHospitals = hospitalsArray.map((hospital: any) => ({
         ...hospital,
         services: hospital.services?.map((service: any) => ({
           id: service.id,
           hospitalId: service.hospitalId,
           serviceId: service.serviceId,
-          name: service.name,
+          name: service.name || service.serviceName,
           description: service.description,
           isActive: service.isActive,
           createdAt: service.createdAt,
@@ -144,10 +167,21 @@ class HospitalApiService {
   // Get hospital by ID
   async getHospitalById(id: string): Promise<Hospital> {
     try {
-      const response = await fetch(`${API_CONFIG.HOSPITAL_SERVICE_URL}${API_CONFIG.ENDPOINTS.HOSPITALS}/${id}`, {
-        method: 'GET',
-        headers: this.getAuthHeaders(),
-      });
+      // Try proxy route first
+      let response;
+      try {
+        response = await fetch(`/api/v1/hospitals/${id}`, {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        });
+      } catch (proxyError: any) {
+        // Fallback to direct connection
+        console.warn('Proxy failed, trying direct connection:', proxyError.message);
+        response = await fetch(`${API_CONFIG.HOSPITAL_SERVICE_URL}${API_CONFIG.ENDPOINTS.HOSPITALS}/${id}`, {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        });
+      }
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -165,7 +199,7 @@ class HospitalApiService {
           id: service.id,
           hospitalId: service.hospitalId,
           serviceId: service.serviceId,
-          name: service.name,
+          name: service.name || service.serviceName,
           description: service.description,
           isActive: service.isActive,
           createdAt: service.createdAt,
@@ -191,13 +225,27 @@ class HospitalApiService {
   // Create new hospital
   async createHospital(hospitalData: CreateHospitalDto): Promise<Hospital> {
     try {
-      const response = await fetch(`${API_CONFIG.HOSPITAL_SERVICE_URL}${API_CONFIG.ENDPOINTS.HOSPITALS}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(hospitalData),
-      });
+      // Try proxy route first
+      let response;
+      try {
+        response = await fetch('/api/v1/hospitals', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(hospitalData),
+        });
+      } catch (proxyError: any) {
+        // Fallback to direct connection
+        console.warn('Proxy failed, trying direct connection:', proxyError.message);
+        response = await fetch(`${API_CONFIG.HOSPITAL_SERVICE_URL}${API_CONFIG.ENDPOINTS.HOSPITALS}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(hospitalData),
+        });
+      }
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -217,14 +265,25 @@ class HospitalApiService {
       console.log('🏥 Updating hospital:', { id, hospitalData });
       console.log('🏥 Auth headers:', this.getAuthHeaders());
       
-      const response = await fetch(`${API_CONFIG.HOSPITAL_SERVICE_URL}${API_CONFIG.ENDPOINTS.HOSPITALS}/${id}`, {
-        method: 'PATCH',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(hospitalData),
-      });
+      // Try proxy route first
+      let response;
+      try {
+        response = await fetch(`/api/v1/hospitals/${id}`, {
+          method: 'PATCH',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(hospitalData),
+        });
+      } catch (proxyError: any) {
+        // Fallback to direct connection
+        console.warn('Proxy failed, trying direct connection:', proxyError.message);
+        response = await fetch(`${API_CONFIG.HOSPITAL_SERVICE_URL}${API_CONFIG.ENDPOINTS.HOSPITALS}/${id}`, {
+          method: 'PATCH',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(hospitalData),
+        });
+      }
 
       console.log('🏥 Update response status:', response.status);
-      console.log('🏥 Update response headers:', response.headers);
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -244,10 +303,21 @@ class HospitalApiService {
   // Delete hospital
   async deleteHospital(id: string): Promise<void> {
     try {
-      const response = await fetch(`${API_CONFIG.HOSPITAL_SERVICE_URL}${API_CONFIG.ENDPOINTS.HOSPITALS}/${id}`, {
-        method: 'DELETE',
-        headers: this.getAuthHeaders(),
-      });
+      // Try proxy route first
+      let response;
+      try {
+        response = await fetch(`/api/v1/hospitals/${id}`, {
+          method: 'DELETE',
+          headers: this.getAuthHeaders(),
+        });
+      } catch (proxyError: any) {
+        // Fallback to direct connection
+        console.warn('Proxy failed, trying direct connection:', proxyError.message);
+        response = await fetch(`${API_CONFIG.HOSPITAL_SERVICE_URL}${API_CONFIG.ENDPOINTS.HOSPITALS}/${id}`, {
+          method: 'DELETE',
+          headers: this.getAuthHeaders(),
+        });
+      }
 
       if (!response.ok) {
         const errorData = await response.json();

@@ -3,12 +3,25 @@
 
 // Helper function to get service URL (reads env vars at runtime)
 const getServiceUrl = (servicePath: string, directPort: string): string => {
-  // Always use direct HTTP URL for development
   // Check if we're in browser (client-side)
   if (typeof window !== 'undefined') {
-    // Client-side: use NEXT_PUBLIC_ env variable
+    // Client-side: use NEXT_PUBLIC_ env variable (available at build time)
     const envKey = `NEXT_PUBLIC_${servicePath.toUpperCase().replace('-', '_')}_SERVICE_URL`;
-    return process.env[envKey] || `http://localhost:${directPort}`;
+    const envValue = process.env[envKey];
+    
+    if (envValue) {
+      return envValue;
+    }
+    
+    // Fallback: construct URL from current window location
+    // This works in production when env vars might not be set at build time
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      // Production: use same hostname as the current page
+      return `http://${window.location.hostname}:${directPort}`;
+    }
+    
+    // Development fallback
+    return `http://localhost:${directPort}`;
   } else {
     // Server-side: use environment variable (read at runtime)
     const envKey = `${servicePath.toUpperCase().replace('-', '_')}_SERVICE_URL`;

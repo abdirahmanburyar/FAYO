@@ -1,6 +1,12 @@
-FROM node:18-alpine AS builder
+FROM node:18-bullseye-slim AS builder
 
 WORKDIR /app
+
+# Install OpenSSL and required libraries for Prisma
+# Debian Bullseye includes OpenSSL 1.1.x which Prisma requires
+RUN apt-get update && \
+    apt-get install -y openssl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
@@ -19,9 +25,15 @@ RUN npx prisma generate
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine
+FROM node:18-bullseye-slim
 
 WORKDIR /app
+
+# Install OpenSSL and required libraries for Prisma (needed at runtime)
+# Debian Bullseye includes OpenSSL 1.1.x which Prisma requires
+RUN apt-get update && \
+    apt-get install -y openssl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
