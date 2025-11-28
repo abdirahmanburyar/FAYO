@@ -4,9 +4,8 @@ This guide explains how to set up automated deployment to your VPS using GitHub 
 
 ## Prerequisites
 
-1. ✅ SSH key pair generated (`id_rsa_github_actions`)
-2. ✅ Public key added to VPS
-3. ✅ Private key ready to add to GitHub Secrets
+1. ✅ VPS with SSH access
+2. ✅ VPS password ready to add to GitHub Secrets
 
 ## Step 1: Add GitHub Secrets
 
@@ -16,9 +15,8 @@ Go to your GitHub repository and add the following secrets:
 
 ### Required Secrets:
 
-1. **`VPS_SSH_PRIVATE_KEY`**
-   - Value: Your private SSH key (the entire content of `~/.ssh/id_rsa_github_actions`)
-   - Include the `-----BEGIN OPENSSH PRIVATE KEY-----` and `-----END OPENSSH PRIVATE KEY-----` lines
+1. **`VPS_PASSWORD`**
+   - Value: Your VPS root password (e.g., `Buryar@2020#`)
 
 2. **`VPS_HOST`**
    - Value: Your VPS IP address (e.g., `31.97.58.62`)
@@ -80,9 +78,9 @@ You can also manually trigger the workflow:
 ## Troubleshooting
 
 ### SSH Connection Fails
-- Verify `VPS_SSH_PRIVATE_KEY` secret is correct
-- Check that public key is in VPS `~/.ssh/authorized_keys`
-- Test SSH connection manually: `ssh -i ~/.ssh/id_rsa_github_actions root@YOUR_VPS_IP`
+- Verify `VPS_PASSWORD` secret is correct
+- Test SSH connection manually: `ssh root@YOUR_VPS_IP`
+- Ensure password authentication is enabled on the VPS
 
 ### Build Fails
 - Check Docker is installed on VPS
