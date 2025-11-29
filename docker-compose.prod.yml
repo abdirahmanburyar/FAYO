@@ -92,7 +92,7 @@ services:
     ports:
       - '3001:3001'
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/user_service?schema=public}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/user_service?schema=users}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
@@ -136,7 +136,7 @@ services:
       - '3002:3002'
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/hospital_service?schema=public}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/hospital_service?schema=hospitals}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
@@ -237,7 +237,7 @@ services:
       - '3005:3005'
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/appointment_service?schema=public}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/appointment_service?schema=appointments}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
@@ -284,7 +284,7 @@ services:
       - '3006:3006'
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/payment_service?schema=public}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/payment_service?schema=payments}
       PORT: 3006
       HOST: 0.0.0.0
       KAFKA_BROKER: kafka:9092

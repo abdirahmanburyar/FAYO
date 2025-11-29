@@ -72,8 +72,10 @@ export class PaymentsService {
         throw new NotFoundException(`Payment with ID ${paymentId} not found`);
       }
 
+      // If payment is already paid, return it as-is (idempotent operation)
       if (payment.paymentStatus === PaymentStatus.PAID) {
-        throw new BadRequestException('Payment is already paid');
+        this.logger.log(`ℹ️ Payment ${paymentId} is already paid, returning existing payment`);
+        return payment;
       }
 
       if (payment.paymentStatus === PaymentStatus.REFUNDED) {

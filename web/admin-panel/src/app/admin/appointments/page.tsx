@@ -588,7 +588,7 @@ export default function AppointmentsPage() {
         return;
       }
 
-      // Create payment
+      // Create payment (already created as PAID by default)
       const payment = await paymentApi.createPayment({
         appointmentId: selectedAppointment.id,
         amount: amountInCents,
@@ -599,14 +599,12 @@ export default function AppointmentsPage() {
         processedBy: adminUserId,
       });
 
-      // Process payment immediately (mark as completed)
-      const processedPayment = await paymentApi.processPayment(payment.id, adminUserId);
-
+      // Payment is already PAID when created, no need to process it
       // Update appointment payment status
       await appointmentsApi.updateAppointment(selectedAppointment.id, {
         paymentStatus: 'PAID',
         paymentMethod: paymentMethod,
-        paymentTransactionId: processedPayment.receiptNumber,
+        paymentTransactionId: payment.receiptNumber,
       });
 
       // Refresh appointments
