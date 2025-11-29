@@ -1,4 +1,4 @@
-import { io, Socket } from 'socket.io-client';
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    import { io, Socket } from 'socket.io-client';
 
 export interface AppointmentWebSocketEvent {
   type: 'appointment.created' | 'appointment.updated' | 'appointment.cancelled' | 'appointment.confirmed' | 'connected' | 'pong' | 'call.invitation' | 'call.accepted' | 'call.started' | 'call.ended';
@@ -30,10 +30,11 @@ export class AppointmentWebSocketService {
     // Force HTTP for development - HTTPS disabled
     if (typeof window !== 'undefined') {
       // Use HTTP base URL - Socket.IO will handle the path
-      const appointmentServiceUrl = process.env.NEXT_PUBLIC_APPOINTMENT_SERVICE_URL || 'http://localhost:3005';
+      // Always use VPS IP address for appointment-service WebSocket
+      const appointmentServiceUrl = process.env.NEXT_PUBLIC_APPOINTMENT_SERVICE_URL || 'http://31.97.58.62:3005';
       return appointmentServiceUrl;
     }
-    return 'http://localhost:3005';
+    return 'http://31.97.58.62:3005';
   }
 
   connect() {
