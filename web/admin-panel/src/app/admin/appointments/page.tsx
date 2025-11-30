@@ -1137,22 +1137,21 @@ export default function AppointmentsPage() {
           </div>
         </div>
 
-        {paginatedAppointments.map((appointment, index) => {
-          const details = appointmentDetails.get(appointment.id);
-          const isLoadingDetails = loadingDetails.has(appointment.id);
-          const isEditing = editingAppointment === appointment.id;
+        {/* Appointments Grid - 2 columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {paginatedAppointments.map((appointment, index) => {
+            const details = appointmentDetails.get(appointment.id);
+            const isLoadingDetails = loadingDetails.has(appointment.id);
+            const isEditing = editingAppointment === appointment.id;
 
-          return (
-            <motion.div
-              key={appointment.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="bg-white rounded-xl shadow-lg border-2 border-gray-200 hover:shadow-xl hover:border-blue-300 transition-all overflow-hidden relative"
-              style={{
-                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
-              }}
-            >
+            return (
+              <motion.div
+                key={appointment.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl hover:border-blue-300 transition-all overflow-hidden relative"
+              >
               {/* Airline Ticket Top Border */}
               <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-500"></div>
               {isEditing ? (
@@ -1298,12 +1297,12 @@ export default function AppointmentsPage() {
                         {details?.doctor ? (
                           <>
                             {/* Compact Doctor Portrait */}
-                            <div className="relative mb-2">
+                            <div className="relative mb-1.5">
                               {details.doctor.imageUrl ? (
                                 <img 
                                   src={details.doctor.imageUrl} 
                                   alt={`Dr. ${details.doctor.user?.firstName} ${details.doctor.user?.lastName}`}
-                                  className="w-28 h-32 rounded-xl object-cover object-center border-2 border-white shadow-lg"
+                                  className="w-24 h-28 rounded-lg object-cover object-center border-2 border-white shadow-md"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.style.display = 'none';
@@ -1313,37 +1312,37 @@ export default function AppointmentsPage() {
                                 />
                               ) : null}
                               <div 
-                                className={`w-28 h-32 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white border-2 border-white shadow-lg ${details.doctor.imageUrl ? 'hidden' : ''}`}
+                                className={`w-24 h-28 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white border-2 border-white shadow-md ${details.doctor.imageUrl ? 'hidden' : ''}`}
                               >
-                                <span className="text-4xl font-bold">
+                                <span className="text-3xl font-bold">
                                   {details.doctor.user?.firstName?.[0] || 'D'}{details.doctor.user?.lastName?.[0] || ''}
                                 </span>
                               </div>
                               {/* Availability Badge - Smaller */}
-                              <div className={`absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-5 h-5 rounded-full border-2 border-white shadow-lg ${details.doctor.isAvailable ? 'bg-green-500' : 'bg-gray-400'}`} title={details.doctor.isAvailable ? 'Available' : 'Unavailable'}></div>
+                              <div className={`absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-4 h-4 rounded-full border-2 border-white shadow-md ${details.doctor.isAvailable ? 'bg-green-500' : 'bg-gray-400'}`} title={details.doctor.isAvailable ? 'Available' : 'Unavailable'}></div>
                             </div>
                             
                             {/* Doctor Info - Compact */}
                             <div className="text-center">
-                              <h3 className="font-bold text-gray-900 text-sm mb-0.5">
+                              <h3 className="font-bold text-gray-900 text-xs mb-0.5">
                                 Dr. {details.doctor.user?.firstName} {details.doctor.user?.lastName}
                               </h3>
                               {details.doctor.specialties && details.doctor.specialties.length > 0 && (
-                                <p className="text-xs text-gray-600 font-medium mb-0.5">
+                                <p className="text-[10px] text-gray-600 font-medium mb-0.5">
                                   {details.doctor.specialties[0].name}
                                 </p>
                               )}
-                              <p className="text-xs text-gray-500 font-mono bg-white/60 px-1.5 py-0.5 rounded text-[10px]">
+                              <p className="text-[10px] text-gray-500 font-mono bg-white/60 px-1 py-0.5 rounded">
                                 {details.doctor.licenseNumber}
                               </p>
                             </div>
                           </>
                         ) : (
                           <div className="text-center">
-                            <div className="w-28 h-32 rounded-xl bg-gray-200 flex items-center justify-center mb-2 border-2 border-white shadow-lg">
-                              <UserIcon className="w-10 h-10 text-gray-400" />
+                            <div className="w-24 h-28 rounded-lg bg-gray-200 flex items-center justify-center mb-1.5 border-2 border-white shadow-md">
+                              <UserIcon className="w-8 h-8 text-gray-400" />
                             </div>
-                            <p className="text-xs text-gray-600 font-medium">
+                            <p className="text-[10px] text-gray-600 font-medium">
                               {appointment.doctorId ? 'Assigned' : 'Pending'}
                             </p>
                           </div>
@@ -1351,118 +1350,118 @@ export default function AppointmentsPage() {
                       </div>
 
                       {/* Right Side - Ticket Information - Compact */}
-                      <div className="flex-1 p-4">
-                        <div className="flex flex-col lg:flex-row gap-4">
+                      <div className="flex-1 p-3">
+                        <div className="flex flex-col lg:flex-row gap-3">
                           {/* Main Ticket Content */}
-                          <div className="flex-1 space-y-3">
+                          <div className="flex-1 space-y-2">
                             {/* Ticket Header with Appointment Number - Compact */}
-                            <div className="flex items-start justify-between pb-3 border-b border-gray-200">
-                              <div className="flex-1">
-                                <div className="inline-flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1.5 rounded-lg shadow-md mb-2">
-                                  <span className="text-[10px] font-bold mr-2 opacity-90 tracking-wider">APPT #</span>
-                                  <span className="text-xl font-black tracking-wider">
+                            <div className="flex items-start justify-between pb-2 border-b border-gray-200">
+                              <div className="flex-1 min-w-0">
+                                <div className="inline-flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-2.5 py-1 rounded-md shadow-sm mb-1.5">
+                                  <span className="text-[9px] font-bold mr-1.5 opacity-90 tracking-wider">APPT #</span>
+                                  <span className="text-base font-black tracking-wider">
                                     {formatAppointmentNumber(appointment.appointmentNumber)}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className={`inline-flex items-center px-2 py-1 text-[10px] font-bold rounded-md shadow-sm ${getStatusBadgeColor(appointment.status)}`}>
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  <span className={`inline-flex items-center px-1.5 py-0.5 text-[9px] font-bold rounded shadow-sm ${getStatusBadgeColor(appointment.status)}`}>
                                     {getStatusIcon(appointment.status)}
-                                    <span className="ml-1">{appointment.status}</span>
+                                    <span className="ml-0.5">{appointment.status}</span>
                                   </span>
-                                  <span className={`inline-flex items-center px-2 py-1 text-[10px] font-bold rounded-md shadow-sm ${getPaymentStatusBadgeColor(appointment.paymentStatus)}`}>
+                                  <span className={`inline-flex items-center px-1.5 py-0.5 text-[9px] font-bold rounded shadow-sm ${getPaymentStatusBadgeColor(appointment.paymentStatus)}`}>
                                     {appointment.paymentStatus}
                                   </span>
                                 </div>
                               </div>
                               
                               {/* Consultation Type Icon - Smaller */}
-                              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white shadow-lg">
+                              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-md flex items-center justify-center text-white shadow-md flex-shrink-0">
                                 {getConsultationTypeIcon(appointment.consultationType)}
                               </div>
                             </div>
 
                             {/* Appointment Details Grid - Compact */}
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-2 gap-1.5">
                               {/* Date */}
-                              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-2.5 border border-blue-100">
-                                <div className="flex items-center text-blue-600 text-[10px] font-semibold mb-1 uppercase tracking-wide">
-                                  <Calendar className="w-3 h-3 mr-1" />
+                              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-md p-2 border border-blue-100">
+                                <div className="flex items-center text-blue-600 text-[9px] font-semibold mb-0.5 uppercase tracking-wide">
+                                  <Calendar className="w-2.5 h-2.5 mr-0.5" />
                                   <span>Date</span>
                                 </div>
-                                <p className="font-bold text-gray-900 text-sm">{formatDate(appointment.appointmentDate)}</p>
+                                <p className="font-bold text-gray-900 text-xs">{formatDate(appointment.appointmentDate)}</p>
                               </div>
                               
                               {/* Time */}
-                              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-2.5 border border-indigo-100">
-                                <div className="flex items-center text-indigo-600 text-[10px] font-semibold mb-1 uppercase tracking-wide">
-                                  <Clock className="w-3 h-3 mr-1" />
+                              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-md p-2 border border-indigo-100">
+                                <div className="flex items-center text-indigo-600 text-[9px] font-semibold mb-0.5 uppercase tracking-wide">
+                                  <Clock className="w-2.5 h-2.5 mr-0.5" />
                                   <span>Time</span>
                                 </div>
-                                <p className="font-bold text-gray-900 text-sm">{formatTime(appointment.appointmentTime)}</p>
+                                <p className="font-bold text-gray-900 text-xs">{formatTime(appointment.appointmentTime)}</p>
                               </div>
 
                               {/* Duration */}
-                              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-2.5 border border-purple-100">
-                                <div className="text-purple-600 text-[10px] font-semibold mb-1 uppercase tracking-wide">Duration</div>
-                                <p className="font-bold text-gray-900 text-sm">{appointment.duration} min</p>
+                              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-md p-2 border border-purple-100">
+                                <div className="text-purple-600 text-[9px] font-semibold mb-0.5 uppercase tracking-wide">Duration</div>
+                                <p className="font-bold text-gray-900 text-xs">{appointment.duration} min</p>
                               </div>
                               
                               {/* Fee */}
-                              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-2.5 border border-green-100">
-                                <div className="text-green-600 text-[10px] font-semibold mb-1 uppercase tracking-wide">Fee</div>
-                                <p className="font-bold text-green-700 text-sm">{formatCurrency(appointment.consultationFee)}</p>
+                              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-md p-2 border border-green-100">
+                                <div className="text-green-600 text-[9px] font-semibold mb-0.5 uppercase tracking-wide">Fee</div>
+                                <p className="font-bold text-green-700 text-xs">{formatCurrency(appointment.consultationFee)}</p>
                               </div>
                             </div>
 
                             {/* Patient & Hospital Info - Compact */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2 border-t border-gray-200">
+                            <div className="grid grid-cols-1 gap-1.5 pt-1.5 border-t border-gray-200">
                               {/* Patient */}
-                              <div className="bg-gray-50 rounded-lg p-2.5 border border-gray-200">
-                                <div className="flex items-center text-gray-700 text-[10px] font-semibold mb-1 uppercase tracking-wide">
-                                  <UserIcon className="w-3 h-3 mr-1" />
+                              <div className="bg-gray-50 rounded-md p-2 border border-gray-200">
+                                <div className="flex items-center text-gray-700 text-[9px] font-semibold mb-0.5 uppercase tracking-wide">
+                                  <UserIcon className="w-2.5 h-2.5 mr-0.5" />
                                   <span>Patient</span>
                                 </div>
                                 {details?.patient ? (
                                   <div>
-                                    <p className="font-bold text-gray-900 text-sm">{details.patient.firstName} {details.patient.lastName}</p>
+                                    <p className="font-bold text-gray-900 text-xs truncate">{details.patient.firstName} {details.patient.lastName}</p>
                                     {details.patient.phone && (
-                                      <p className="text-[10px] text-gray-600 mt-0.5 flex items-center">
-                                        <Phone className="w-3 h-3 mr-1" />
+                                      <p className="text-[9px] text-gray-600 mt-0.5 flex items-center truncate">
+                                        <Phone className="w-2.5 h-2.5 mr-0.5" />
                                         {details.patient.phone}
                                       </p>
                                     )}
                                   </div>
                                 ) : (
-                                  <p className="text-[10px] text-gray-500">ID: {appointment.patientId.substring(0, 8)}...</p>
+                                  <p className="text-[9px] text-gray-500">ID: {appointment.patientId.substring(0, 8)}...</p>
                                 )}
                               </div>
 
                               {/* Hospital (if exists) */}
                               {appointment.hospitalId && details?.hospital && (
-                                <div className="bg-gray-50 rounded-lg p-2.5 border border-gray-200">
-                                  <div className="flex items-center text-gray-700 text-[10px] font-semibold mb-1 uppercase tracking-wide">
-                                    <Building2 className="w-3 h-3 mr-1" />
+                                <div className="bg-gray-50 rounded-md p-2 border border-gray-200">
+                                  <div className="flex items-center text-gray-700 text-[9px] font-semibold mb-0.5 uppercase tracking-wide">
+                                    <Building2 className="w-2.5 h-2.5 mr-0.5" />
                                     <span>Hospital</span>
                                   </div>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1.5">
                                     {details.hospital.logoUrl ? (
                                       <img 
                                         src={details.hospital.logoUrl} 
                                         alt={details.hospital.name}
-                                        className="w-8 h-8 rounded-lg object-contain border border-gray-200 bg-white shadow-sm"
+                                        className="w-6 h-6 rounded-md object-contain border border-gray-200 bg-white shadow-sm flex-shrink-0"
                                         onError={(e) => {
                                           const target = e.target as HTMLImageElement;
                                           target.style.display = 'none';
                                         }}
                                       />
                                     ) : (
-                                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-sm">
-                                        <Building2 className="w-4 h-4 text-white" />
+                                      <div className="w-6 h-6 rounded-md bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-sm flex-shrink-0">
+                                        <Building2 className="w-3 h-3 text-white" />
                                       </div>
                                     )}
-                                    <div>
-                                      <p className="font-bold text-gray-900 text-xs">{details.hospital.name}</p>
-                                      <p className="text-[10px] text-gray-600">{details.hospital.type}</p>
+                                    <div className="min-w-0">
+                                      <p className="font-bold text-gray-900 text-xs truncate">{details.hospital.name}</p>
+                                      <p className="text-[9px] text-gray-600 truncate">{details.hospital.type}</p>
                                     </div>
                                   </div>
                                 </div>
@@ -1471,15 +1470,15 @@ export default function AppointmentsPage() {
 
                             {/* Reason - Compact */}
                             {appointment.reason && (
-                              <div className="pt-2 border-t border-gray-200">
-                                <p className="text-[10px] text-gray-500 font-semibold mb-1 uppercase tracking-wide">Reason</p>
-                                <p className="text-xs text-gray-900 font-medium bg-gray-50 rounded-lg p-2 border border-gray-200 line-clamp-2">{appointment.reason}</p>
+                              <div className="pt-1.5 border-t border-gray-200">
+                                <p className="text-[9px] text-gray-500 font-semibold mb-0.5 uppercase tracking-wide">Reason</p>
+                                <p className="text-[10px] text-gray-900 font-medium bg-gray-50 rounded-md p-1.5 border border-gray-200 line-clamp-2">{appointment.reason}</p>
                               </div>
                             )}
                           </div>
 
                           {/* Action Buttons - Right Side - Compact */}
-                          <div className="flex flex-col items-center space-y-1.5 lg:border-l lg:border-dashed lg:border-gray-300 lg:pl-4 lg:min-w-[90px]">
+                          <div className="flex flex-col items-center space-y-1 lg:border-l lg:border-dashed lg:border-gray-300 lg:pl-3 lg:min-w-[80px]">
                             {appointment.consultationType === 'VIDEO' && 
                              appointment.status !== 'CANCELLED' && 
                              appointment.status !== 'COMPLETED' && (
@@ -1588,6 +1587,7 @@ export default function AppointmentsPage() {
             </motion.div>
           );
         })}
+        </div>
 
         {filteredAppointments.length === 0 && !loading && (
           <div className="text-center py-12">

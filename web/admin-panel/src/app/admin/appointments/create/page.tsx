@@ -710,7 +710,7 @@ export default function CreateAppointmentPage() {
 
         return slots;
       }
-    } else if (bookingMethod === 'HOSPITAL' && !selectedHospitalDoctor) {
+    } else if (formData.hospitalId && !selectedHospitalDoctor) {
       // Hospital selected but no doctor assigned yet - use generic hours (e.g. 8-20)
       // In real app, we might use hospital global hours
       startHour = 8;
