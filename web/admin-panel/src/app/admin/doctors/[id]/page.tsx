@@ -198,12 +198,12 @@ export default function DoctorProfilePage() {
         {/* Profile Info Area */}
         <div className="px-8 pb-8">
           <div className="relative flex flex-col md:flex-row items-start md:items-end -mt-12 mb-6 gap-6">
-            {/* Avatar with Upload */}
+            {/* Portrait Image with Upload - Large and Professional */}
             <div className="relative group">
-              <div className="w-32 h-32 rounded-2xl border-4 border-white shadow-xl bg-white overflow-hidden flex-shrink-0 relative">
+              <div className="w-48 h-64 rounded-2xl border-4 border-white shadow-2xl bg-white overflow-hidden flex-shrink-0 relative">
                 {uploadingImage ? (
                   <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-20">
-                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                    <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
                   </div>
                 ) : null}
                 
@@ -211,21 +211,21 @@ export default function DoctorProfilePage() {
                   <img 
                     src={doctor.imageUrl} 
                     alt={displayName} 
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover object-center"
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-                    <span className="text-slate-400 text-4xl font-bold">
+                  <div className="w-full h-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center">
+                    <span className="text-white text-7xl font-bold">
                       {firstName?.[0] || 'D'}{lastName?.[0] || ''}
                     </span>
                   </div>
                 )}
                 
                 {/* Upload Overlay */}
-                <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10">
+                <label className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10">
                   <div className="text-white flex flex-col items-center">
-                    <Camera className="w-8 h-8 mb-1" />
-                    <span className="text-xs font-medium">Change Photo</span>
+                    <Camera className="w-10 h-10 mb-2" />
+                    <span className="text-sm font-semibold">Change Photo</span>
                   </div>
                   <input 
                     type="file" 
@@ -236,7 +236,8 @@ export default function DoctorProfilePage() {
                   />
                 </label>
               </div>
-              <div className={`absolute bottom-2 right-2 w-5 h-5 rounded-full border-2 border-white z-20 ${doctor.isAvailable ? 'bg-green-500' : 'bg-gray-400'}`} title={doctor.isAvailable ? 'Online' : 'Offline'}></div>
+              {/* Status Indicator */}
+              <div className={`absolute bottom-4 right-4 w-6 h-6 rounded-full border-4 border-white shadow-lg z-20 ${doctor.isAvailable ? 'bg-green-500' : 'bg-gray-400'}`} title={doctor.isAvailable ? 'Available' : 'Unavailable'}></div>
             </div>
 
             {/* Name & Badges */}

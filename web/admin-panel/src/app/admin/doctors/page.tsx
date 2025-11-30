@@ -357,8 +357,8 @@ export default function DoctorsPage() {
         </div>
       </div>
 
-      {/* Doctors Grid - Odoo Style */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      {/* Doctors Grid - Portrait Style */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredDoctors.map((doctor, index) => {
           if (!doctor) {
             return null;
@@ -370,22 +370,12 @@ export default function DoctorsPage() {
           const phone = doctor.user?.phone || '';
           const specialties = doctor.specialties || [];
           const licenseNumber = doctor.licenseNumber || 'N/A';
-          const bio = doctor.bio || '';
           const imageUrl = doctor.imageUrl;
 
-          // Debug: Log doctor data to see what we're getting
-          console.log('Doctor data:', {
-            id: doctor.id,
-            hasUser: !!doctor.user,
-            specialties: specialties,
-            specialtiesLength: specialties.length,
-            doctorSpecialties: doctor.doctorSpecialties
-          });
-
-          const cardClasses = `rounded-lg shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden group border ${
+          const cardClasses = `rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group border-2 ${
             !doctor.isActive
               ? 'bg-red-50 border-red-200'
-              : (!doctor.isVerified ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-200')
+              : (!doctor.isVerified ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-200 hover:border-blue-300')
           }`;
 
           return (
@@ -393,100 +383,134 @@ export default function DoctorsPage() {
               key={doctor.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
+              transition={{ delay: index * 0.05 }}
               className={cardClasses}
             >
-              {/* Header with Avatar and Name */}
-              <div className="p-4 pb-3">
-                <div className="flex items-start space-x-3">
+              <div className="flex h-full">
+                {/* Portrait Image Section - Sidebar */}
+                <div className="relative w-40 flex-shrink-0 bg-gradient-to-br from-blue-50 to-indigo-50 overflow-hidden">
                   {imageUrl ? (
                     <img 
                       src={imageUrl} 
                       alt={`Dr. ${firstName} ${lastName}`}
-                      className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-gray-200"
+                      className="w-full h-full object-cover object-center"
+                      onError={(e) => {
+                        // Fallback to gradient background if image fails
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
                     />
                   ) : (
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className="text-white font-semibold text-sm">
-                        {firstName[0]}{lastName[0]}
+                    <div className="w-full h-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center">
+                      <span className="text-white text-5xl font-bold">
+                        {firstName[0] || 'D'}{lastName[0] || ''}
                       </span>
                     </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-gray-900 truncate">
-                      {firstName !== 'Unknown' ? `Dr. ${firstName} ${lastName}` : `Dr. (ID: ${doctor.userId?.substring(0, 8) || 'Unknown'})`}
-                    </h3>
-                    <p className="text-xs text-gray-500 truncate mt-1">{email}</p>
+                  {/* Status Badge Overlay */}
+                  <div className="absolute top-2 right-2">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold shadow-lg ${
+                      doctor.isVerified && doctor.isAvailable 
+                        ? 'bg-green-500 text-white' 
+                        : doctor.isVerified 
+                          ? 'bg-yellow-500 text-white'
+                          : 'bg-red-500 text-white'
+                    }`}>
+                      {doctor.isVerified && doctor.isAvailable ? 'Active' : doctor.isVerified ? 'Unavailable' : 'Unverified'}
+                    </span>
+                  </div>
+                  {/* Hover Overlay for Actions */}
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center gap-2">
+                    <button 
+                      onClick={() => router.push(`/admin/doctors/${doctor.id}`)}
+                      className="bg-white text-blue-600 p-2 rounded-full hover:bg-blue-50 transition-colors shadow-lg"
+                      title="View Profile"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => router.push(`/admin/doctors/${doctor.id}/create`)}
+                      className="bg-white text-green-600 p-2 rounded-full hover:bg-green-50 transition-colors shadow-lg"
+                      title="Edit Doctor"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={async () => {
+                        const doctorName = doctor.user ? `Dr. ${doctor.user.firstName} ${doctor.user.lastName}` : 'this doctor';
+                        if (confirm(`Are you sure you want to delete ${doctorName}? This action cannot be undone.`)) {
+                          try {
+                            await doctorApi.deleteDoctor(doctor.id);
+                            fetchDoctors();
+                          } catch (error) {
+                            alert(error instanceof Error ? error.message : 'Failed to delete doctor');
+                          }
+                        }
+                      }}
+                      className="bg-white text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors shadow-lg"
+                      title="Delete Doctor"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-              </div>
 
-              {/* Content Area */}
-              <div className="px-4 pb-3 space-y-3">
-                {/* Phone */}
-                {phone && (
-                  <div className="flex items-center space-x-2 text-xs text-gray-600">
-                    <Phone className="w-3 h-3" />
-                    <span className="truncate">{phone}</span>
+                {/* Doctor Info Section - Sidebar */}
+                <div className="flex-1 p-4 flex flex-col justify-between min-w-0">
+                  <div className="space-y-2">
+                    {/* Name and Title */}
+                    <div>
+                      <h3 className="text-base font-bold text-gray-900 truncate">
+                        {firstName !== 'Unknown' ? `Dr. ${firstName} ${lastName}` : `Dr. (ID: ${doctor.userId?.substring(0, 8) || 'Unknown'})`}
+                      </h3>
+                      {specialties.length > 0 && (
+                        <p className="text-xs text-gray-600 mt-0.5 truncate">
+                          {specialties[0].name}
+                          {specialties.length > 1 && ` +${specialties.length - 1} more`}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Contact Info */}
+                    <div className="space-y-1.5 pt-2 border-t border-gray-100">
+                      {email && (
+                        <div className="flex items-center space-x-1.5 text-xs text-gray-600">
+                          <Mail className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                          <span className="truncate">{email}</span>
+                        </div>
+                      )}
+                      {phone && (
+                        <div className="flex items-center space-x-1.5 text-xs text-gray-600">
+                          <Phone className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                          <span className="truncate">{phone}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Specialties Tags */}
+                    {specialties.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-2">
+                        {specialties.slice(0, 2).map((specialty, idx) => (
+                          <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                            {specialty.name}
+                          </span>
+                        ))}
+                        {specialties.length > 2 && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200">
+                            +{specialties.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
 
-                {/* Specialties */}
-                <div>
-                  <div className="flex flex-wrap gap-1">
-                    {specialties.length > 0 ? (
-                      specialties.slice(0, 2).map((specialty, index) => (
-                        <span key={index} className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-50 text-blue-700">
-                          {specialty.name}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-50 text-gray-600">
-                        No specialties
-                      </span>
-                    )}
-                    {specialties.length > 2 && (
-                      <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-50 text-gray-600">
-                        +{specialties.length - 2}
-                      </span>
-                    )}
+                  {/* License Number - Bottom */}
+                  <div className="pt-2 border-t border-gray-100 mt-auto">
+                    <p className="text-xs text-gray-500">
+                      License: <span className="font-mono font-semibold text-gray-700">{licenseNumber}</span>
+                    </p>
                   </div>
                 </div>
-              </div>
-
-              {/* Action Bar */}
-              <div className="border-t border-gray-100 bg-gray-50 px-4 py-2 flex items-center justify-center space-x-1">
-                <button 
-                  onClick={() => router.push(`/admin/doctors/${doctor.id}`)}
-                  className="text-gray-400 hover:text-blue-600 p-2 rounded transition-colors"
-                  title="View Profile"
-                >
-                  <Eye className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => router.push(`/admin/doctors/${doctor.id}/create`)}
-                  className="text-gray-400 hover:text-green-600 p-2 rounded transition-colors"
-                  title="Edit Doctor"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={async () => {
-                    const doctorName = doctor.user ? `Dr. ${doctor.user.firstName} ${doctor.user.lastName}` : 'this doctor';
-                    if (confirm(`Are you sure you want to delete ${doctorName}? This action cannot be undone.`)) {
-                      try {
-                        await doctorApi.deleteDoctor(doctor.id);
-                        fetchDoctors(); // Refresh the list
-                      } catch (error) {
-                        alert(error instanceof Error ? error.message : 'Failed to delete doctor');
-                      }
-                    }
-                  }}
-                  className="text-gray-400 hover:text-red-600 p-2 rounded transition-colors"
-                  title="Delete Doctor"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
               </div>
             </motion.div>
           );
