@@ -556,39 +556,46 @@ export default function AppointmentsPage() {
     setShowAssignDoctorModal(true);
     setLoadingAssignDoctors(true);
 
-    try {
-      let doctorsData;
-      if (appointment.hospitalId) {
-        // Fetch doctors for this hospital
-        const response = await fetch(`${API_CONFIG.HOSPITAL_SERVICE_URL}/api/v1/hospitals/${appointment.hospitalId}/doctors`, {
-           headers: { 'Content-Type': 'application/json' }
-        });
-        if (response.ok) {
-          const hospitalDoctors = await response.json();
-          // Fetch full doctor details if needed, or just use what we have
-          // We need doctor names. hospitalDoctors usually contains doctorId.
-          // We might need to fetch doctor details for each ID or fetch all doctors and filter.
-          // Let's fetch all doctors and filter by ID for now as it's easier given current API.
-          const allDoctors = await doctorApi.getDoctors();
-          const hospitalDoctorIds = new Set(hospitalDoctors.map((hd: any) => hd.doctorId));
-          doctorsData = allDoctors.filter(d => hospitalDoctorIds.has(d.id));
+      try {
+        let doctorsData;
+        if (appointment.hospitalId) {
+          // Fetch doctors for this hospital
+          try {
+            const response = await fetch(`${API_CONFIG.HOSPITAL_SERVICE_URL}/api/v1/hospitals/${appointment.hospitalId}/doctors`, {
+              headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (response.ok) {
+              const hospitalDoctors = await response.json();
+              // Filter logic based on hospitalDoctors response
+              const allDoctors = await doctorApi.getDoctors();
+              
+              // If hospitalDoctors is array of objects with doctorId
+              const hospitalDoctorIds = new Set(hospitalDoctors.map((hd: any) => hd.doctorId));
+              doctorsData = allDoctors.filter(d => hospitalDoctorIds.has(d.id));
+            } else {
+               // Fallback to all doctors if hospital-specific fetch fails
+              console.warn('Failed to fetch hospital doctors, falling back to all doctors');
+              doctorsData = await doctorApi.getDoctors();
+            }
+          } catch (err) {
+            console.warn('Error fetching hospital doctors, falling back to all doctors', err);
+            doctorsData = await doctorApi.getDoctors();
+          }
         } else {
-          doctorsData = await doctorApi.getDoctors(); // Fallback
+          doctorsData = await doctorApi.getDoctors();
         }
-      } else {
-        doctorsData = await doctorApi.getDoctors();
-      }
 
-      setAssignDoctorsList(doctorsData.map(d => ({
-        value: d.id,
-        label: `${d.user?.firstName || ''} ${d.user?.lastName || ''} (${d.licenseNumber})`
-      })));
-    } catch (error) {
-      console.error('Error fetching doctors for assignment:', error);
-      alert('Failed to load doctors list');
-    } finally {
-      setLoadingAssignDoctors(false);
-    }
+        setAssignDoctorsList(doctorsData.map(d => ({
+          value: d.id,
+          label: `${d.user?.firstName || ''} ${d.user?.lastName || ''} (${d.licenseNumber})`
+        })));
+      } catch (error) {
+        console.error('Error fetching doctors for assignment:', error);
+        alert('Failed to load doctors list');
+      } finally {
+        setLoadingAssignDoctors(false);
+      }
   };
 
   const handleSaveAssignDoctor = async () => {
