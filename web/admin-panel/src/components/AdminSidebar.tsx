@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 import {
   X,
   Home,
@@ -87,11 +88,14 @@ export default function AdminSidebar({ isOpen, onClose, adminUser }: AdminSideba
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 flex items-center justify-center">
-                <img 
+              <div className="w-10 h-10 flex items-center justify-center relative">
+                <Image 
                   src="/logo.png" 
                   alt="FAYO Logo" 
-                  className="w-full h-full object-contain"
+                  width={40}
+                  height={40}
+                  className="object-contain"
+                  priority
                 />
               </div>
               <div>
@@ -167,11 +171,14 @@ export default function AdminSidebar({ isOpen, onClose, adminUser }: AdminSideba
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 flex items-center justify-center">
-                    <img 
+                  <div className="w-10 h-10 flex items-center justify-center relative">
+                    <Image 
                       src="/logo.png" 
                       alt="FAYO Logo" 
-                      className="w-full h-full object-contain"
+                      width={40}
+                      height={40}
+                      className="object-contain"
+                      priority
                     />
                   </div>
                   <div>

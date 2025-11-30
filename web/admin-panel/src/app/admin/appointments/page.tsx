@@ -40,6 +40,7 @@ import { getAppointmentWebSocketService, AppointmentWebSocketEvent } from '@/ser
 import { getSoundNotificationService } from '@/utils/soundNotification';
 import { callApi } from '@/services/callApi';
 import { paymentApi, Payment } from '@/services/paymentApi';
+import { API_CONFIG } from '@/config/api';
 
 export default function AppointmentsPage() {
   const router = useRouter();
@@ -51,8 +52,12 @@ export default function AppointmentsPage() {
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterPaymentStatus, setFilterPaymentStatus] = useState<string>('ALL');
   const [filterConsultationType, setFilterConsultationType] = useState<string>('ALL');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  // Default to today's date
+  const today = new Date().toISOString().split('T')[0];
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(today);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   
   // Appointment details (loaded for all appointments)
   const [appointmentDetails, setAppointmentDetails] = useState<Map<string, {
@@ -302,6 +307,7 @@ export default function AppointmentsPage() {
 
   useEffect(() => {
     fetchAppointments();
+    setCurrentPage(1); // Reset to first page when filters change
   }, [filterStatus, filterPaymentStatus, startDate, endDate]);
 
   // Filter appointments by search term, status, payment status, consultation type, and date range
@@ -357,6 +363,17 @@ export default function AppointmentsPage() {
 
     return matchesSearch && matchesStatus && matchesPaymentStatus && matchesConsultationType && matchesDateRange;
   });
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedAppointments = filteredAppointments.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const getStatusBadgeColor = (status: AppointmentStatus) => {
     switch (status) {
@@ -1013,7 +1030,66 @@ export default function AppointmentsPage() {
 
       {/* Appointments List */}
       <div className="space-y-4">
-        {filteredAppointments.map((appointment, index) => {
+        {/* Results Count and Date Filter Info */}
+        <div className="flex items-center justify-between text-sm text-gray-600 bg-blue-50 px-4 py-2 rounded-lg border border-blue-100">
+          <div className="flex items-center gap-4">
+            <span className="font-medium">
+              Showing {startIndex + 1}-{Math.min(endIndex, filteredAppointments.length)} of {filteredAppointments.length} appointments
+            </span>
+            {(startDate || endDate) && (
+              <span className="text-xs">
+                {startDate === endDate ? (
+                  <>Date: <span className="font-semibold">{formatDate(startDate)}</span></>
+                ) : (
+                  <>Date Range: <span className="font-semibold">{formatDate(startDate)} - {formatDate(endDate)}</span></>
+                )}
+              </span>
+            )}
+          </div>
+          {/* Quick Date Filters */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const today = new Date().toISOString().split('T')[0];
+                setStartDate(today);
+                setEndDate(today);
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                startDate === today && endDate === today
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white text-blue-600 border border-blue-200 hover:bg-blue-50'
+              }`}
+            >
+              Today
+            </button>
+            <button
+              onClick={() => {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const tomorrowStr = tomorrow.toISOString().split('T')[0];
+                setStartDate(tomorrowStr);
+                setEndDate(tomorrowStr);
+                setCurrentPage(1);
+              }}
+              className="px-3 py-1 rounded text-xs font-medium bg-white text-blue-600 border border-blue-200 hover:bg-blue-50 transition-colors"
+            >
+              Tomorrow
+            </button>
+            <button
+              onClick={() => {
+                setStartDate('');
+                setEndDate('');
+                setCurrentPage(1);
+              }}
+              className="px-3 py-1 rounded text-xs font-medium bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors"
+            >
+              All Dates
+            </button>
+          </div>
+        </div>
+
+        {paginatedAppointments.map((appointment, index) => {
           const details = appointmentDetails.get(appointment.id);
           const isLoadingDetails = loadingDetails.has(appointment.id);
           const isEditing = editingAppointment === appointment.id;
@@ -1191,14 +1267,22 @@ export default function AppointmentsPage() {
                             {details.doctor.imageUrl ? (
                               <img 
                                 src={details.doctor.imageUrl} 
-                                alt="Doctor" 
-                                className="w-10 h-10 rounded-full object-cover border border-sky-200"
+                                alt={`Dr. ${details.doctor.user?.firstName} ${details.doctor.user?.lastName}`}
+                                className="w-12 h-12 rounded-full object-cover border-2 border-sky-300 shadow-sm"
+                                onError={(e) => {
+                                  // Fallback to initials if image fails to load
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  const fallback = target.nextElementSibling as HTMLElement;
+                                  if (fallback) fallback.style.display = 'flex';
+                                }}
                               />
-                            ) : (
-                              <div className="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center text-sky-600 font-bold text-xs border border-sky-200">
-                                {details.doctor.user?.firstName?.[0]}{details.doctor.user?.lastName?.[0]}
-                              </div>
-                            )}
+                            ) : null}
+                            <div 
+                              className={`w-12 h-12 rounded-full bg-gradient-to-br from-sky-400 to-blue-500 flex items-center justify-center text-white font-bold text-sm border-2 border-sky-300 shadow-sm ${details.doctor.imageUrl ? 'hidden' : ''}`}
+                            >
+                              {details.doctor.user?.firstName?.[0] || 'D'}{details.doctor.user?.lastName?.[0] || ''}
+                            </div>
                             <div className="space-y-1 text-xs flex-1">
                               <p className="font-semibold text-sky-900">{details.doctor.user?.firstName} {details.doctor.user?.lastName}</p>
                               <p className="text-sky-700">License: <span className="font-medium">{details.doctor.licenseNumber}</span></p>
@@ -1225,12 +1309,21 @@ export default function AppointmentsPage() {
                           </h4>
                           {details?.hospital ? (
                             <div className="flex gap-2 items-start">
-                              {details.hospital.logoUrl && (
+                              {details.hospital.logoUrl ? (
                                 <img 
                                   src={details.hospital.logoUrl} 
-                                  alt="Hospital" 
-                                  className="w-8 h-8 rounded object-contain bg-white border border-sky-200"
+                                  alt={details.hospital.name}
+                                  className="w-10 h-10 rounded-lg object-contain bg-white border-2 border-sky-300 shadow-sm p-1"
+                                  onError={(e) => {
+                                    // Fallback to icon if image fails to load
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                  }}
                                 />
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center border-2 border-sky-300 shadow-sm">
+                                  <Building2 className="w-5 h-5 text-white" />
+                                </div>
                               )}
                               <div className="space-y-1 text-xs">
                                 <p className="font-semibold text-sky-900">{details.hospital.name}</p>
@@ -1406,6 +1499,59 @@ export default function AppointmentsPage() {
             <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No appointments found</h3>
             <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {filteredAppointments.length > itemsPerPage && (
+          <div className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200">
+            <div className="text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+              {/* Page Numbers */}
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === pageNum
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>
