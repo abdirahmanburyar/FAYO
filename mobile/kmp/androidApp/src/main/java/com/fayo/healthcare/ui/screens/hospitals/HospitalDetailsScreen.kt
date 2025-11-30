@@ -26,12 +26,19 @@ import com.fayo.healthcare.data.models.HospitalDoctorDto
 import com.fayo.healthcare.ui.theme.*
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.Image
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.clickable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HospitalDetailsScreen(
     hospitalId: String,
     onNavigateBack: () -> Unit,
+    onNavigateToBooking: (HospitalDto) -> Unit,
+    onNavigateToDoctorBooking: (String, String) -> Unit = { _, _ -> }, // Added callback
     apiClient: ApiClient = koinInject()
 ) {
     var hospital by remember { mutableStateOf<HospitalDto?>(null) }
@@ -95,7 +102,34 @@ fun HospitalDetailsScreen(
                 )
             )
         },
-        containerColor = BackgroundLight
+        containerColor = BackgroundLight,
+        floatingActionButton = {
+            hospital?.let { hospitalData ->
+                if (hospitalData.isActive) {
+                    ExtendedFloatingActionButton(
+                        onClick = {
+                            if (hospitalData.bookingPolicy == "DIRECT_DOCTOR") {
+                                // Switch to Doctors tab
+                                selectedTabIndex = 1
+                            } else {
+                                // Navigate to booking (Hospital Assigned)
+                                onNavigateToBooking(hospitalData)
+                            }
+                        },
+                        containerColor = SkyBlue600,
+                        contentColor = Color.White,
+                        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 6.dp)
+                    ) {
+                        Icon(Icons.Default.CalendarToday, "Book Appointment")
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = if (hospitalData.bookingPolicy == "DIRECT_DOCTOR") "Select Doctor" else "Book Appointment",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (isLoading) {
@@ -158,7 +192,12 @@ fun HospitalDetailsScreen(
                             0 -> ServicesTabContent()
                             1 -> DoctorsTabContent(
                                 doctors = doctors,
-                                isLoading = isLoadingDoctors
+                                isLoading = isLoadingDoctors,
+                                onDoctorClick = { doctorId ->
+                                    hospital?.let { 
+                                        onNavigateToDoctorBooking(doctorId, it.id)
+                                    }
+                                }
                             )
                         }
                     }
@@ -184,12 +223,24 @@ fun HospitalHeaderSection(hospital: HospitalDto) {
                 .background(Color.White.copy(alpha = 0.2f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.LocalHospital,
-                contentDescription = null,
-                modifier = Modifier.size(50.dp),
-                tint = Color.White
-            )
+            val context = LocalContext.current
+            val imageResId = context.resources.getIdentifier("hospital", "drawable", context.packageName)
+            
+            if (imageResId != 0) {
+                Image(
+                    painter = painterResource(id = imageResId),
+                    contentDescription = "Hospital logo",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.LocalHospital,
+                    contentDescription = null,
+                    modifier = Modifier.size(50.dp),
+                    tint = Color.White
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -285,7 +336,8 @@ fun ServicesTabContent() {
 @Composable
 fun DoctorsTabContent(
     doctors: List<HospitalDoctorDto>,
-    isLoading: Boolean
+    isLoading: Boolean,
+    onDoctorClick: (String) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedSpecialty by remember { mutableStateOf<String?>(null) }
@@ -453,7 +505,13 @@ fun DoctorsTabContent(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(filteredDoctors) { hospitalDoctor ->
-                    DoctorCard(hospitalDoctor = hospitalDoctor)
+                    DoctorCard(
+                        hospitalDoctor = hospitalDoctor,
+                        onClick = { 
+                            val id = hospitalDoctor.doctor?.id ?: hospitalDoctor.doctorId
+                            onDoctorClick(id) 
+                        }
+                    )
                 }
             }
         }
@@ -461,12 +519,17 @@ fun DoctorsTabContent(
 }
 
 @Composable
-fun DoctorCard(hospitalDoctor: HospitalDoctorDto) {
+fun DoctorCard(
+    hospitalDoctor: HospitalDoctorDto,
+    onClick: () -> Unit
+) {
     val doctor = hospitalDoctor.doctor
     val user = doctor?.user
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)

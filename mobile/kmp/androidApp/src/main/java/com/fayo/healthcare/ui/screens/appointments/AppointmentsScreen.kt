@@ -171,13 +171,15 @@ fun AirlineTicketCard(
     // Load doctor information
     LaunchedEffect(appointment.doctorId) {
         scope.launch {
-            apiClient.getDoctorById(appointment.doctorId)
-                .onSuccess { doctorData ->
-                    doctor = doctorData
-                }
-                .onFailure {
-                    // Doctor not found, continue without doctor info
-                }
+            if (appointment.doctorId != null) {
+                apiClient.getDoctorById(appointment.doctorId!!) // Use non-null assertion since we checked for null
+                    .onSuccess { doctorData ->
+                        doctor = doctorData
+                    }
+                    .onFailure {
+                        // Doctor not found, continue without doctor info
+                    }
+            }
         }
     }
     
@@ -487,10 +489,12 @@ fun formatTimeForTicket(timeString: String): String {
     }
 }
 
-fun formatAppointmentNumber(number: Int): String {
+fun formatAppointmentNumber(number: Int?): String {
     // Format: 001, 002, ..., 999, 1000, 1001, etc.
     // Numbers < 1000: pad with leading zeros (001, 225, 263, 999)
     // Numbers >= 1000: no padding (1000, 1001, etc.)
+    if (number == null) return "N/A"
+    
     return if (number < 1000) {
         String.format("%03d", number)
     } else {

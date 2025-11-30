@@ -222,7 +222,9 @@ export default function AppointmentsPage() {
     try {
       const [patient, doctor, hospital] = await Promise.all([
         usersApi.getUserById(appointment.patientId),
-        doctorApi.getDoctorById(appointment.doctorId).catch(() => null),
+        appointment.doctorId 
+          ? doctorApi.getDoctorById(appointment.doctorId).catch(() => null)
+          : Promise.resolve(null),
         appointment.hospitalId
           ? hospitalApi.getHospitalById(appointment.hospitalId).catch(() => null)
           : Promise.resolve(null),
@@ -254,8 +256,12 @@ export default function AppointmentsPage() {
         try {
           const [patient, doctor, hospital] = await Promise.all([
             usersApi.getUserById(appointment.patientId),
-            doctorApi.getDoctorById(appointment.doctorId).catch(() => null),
-            appointment.hospitalId ? hospitalApi.getHospitalById(appointment.hospitalId).catch(() => null) : Promise.resolve(null),
+            appointment.doctorId 
+              ? doctorApi.getDoctorById(appointment.doctorId).catch(() => null)
+              : Promise.resolve(null),
+            appointment.hospitalId
+              ? hospitalApi.getHospitalById(appointment.hospitalId).catch(() => null)
+              : Promise.resolve(null),
           ]);
 
           return {
@@ -310,7 +316,7 @@ export default function AppointmentsPage() {
     
     const matchesSearch = searchTerm === '' || 
       appointment.patientId.toLowerCase().includes(searchLower) ||
-      appointment.doctorId.toLowerCase().includes(searchLower) ||
+      (appointment.doctorId && appointment.doctorId.toLowerCase().includes(searchLower)) ||
       appointment.reason?.toLowerCase().includes(searchLower) ||
       appointment.description?.toLowerCase().includes(searchLower) ||
       (appointment.appointmentNumber && String(appointment.appointmentNumber).toLowerCase().includes(searchLower)) ||
@@ -1194,7 +1200,9 @@ export default function AppointmentsPage() {
                             )}
                           </div>
                         ) : (
-                          <p className="text-xs text-sky-600">ID: {appointment.doctorId.substring(0, 8)}...</p>
+                          <p className="text-xs text-sky-600">
+                            {appointment.doctorId ? `ID: ${appointment.doctorId.substring(0, 8)}...` : 'Pending Assignment'}
+                          </p>
                         )}
                       </div>
 

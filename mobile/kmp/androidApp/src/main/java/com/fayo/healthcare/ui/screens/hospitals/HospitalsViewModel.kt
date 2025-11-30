@@ -32,6 +32,7 @@ class HospitalsViewModel : ViewModel(), KoinComponent {
     private val pageSize = 5
     
     init {
+        loadHospitals()
         observeRealtimeUpdates()
     }
 

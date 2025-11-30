@@ -5,9 +5,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class AppointmentDto(
     val id: String,
-    val appointmentNumber: Int,
+    val appointmentNumber: Int? = null,
     val patientId: String,
-    val doctorId: String,
+    val doctorId: String? = null,
     val hospitalId: String? = null,
     val specialtyId: String? = null,
     val appointmentDate: String,
@@ -26,7 +26,7 @@ data class AppointmentDto(
 @Serializable
 data class CreateAppointmentRequest(
     val patientId: String,
-    val doctorId: String,
+    val doctorId: String? = null,
     val hospitalId: String? = null,
     val specialtyId: String? = null,
     val appointmentDate: String,

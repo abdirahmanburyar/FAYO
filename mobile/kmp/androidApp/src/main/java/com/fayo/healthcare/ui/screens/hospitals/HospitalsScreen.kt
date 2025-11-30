@@ -42,6 +42,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.foundation.Image
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,7 +91,9 @@ fun HospitalsScreen(
     
     // Load initial data only once (skip if there's already a search query)
     LaunchedEffect(Unit) {
-        if (uiState.searchQuery.isBlank() && uiState.hospitals.isEmpty()) {
+        // Since we added loadHospitals() to ViewModel init, we only need to check if empty and not loading
+        // This covers cases where init might have failed or we navigated back and list is empty
+        if (uiState.hospitals.isEmpty() && !uiState.isLoading && uiState.error == null) {
             viewModel.loadHospitals()
         }
     }
@@ -384,12 +390,24 @@ fun HeroImageSection(onNavigateBack: () -> Unit) {
                     .background(Color.White.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.LocalHospital,
-                    contentDescription = null,
-                    modifier = Modifier.size(80.dp),
-                    tint = Color.White
-                )
+                val context = LocalContext.current
+                val imageResId = context.resources.getIdentifier("hospital", "drawable", context.packageName)
+                
+                if (imageResId != 0) {
+                    Image(
+                        painter = painterResource(id = imageResId),
+                        contentDescription = "Hospital illustration",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.LocalHospital,
+                        contentDescription = null,
+                        modifier = Modifier.size(80.dp),
+                        tint = Color.White
+                    )
+                }
             }
         }
     }
@@ -420,7 +438,7 @@ fun HospitalCard(
                     .fillMaxWidth()
                     .padding(20.dp)
             ) {
-                // Leading medicine icon
+                // Leading image/icon
                 Box(
                     modifier = Modifier
                         .size(64.dp)
@@ -428,12 +446,24 @@ fun HospitalCard(
                         .background(SkyBlue100),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.MedicalServices,
-                        contentDescription = null,
-                        modifier = Modifier.size(36.dp),
-                        tint = SkyBlue600
-                    )
+                    val context = LocalContext.current
+                    val imageResId = context.resources.getIdentifier("hospital", "drawable", context.packageName)
+                    
+                    if (imageResId != 0) {
+                        Image(
+                            painter = painterResource(id = imageResId),
+                            contentDescription = "Hospital logo",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.MedicalServices,
+                            contentDescription = null,
+                            modifier = Modifier.size(36.dp),
+                            tint = SkyBlue600
+                        )
+                    }
                 }
                 
                 Spacer(modifier = Modifier.width(16.dp))

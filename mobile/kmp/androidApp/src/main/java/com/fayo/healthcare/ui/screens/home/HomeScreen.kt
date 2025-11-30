@@ -84,6 +84,10 @@ fun HomeScreen(
             scope.launch { drawerState.close() }
             onNavigateToHospitals()
         },
+        MenuItem("Doctors", Icons.Default.PersonSearch) {
+            scope.launch { drawerState.close() }
+            onNavigateToDoctors()
+        },
         MenuItem("Appointments", Icons.Default.CalendarToday) {
             scope.launch { drawerState.close() }
             onNavigateToAppointments()

@@ -23,6 +23,7 @@ model Hospital {
   phone     String?
   email     String?
   website       String?
+  logoUrl       String?
   bookingPolicy BookingPolicy @default(DIRECT_DOCTOR)
   isActive      Boolean       @default(true)
   createdAt DateTime     @default(now())

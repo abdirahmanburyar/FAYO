@@ -317,153 +317,107 @@ export default function HospitalsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+            className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow group relative overflow-hidden"
           >
-            <div className="flex items-start justify-between mb-4">
+            {/* Gradient Bar */}
+            <div className={`absolute top-0 left-0 right-0 h-1.5 ${
+              hospital.type === 'HOSPITAL' 
+                ? 'bg-gradient-to-r from-blue-500 to-indigo-600' 
+                : 'bg-gradient-to-r from-green-500 to-emerald-600'
+            }`} />
+
+            <div className="flex items-start justify-between mb-4 mt-2">
               <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                  <Building2 className="w-6 h-6 text-white" />
+                <div className={`w-12 h-12 rounded-lg flex items-center justify-center shadow-sm ${
+                  hospital.type === 'HOSPITAL'
+                    ? 'bg-blue-50 text-blue-600'
+                    : 'bg-green-50 text-green-600'
+                }`}>
+                  <Building2 className="w-6 h-6" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <button
                     onClick={() => router.push(`/admin/hospitals/${hospital.id}`)}
-                    className="text-left hover:text-blue-600 transition-colors"
+                    className="text-left hover:text-blue-600 transition-colors group-hover:text-blue-700"
                   >
-                    <h3 className="text-lg font-semibold text-gray-900 truncate hover:text-blue-600">
+                    <h3 className="text-lg font-bold text-gray-900 truncate">
                       {hospital.name}
                     </h3>
                   </button>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-500">{hospital.city}</span>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
+                  <div className="flex items-center space-x-2 mt-0.5">
+                    <span className="text-sm text-gray-500 font-medium">{hospital.city}</span>
+                    <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full ${
                       hospital.type === 'HOSPITAL' 
-                        ? 'bg-blue-100 text-blue-800' 
-                        : 'bg-green-100 text-green-800'
+                        ? 'bg-blue-100 text-blue-700' 
+                        : 'bg-green-100 text-green-700'
                     }`}>
                       {hospital.type}
                     </span>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
+              
+              {/* Quick Actions */}
+              <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button 
                   onClick={() => router.push(`/admin/hospitals/${hospital.id}`)}
-                  className="text-blue-600 hover:text-blue-900 p-1"
-                  title="View Profile"
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  title="View Details"
                 >
                   <Eye className="w-4 h-4" />
                 </button>
                 <button 
                   onClick={() => router.push(`/admin/hospitals/${hospital.id}/edit`)}
-                  className="text-green-600 hover:text-green-900 p-1" 
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors" 
                   title="Edit"
                 >
                   <Edit className="w-4 h-4" />
                 </button>
-                <button className="text-red-600 hover:text-red-900 p-1" title="Delete">
-                  <Trash2 className="w-4 h-4" />
-                </button>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <MapPin className="w-4 h-4" />
-                <span className="truncate">{hospital.address}</span>
+            <div className="space-y-3 pt-2">
+              <div className="flex items-start space-x-2 text-sm text-gray-600">
+                <MapPin className="w-4 h-4 mt-0.5 text-gray-400 flex-shrink-0" />
+                <span className="truncate leading-tight">{hospital.address}</span>
               </div>
 
               {hospital.phone && (
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Phone className="w-4 h-4" />
+                  <Phone className="w-4 h-4 text-gray-400 flex-shrink-0" />
                   <span>{hospital.phone}</span>
                 </div>
               )}
 
-              {hospital.email && (
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Mail className="w-4 h-4" />
-                  <span className="truncate">{hospital.email}</span>
-                </div>
-              )}
-
-              {hospital.website && (
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Globe className="w-4 h-4" />
-                  <a 
-                    href={hospital.website} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-800 truncate"
-                  >
-                    {hospital.website}
-                  </a>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Status</span>
-                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(hospital.isActive)}`}>
-                  {hospital.isActive ? 'Active' : 'Inactive'}
+              <div className="flex items-center justify-between pt-2">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                  hospital.isActive 
+                    ? 'bg-green-50 text-green-700 border border-green-100' 
+                    : 'bg-red-50 text-red-700 border border-red-100'
+                }`}>
+                  {hospital.isActive ? (
+                    <><CheckCircle className="w-3 h-3 mr-1" /> Active</>
+                  ) : (
+                    <><XCircle className="w-3 h-3 mr-1" /> Inactive</>
+                  )}
                 </span>
-              </div>
-
-              {/* Specialties */}
-              {hospital.specialties && hospital.specialties.length > 0 && (
-                <div className="space-y-2">
-                  <span className="text-sm font-medium text-gray-600">Specialties</span>
-                  <div className="flex flex-wrap gap-1">
-                    {hospital.specialties.slice(0, 3).map((specialty, idx) => (
-                      <span
-                        key={idx}
-                        className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full"
-                      >
-                        {specialty.specialtyName || specialty.specialtyId}
-                      </span>
-                    ))}
-                    {hospital.specialties.length > 3 && (
-                      <span className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full">
-                        +{hospital.specialties.length - 3} more
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Departments */}
-              {hospital.departments && hospital.departments.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-gray-600">Departments</span>
-                    <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                      {hospital.departments.length} {hospital.departments.length === 1 ? 'department' : 'departments'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Services */}
-              {hospital.services && hospital.services.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm font-medium text-gray-600">Services</span>
-                    <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
-                      {hospital.services.length} {hospital.services.length === 1 ? 'service' : 'services'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Doctors</span>
-                <span className="text-sm font-medium text-gray-900">
+                
+                <span className="text-xs font-medium text-gray-500 flex items-center">
+                  <Users className="w-3 h-3 mr-1" />
                   {hospital.doctors?.length || 0} doctors
                 </span>
               </div>
 
-              <div className="pt-3 border-t border-gray-200">
-                <p className="text-xs text-gray-500">
-                  Created: {new Date(hospital.createdAt).toLocaleDateString()}
-                </p>
+              {/* Footer: Quick Stats */}
+              <div className="grid grid-cols-2 gap-2 pt-4 mt-2 border-t border-gray-100">
+                <div className="text-center px-2 py-1.5 bg-gray-50 rounded-lg">
+                  <span className="block text-xs text-gray-500 uppercase font-semibold tracking-wider">Services</span>
+                  <span className="block text-sm font-bold text-gray-900">{hospital.services?.length || 0}</span>
+                </div>
+                <div className="text-center px-2 py-1.5 bg-gray-50 rounded-lg">
+                  <span className="block text-xs text-gray-500 uppercase font-semibold tracking-wider">Depts</span>
+                  <span className="block text-sm font-bold text-gray-900">{hospital.departments?.length || 0}</span>
+                </div>
               </div>
             </div>
           </motion.div>

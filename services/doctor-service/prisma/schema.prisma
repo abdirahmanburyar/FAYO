@@ -20,6 +20,7 @@ model Doctor {
   isAvailable   Boolean  @default(true)
   selfEmployedConsultationFee Int?   // Self-employed consultation fee in cents
   bio           String?
+  imageUrl      String?  // URL to doctor's profile image
   
   // Professional Information
   education     String?  // Educational background (e.g., "MD, Harvard Medical School, 2010")

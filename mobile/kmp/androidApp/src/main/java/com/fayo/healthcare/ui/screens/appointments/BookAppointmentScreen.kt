@@ -25,6 +25,7 @@ import com.fayo.healthcare.data.api.ApiClient
 import com.fayo.healthcare.data.models.AppointmentDto
 import com.fayo.healthcare.data.models.CreateAppointmentRequest
 import com.fayo.healthcare.data.models.DoctorDto
+import com.fayo.healthcare.data.models.HospitalDto
 import com.fayo.healthcare.data.storage.AndroidTokenStorage
 import com.fayo.healthcare.ui.theme.*
 import org.koin.compose.koinInject
@@ -35,14 +36,16 @@ import java.util.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookAppointmentScreen(
-    doctorId: String,
+    doctorId: String? = null,
+    hospitalId: String? = null,
     onNavigateBack: () -> Unit,
     onBookingSuccess: () -> Unit,
     apiClient: ApiClient = koinInject(),
     tokenStorage: AndroidTokenStorage = koinInject()
 ) {
     var doctor by remember { mutableStateOf<DoctorDto?>(null) }
-    var isLoadingDoctor by remember { mutableStateOf(true) }
+    var hospital by remember { mutableStateOf<HospitalDto?>(null) }
+    var isLoadingData by remember { mutableStateOf(true) }
     var selectedDate by remember { mutableStateOf<Date?>(null) }
     var selectedTime by remember { mutableStateOf<String>("") }
     var consultationType by remember { mutableStateOf("IN_PERSON") }
@@ -78,33 +81,47 @@ fun BookAppointmentScreen(
         }
     }
     
-    // Load doctor data
-    LaunchedEffect(doctorId) {
+    // Load doctor or hospital data
+    LaunchedEffect(doctorId, hospitalId) {
         scope.launch {
-            isLoadingDoctor = true
-            apiClient.getDoctorById(doctorId)
-                .onSuccess {
-                    doctor = it
-                    isLoadingDoctor = false
-                }
-                .onFailure {
-                    error = "Failed to load doctor information"
-                    isLoadingDoctor = false
-                }
+            isLoadingData = true
+            
+            if (doctorId != null) {
+                apiClient.getDoctorById(doctorId)
+                    .onSuccess {
+                        doctor = it
+                        // If we have hospitalId but booking via doctor, we might want to fetch hospital too
+                        // but usually doctor info is enough for header
+                    }
+                    .onFailure {
+                        error = "Failed to load doctor information"
+                    }
+            } else if (hospitalId != null) {
+                apiClient.getHospitalById(hospitalId)
+                    .onSuccess {
+                        hospital = it
+                    }
+                    .onFailure {
+                        error = "Failed to load hospital information"
+                    }
+            }
+            
+            isLoadingData = false
         }
     }
     
-    // Load booked appointments for this doctor
-    // Reload when doctorId or selectedDate changes
-    LaunchedEffect(doctorId, selectedDate) {
+    // Load booked appointments
+    // Reload when doctorId, hospitalId or selectedDate changes
+    LaunchedEffect(doctorId, hospitalId, selectedDate) {
         scope.launch {
             isLoadingAppointments = true
-            // Get appointments for this doctor, and if date is selected, filter by date range
+            // Get appointments for this doctor/hospital, and if date is selected, filter by date range
             val startDate = selectedDate?.let { dateFormatter.format(it) }
             val endDate = selectedDate?.let { dateFormatter.format(it) }
             
             apiClient.getAppointments(
                 doctorId = doctorId,
+                hospitalId = if (doctorId == null) hospitalId else null, // Only use hospitalId if doctor is not selected
                 startDate = startDate,
                 endDate = endDate
             )
@@ -114,7 +131,7 @@ fun BookAppointmentScreen(
                         (it.status == "CONFIRMED" || it.status == "PENDING")
                     }
                     isLoadingAppointments = false
-                    Log.d("BookAppointment", "Loaded ${bookedAppointments.size} booked appointments for doctor $doctorId on date $startDate")
+                    Log.d("BookAppointment", "Loaded ${bookedAppointments.size} booked appointments")
                 }
                 .onFailure {
                     Log.e("BookAppointment", "Error loading appointments: ${it.message}", it)
@@ -158,7 +175,7 @@ fun BookAppointmentScreen(
         },
         containerColor = BackgroundLight
     ) { padding ->
-        if (isLoadingDoctor) {
+        if (isLoadingData) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -167,7 +184,7 @@ fun BookAppointmentScreen(
             ) {
                 CircularProgressIndicator(color = SkyBlue600)
             }
-        } else if (doctor == null) {
+        } else if (doctor == null && hospital == null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -183,7 +200,7 @@ fun BookAppointmentScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = error ?: "Doctor not found",
+                        text = error ?: "Information not found",
                         color = ErrorRed,
                         fontSize = 16.sp
                     )
@@ -205,8 +222,12 @@ fun BookAppointmentScreen(
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
             ) {
-                // Doctor Header Card
-                DoctorHeaderCard(doctor = doctor!!)
+                // Header Card
+                if (doctor != null) {
+                    DoctorHeaderCard(doctor = doctor!!)
+                } else if (hospital != null) {
+                    HospitalHeaderCard(hospital = hospital!!)
+                }
                 
                 Spacer(modifier = Modifier.height(24.dp))
                 
@@ -410,7 +431,7 @@ fun BookAppointmentScreen(
                             val request = CreateAppointmentRequest(
                                 patientId = patientId,
                                 doctorId = doctorId,
-                                hospitalId = null,
+                                hospitalId = hospitalId,
                                 specialtyId = null,
                                 appointmentDate = appointmentDate,
                                 appointmentTime = selectedTime,

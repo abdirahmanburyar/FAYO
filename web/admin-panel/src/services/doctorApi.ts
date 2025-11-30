@@ -9,6 +9,7 @@ export interface Doctor {
   isAvailable: boolean;
   selfEmployedConsultationFee?: number;
   bio?: string;
+  imageUrl?: string;
   education?: string;
   certifications?: string; // JSON array string
   languages?: string; // JSON array string
@@ -44,6 +45,7 @@ export interface CreateDoctorDto {
   isAvailable?: boolean;
   selfEmployedConsultationFee?: number;
   bio?: string;
+  imageUrl?: string;
   education?: string;
   certifications?: string; // JSON array string
   languages?: string; // JSON array string
@@ -61,6 +63,7 @@ export interface UpdateDoctorDto {
   isAvailable?: boolean;
   selfEmployedConsultationFee?: number | null; // Allow null to clear the fee
   bio?: string;
+  imageUrl?: string;
   education?: string;
   certifications?: string; // JSON array string
   languages?: string; // JSON array string

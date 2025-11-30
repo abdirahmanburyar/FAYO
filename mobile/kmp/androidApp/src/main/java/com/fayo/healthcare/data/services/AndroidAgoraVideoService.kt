@@ -92,13 +92,6 @@ class AndroidAgoraVideoService(private val context: Context) : AgoraVideoService
                 return@withContext Result.failure(error)
             }
             
-            // Validate context
-            if (context == null) {
-                val error = Exception("Context is null. Cannot initialize RTC Engine.")
-                Log.e(TAG, "❌ [AGORA] ${error.message}")
-                return@withContext Result.failure(error)
-            }
-            
             // Clean up existing engine if any
             if (rtcEngine != null) {
                 Log.d(TAG, "🧹 [AGORA] Cleaning up existing engine")

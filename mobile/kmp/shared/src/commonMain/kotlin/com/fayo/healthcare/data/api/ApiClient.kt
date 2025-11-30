@@ -646,6 +646,7 @@ class ApiClient(
     suspend fun getAppointments(
         doctorId: String? = null,
         patientId: String? = null,
+        hospitalId: String? = null,
         startDate: String? = null,
         endDate: String? = null
     ): Result<List<AppointmentDto>> {
@@ -655,6 +656,7 @@ class ApiClient(
                 val params = mutableListOf<String>()
                 doctorId?.let { params.add("doctorId=$it") }
                 patientId?.let { params.add("patientId=$it") }
+                hospitalId?.let { params.add("hospitalId=$it") }
                 startDate?.let { params.add("startDate=$it") }
                 endDate?.let { params.add("endDate=$it") }
                 if (params.isNotEmpty()) {

@@ -142,26 +142,26 @@ export class DoctorsService {
       const doctorsWithUsers = await Promise.all(enrichedDoctors.map(async (doctor) => {
         let doctorWithUser;
         if (!isUserServiceHealthy) {
-          const mockUserData = this.generateMockUserData(doctor.userId);
+          console.warn(`⚠️ [SERVICE] User service unhealthy, returning doctor ${doctor.id} without user data`);
           doctorWithUser = {
             ...doctor,
-            user: mockUserData
+            user: null
           };
         } else {
-        try {
-          const userData = await this.fetchUserData(doctor.userId);
+          try {
+            const userData = await this.fetchUserData(doctor.userId);
             doctorWithUser = {
-            ...doctor,
-            user: userData
-          };
-        } catch (error) {
-          // Return doctor with mock user data
-          const mockUserData = this.generateMockUserData(doctor.userId);
+              ...doctor,
+              user: userData
+            };
+          } catch (error) {
+            console.error(`❌ [SERVICE] Failed to fetch user data for doctor ${doctor.id}:`, error.message);
+            // Return doctor without user data
             doctorWithUser = {
-            ...doctor,
-            user: mockUserData
-          };
-        }
+              ...doctor,
+              user: null
+            };
+          }
         }
         
         // Extract specialty from specialties array for frontend compatibility
@@ -268,10 +268,10 @@ export class DoctorsService {
       
       // Fetch user data
       if (!isUserServiceHealthy) {
-        const mockUserData = this.generateMockUserData(doctor.userId);
+        console.warn(`⚠️ [SERVICE] User service unhealthy, returning doctor ${doctor.id} without user data`);
         return {
           ...enrichedDoctor,
-          user: mockUserData
+          user: null
         };
       }
 
@@ -296,24 +296,24 @@ export class DoctorsService {
           specialty: specialtyName
         };
       } catch (error) {
-        // Return doctor with mock user data
-        const mockUserData = this.generateMockUserData(doctor.userId);
-        const doctorWithMockUser = {
+        console.error(`❌ [SERVICE] Failed to fetch user data for doctor ${doctor.id}:`, error.message);
+        // Return doctor without user data
+        const doctorWithoutUser = {
           ...enrichedDoctor,
-          user: mockUserData
+          user: null
         };
         
         // Extract specialty from specialties array
         let specialtyName = 'General Practice';
-        if (doctorWithMockUser.specialties && Array.isArray(doctorWithMockUser.specialties) && doctorWithMockUser.specialties.length > 0) {
-          const activeSpecialty = doctorWithMockUser.specialties.find((s: any) => s.isActive !== false);
-          specialtyName = activeSpecialty?.name || doctorWithMockUser.specialties[0]?.name || 'General Practice';
-        } else if (doctorWithMockUser.specialty) {
-          specialtyName = doctorWithMockUser.specialty;
+        if (doctorWithoutUser.specialties && Array.isArray(doctorWithoutUser.specialties) && doctorWithoutUser.specialties.length > 0) {
+          const activeSpecialty = doctorWithoutUser.specialties.find((s: any) => s.isActive !== false);
+          specialtyName = activeSpecialty?.name || doctorWithoutUser.specialties[0]?.name || 'General Practice';
+        } else if (doctorWithoutUser.specialty) {
+          specialtyName = doctorWithoutUser.specialty;
         }
         
         return {
-          ...doctorWithMockUser,
+          ...doctorWithoutUser,
           specialty: specialtyName
         };
       }
@@ -809,49 +809,6 @@ export class DoctorsService {
     } catch (error) {
       return false;
     }
-  }
-
-  private generateMockUserData(userId: string): any {
-    // Generate realistic mock user data for development
-    const firstNames = ['Dr. Sarah', 'Dr. Michael', 'Dr. Emily', 'Dr. James', 'Dr. Lisa', 'Dr. David', 'Dr. Maria', 'Dr. Robert', 'Dr. Jennifer', 'Dr. Christopher', 'Dr. Amanda', 'Dr. Daniel', 'Dr. Jessica', 'Dr. Matthew', 'Dr. Ashley', 'Dr. Andrew', 'Dr. Nicole', 'Dr. Kevin', 'Dr. Rachel', 'Dr. Brian', 'Dr. Stephanie', 'Dr. Ryan', 'Dr. Lauren', 'Dr. Justin', 'Dr. Megan', 'Dr. Tyler', 'Dr. Samantha', 'Dr. Nathan', 'Dr. Brittany', 'Dr. Jordan'];
-    const lastNames = ['Johnson', 'Smith', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Wilson', 'Moore', 'Taylor', 'Anderson', 'Thomas', 'Jackson', 'White', 'Harris', 'Martin', 'Thompson', 'Garcia', 'Martinez', 'Robinson', 'Clark', 'Rodriguez', 'Lewis', 'Lee', 'Walker', 'Hall', 'Allen', 'Young', 'Hernandez', 'King', 'Wright', 'Lopez', 'Hill', 'Scott', 'Green', 'Adams', 'Baker', 'Gonzalez', 'Nelson', 'Carter', 'Mitchell', 'Perez', 'Roberts', 'Turner', 'Phillips', 'Campbell', 'Parker', 'Evans', 'Edwards', 'Collins'];
-    const domains = ['gmail.com', 'yahoo.com', 'outlook.com', 'hospital.com', 'clinic.org', 'medical.net', 'healthcare.com', 'doctors.org'];
-    
-    // Create a more complex hash using multiple parts of the userId
-    let hash1 = 0;
-    let hash2 = 0;
-    let hash3 = 0;
-    
-    for (let i = 0; i < userId.length; i++) {
-      const char = userId.charCodeAt(i);
-      if (i % 3 === 0) hash1 += char;
-      else if (i % 3 === 1) hash2 += char;
-      else hash3 += char;
-    }
-    
-    // Add some additional variation using the userId length and position
-    hash1 += userId.length * 7;
-    hash2 += userId.length * 11;
-    hash3 += userId.length * 13;
-    
-    const firstName = firstNames[Math.abs(hash1) % firstNames.length];
-    const lastName = lastNames[Math.abs(hash2) % lastNames.length];
-    const domain = domains[Math.abs(hash3) % domains.length];
-    
-    // Create unique email by using more of the userId
-    const emailPrefix = `${firstName.toLowerCase().replace('dr. ', '')}.${lastName.toLowerCase()}.${userId.substring(0, 6)}`;
-    const email = `${emailPrefix}@${domain}`;
-    
-    // Generate unique phone number based on userId
-    const phoneHash = Math.abs(hash1 + hash2 + hash3) % 9000 + 1000;
-    
-    return {
-      id: userId,
-      firstName: firstName,
-      lastName: lastName,
-      email: email,
-      phone: `+1-555-${phoneHash}`
-    };
   }
 
   private async fetchUserData(userId: string): Promise<any> {

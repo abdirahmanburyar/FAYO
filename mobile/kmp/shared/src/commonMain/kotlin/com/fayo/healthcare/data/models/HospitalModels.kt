@@ -13,6 +13,7 @@ data class HospitalDto(
     val phone: String? = null,
     val email: String? = null,
     val website: String? = null,
+    val bookingPolicy: String? = "DIRECT_DOCTOR",
     val description: String? = null,
     val isActive: Boolean = true,
     val createdAt: String,

@@ -10,6 +10,7 @@ export interface Hospital {
   phone?: string;
   email?: string;
   website?: string;
+  logoUrl?: string;
   bookingPolicy?: 'HOSPITAL_ASSIGNED' | 'DIRECT_DOCTOR';
   isActive: boolean;
   createdAt: string;
@@ -67,6 +68,7 @@ export interface CreateHospitalDto {
   phone?: string;
   email?: string;
   website?: string;
+  logoUrl?: string;
   bookingPolicy?: 'HOSPITAL_ASSIGNED' | 'DIRECT_DOCTOR';
   isActive?: boolean;
 }
@@ -79,6 +81,7 @@ export interface UpdateHospitalDto {
   phone?: string;
   email?: string;
   website?: string;
+  logoUrl?: string;
   bookingPolicy?: 'HOSPITAL_ASSIGNED' | 'DIRECT_DOCTOR';
   isActive?: boolean;
 }

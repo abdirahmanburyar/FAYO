@@ -54,7 +54,7 @@ interface DoctorFormData {
   publications: string[];
   memberships: string[];
   researchInterests: string;
-  
+  imageUrl: string;
 }
 
 // Specialties will be loaded from the shared service
@@ -87,7 +87,8 @@ export default function CreateDoctorPage() {
     awards: [],
     publications: [],
     memberships: [],
-    researchInterests: ''
+    researchInterests: '',
+    imageUrl: ''
   });
   
   // Dynamic input states for arrays
@@ -169,7 +170,8 @@ export default function CreateDoctorPage() {
             awards: parseJsonField(doctorData.awards),
             publications: parseJsonField(doctorData.publications),
             memberships: parseJsonField(doctorData.memberships),
-            researchInterests: doctorData.researchInterests || ''
+            researchInterests: doctorData.researchInterests || '',
+            imageUrl: doctorData.imageUrl || ''
           });
         } catch (error) {
           console.error('Error loading doctor data:', error);
@@ -322,6 +324,30 @@ export default function CreateDoctorPage() {
             email: existingUser.email
           });
           user = existingUser;
+
+          // Update the existing user's information to match the new doctor details
+          try {
+            if (
+              existingUser.firstName !== formData.firstName ||
+              existingUser.lastName !== formData.lastName ||
+              existingUser.dateOfBirth !== formData.dateOfBirth ||
+              existingUser.gender !== formData.gender ||
+              existingUser.address !== formData.address
+            ) {
+              console.log('🔄 [DOCTOR] Updating existing user with new details...');
+              await usersApi.updateUser(existingUser.id, {
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                dateOfBirth: formData.dateOfBirth || undefined,
+                gender: formData.gender,
+                address: formData.address || undefined,
+              });
+              console.log('✅ [DOCTOR] Existing user updated successfully');
+            }
+          } catch (error) {
+            console.error('⚠️ [DOCTOR] Failed to update existing user details:', error);
+            // Continue even if update fails
+          }
         } else {
           console.log('🆕 [DOCTOR] No existing user found, creating new user...');
           // Create new user if none exists
@@ -359,6 +385,30 @@ export default function CreateDoctorPage() {
           if (existingUser) {
             console.log('✅ [DOCTOR] Found existing user after conflict:', existingUser.id);
             user = existingUser;
+
+             // Update the existing user's information to match the new doctor details
+            try {
+              if (
+                existingUser.firstName !== formData.firstName ||
+                existingUser.lastName !== formData.lastName ||
+                existingUser.dateOfBirth !== formData.dateOfBirth ||
+                existingUser.gender !== formData.gender ||
+                existingUser.address !== formData.address
+              ) {
+                console.log('🔄 [DOCTOR] Updating existing user (after conflict) with new details...');
+                await usersApi.updateUser(existingUser.id, {
+                  firstName: formData.firstName,
+                  lastName: formData.lastName,
+                  dateOfBirth: formData.dateOfBirth || undefined,
+                  gender: formData.gender,
+                  address: formData.address || undefined,
+                });
+                console.log('✅ [DOCTOR] Existing user updated successfully');
+              }
+            } catch (error) {
+              console.error('⚠️ [DOCTOR] Failed to update existing user details:', error);
+              // Continue even if update fails
+            }
           } else {
             console.error('❌ [DOCTOR] No existing user found after conflict');
             throw error;
@@ -446,6 +496,9 @@ export default function CreateDoctorPage() {
           ...(formData.researchInterests && formData.researchInterests.trim() !== '' && {
             researchInterests: formData.researchInterests.trim()
           }),
+          ...(formData.imageUrl && formData.imageUrl.trim() !== '' && {
+            imageUrl: formData.imageUrl.trim()
+          }),
         };
 
         console.log('📤 [FRONTEND] Updating doctor with data:', updateData);
@@ -499,6 +552,9 @@ export default function CreateDoctorPage() {
           }),
           ...(formData.researchInterests && formData.researchInterests.trim() !== '' && {
             researchInterests: formData.researchInterests.trim()
+          }),
+          ...(formData.imageUrl && formData.imageUrl.trim() !== '' && {
+            imageUrl: formData.imageUrl.trim()
           }),
         };
 
@@ -757,6 +813,21 @@ export default function CreateDoctorPage() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Profile Image URL
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.imageUrl}
+                    onChange={(e) => handleInputChange('imageUrl', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="https://example.com/doctor-image.jpg"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="flex items-center space-x-3 mb-3">
                     <input

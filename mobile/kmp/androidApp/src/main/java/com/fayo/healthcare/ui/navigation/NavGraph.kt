@@ -6,6 +6,8 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
 import com.fayo.healthcare.ui.screens.*
 import com.fayo.healthcare.ui.screens.hospitals.HospitalsScreen
 import com.fayo.healthcare.ui.screens.hospitals.HospitalDetailsScreen
@@ -164,6 +166,15 @@ fun FayoNavigation(navController: NavHostController = androidx.navigation.compos
                 hospitalId = hospitalId,
                 onNavigateBack = {
                     navController.popBackStack()
+                },
+                onNavigateToBooking = { hospital ->
+                    // If direct doctor booking, we might want to just scroll to doctors tab or show message
+                    // But here we will navigate to booking screen with hospitalId
+                    // The booking screen will handle the logic if it supports hospital-only booking
+                    navController.navigate("${Screen.BookAppointment.route}?hospitalId=${hospital.id}")
+                },
+                onNavigateToDoctorBooking = { doctorId, selectedHospitalId ->
+                    navController.navigate("${Screen.BookAppointment.route}?doctorId=$doctorId&hospitalId=$selectedHospitalId")
                 }
             )
         }
@@ -187,16 +198,25 @@ fun FayoNavigation(navController: NavHostController = androidx.navigation.compos
                     navController.popBackStack()
                 },
                 onNavigateToBooking = { doctor ->
-                    // Pass doctor ID and reload doctor in booking screen
-                    navController.navigate("${Screen.BookAppointment.route}/${doctor.id}")
+                    // Pass doctor ID
+                    navController.navigate("${Screen.BookAppointment.route}?doctorId=${doctor.id}")
                 }
             )
         }
         
-        composable("${Screen.BookAppointment.route}/{doctorId}") { backStackEntry ->
-            val doctorId = backStackEntry.arguments?.getString("doctorId") ?: ""
+        composable(
+            route = "${Screen.BookAppointment.route}?doctorId={doctorId}&hospitalId={hospitalId}",
+            arguments = listOf(
+                navArgument("doctorId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("hospitalId") { type = NavType.StringType; nullable = true; defaultValue = null }
+            )
+        ) { backStackEntry ->
+            val doctorId = backStackEntry.arguments?.getString("doctorId")
+            val hospitalId = backStackEntry.arguments?.getString("hospitalId")
+            
             BookAppointmentScreen(
                 doctorId = doctorId,
+                hospitalId = hospitalId,
                 onNavigateBack = {
                     navController.popBackStack()
                 },
