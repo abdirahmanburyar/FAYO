@@ -30,11 +30,12 @@ interface HospitalFormData {
   type: 'HOSPITAL' | 'CLINIC';
   address: string;
   city: string;
-  website: string;
-  isActive: boolean;
-}
+    website: string;
+    bookingPolicy: 'HOSPITAL_ASSIGNED' | 'DIRECT_DOCTOR';
+    isActive: boolean;
+  }
 
-const somaliCities = [
+  const somaliCities = [
   'Mogadishu',
   'Hargeisa',
   'Kismayo',
@@ -75,6 +76,7 @@ export default function CreateHospitalPage() {
     address: '',
     city: '',
     website: '',
+    bookingPolicy: 'DIRECT_DOCTOR',
     isActive: true
   });
 
@@ -212,6 +214,7 @@ export default function CreateHospitalPage() {
         phone: formData.phone || undefined,
         email: formData.email || undefined,
         website: formData.website || undefined,
+        bookingPolicy: formData.bookingPolicy,
         isActive: formData.isActive
       };
 
@@ -380,6 +383,21 @@ export default function CreateHospitalPage() {
                   placeholder="Select city"
                   searchPlaceholder="Search cities..."
                   allowClear
+                />
+              </div>
+
+              <div>
+                <SearchableSelect
+                  label="Booking Policy"
+                  required
+                  options={[
+                    { value: 'DIRECT_DOCTOR', label: 'Patient Selects Doctor' },
+                    { value: 'HOSPITAL_ASSIGNED', label: 'Hospital Assigns Doctor' }
+                  ]}
+                  value={formData.bookingPolicy}
+                  onChange={(value) => handleInputChange('bookingPolicy', value as 'DIRECT_DOCTOR' | 'HOSPITAL_ASSIGNED')}
+                  placeholder="Select booking policy"
+                  searchPlaceholder="Search policies..."
                 />
               </div>
             </div>

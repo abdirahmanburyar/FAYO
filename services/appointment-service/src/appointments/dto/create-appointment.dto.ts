@@ -12,8 +12,8 @@ export class CreateAppointmentDto {
   patientId: string;
 
   @IsString()
-  @IsNotEmpty()
-  doctorId: string;
+  @IsOptional()
+  doctorId?: string;
 
   @IsString()
   @IsOptional()

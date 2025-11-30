@@ -8,7 +8,7 @@ export interface Appointment {
   id: string;
   appointmentNumber: number;
   patientId: string;
-  doctorId: string;
+  doctorId?: string;
   hospitalId?: string;
   specialtyId?: string;
   appointmentDate: string; // ISO date string
@@ -34,7 +34,7 @@ export interface Appointment {
 
 export interface CreateAppointmentDto {
   patientId: string;
-  doctorId: string;
+  doctorId?: string;
   hospitalId?: string;
   specialtyId?: string;
   appointmentDate: string; // ISO date string
@@ -62,6 +62,7 @@ export interface UpdateAppointmentDto {
   cancelledBy?: string;
   cancellationReason?: string;
   notes?: string;
+  doctorId?: string; // For assigning doctor
 }
 
 export interface AppointmentStats {

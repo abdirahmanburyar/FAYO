@@ -10,6 +10,27 @@ export class HospitalServiceClient {
     this.baseUrl = this.configService.get<string>('HOSPITAL_SERVICE_URL') || 'http://localhost:3002';
   }
 
+  async getHospitalById(hospitalId: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/v1/hospitals/${hospitalId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to fetch hospital: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      this.logger.error(`Error fetching hospital: ${error instanceof Error ? error.message : String(error)}`);
+      throw error;
+    }
+  }
+
   async getHospitalDoctorAssociation(hospitalId: string, doctorId: string): Promise<any> {
     try {
       // Get doctor's association with hospital
@@ -60,4 +81,3 @@ export class HospitalServiceClient {
     }
   }
 }
-

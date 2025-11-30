@@ -14,7 +14,7 @@ model Appointment {
   id                   String            @id @default(cuid())
   appointmentNumber    Int?              @unique
   patientId            String
-  doctorId             String
+  doctorId             String?
   hospitalId           String?
   specialtyId          String?
   appointmentDate      DateTime

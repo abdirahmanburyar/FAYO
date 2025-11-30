@@ -1,5 +1,10 @@
 import { IsString, IsOptional, IsBoolean, IsEmail, IsUrl, IsEnum } from 'class-validator';
 
+export enum BookingPolicy {
+  HOSPITAL_ASSIGNED = 'HOSPITAL_ASSIGNED',
+  DIRECT_DOCTOR = 'DIRECT_DOCTOR',
+}
+
 export class CreateHospitalDto {
   @IsString()
   @IsOptional()
@@ -28,6 +33,10 @@ export class CreateHospitalDto {
   @IsOptional()
   @IsUrl()
   website?: string;
+
+  @IsOptional()
+  @IsEnum(BookingPolicy)
+  bookingPolicy?: BookingPolicy;
 
   @IsOptional()
   @IsBoolean()

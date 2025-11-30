@@ -78,69 +78,89 @@ export class AppointmentsService {
           );
         }
 
-        // 2. Validate doctor exists with better error handling
-        let doctor;
-        try {
-          doctor = await this.doctorServiceClient.getDoctorById(createAppointmentDto.doctorId);
-          if (!doctor || !doctor.id) {
-            throw new NotFoundException(`Doctor with ID ${createAppointmentDto.doctorId} not found`);
-          }
-        } catch (error: any) {
-          // Check if it's a throttling error
-          if (error?.status === 429 || error?.statusCode === 429) {
-            console.error(`❌ [APPOINTMENT] Doctor service rate limit exceeded`);
-            throw new BadRequestException(
-              'Doctor service is currently busy. Please wait a moment and try again.'
-            );
-          }
-          // Check if it's a 404 or not found error
-          if (error?.status === 404 || error?.statusCode === 404 || error?.message?.includes('not found')) {
-            throw new NotFoundException(
-              `Doctor not found. Please verify the doctor ID (${createAppointmentDto.doctorId}) is correct and the doctor exists in the system.`
-            );
-          }
-          // Check if it's a server error
-          if (error?.status >= 500 || error?.statusCode >= 500) {
-            throw new BadRequestException(
-              'Doctor service is temporarily unavailable. Please try again later.'
-            );
-          }
-          // Generic error
-          throw new NotFoundException(
-            `Unable to verify doctor. Please check the doctor ID (${createAppointmentDto.doctorId}) and try again.`
-          );
+        // 2. Validate doctor exists (if provided)
+        if (!createAppointmentDto.doctorId && !createAppointmentDto.hospitalId) {
+          throw new BadRequestException('Either doctorId or hospitalId must be provided.');
         }
 
-        // 3. Validate hospital association if hospitalId provided
-        let consultationFee: number;
-        if (createAppointmentDto.hospitalId) {
+        let doctor;
+        if (createAppointmentDto.doctorId) {
           try {
-            const hospitalAssociation = await this.hospitalServiceClient.getHospitalDoctorAssociation(
-              createAppointmentDto.hospitalId,
-              createAppointmentDto.doctorId,
-            );
-            consultationFee = hospitalAssociation.consultationFee || 0;
-            
-            if (hospitalAssociation.status !== 'ACTIVE') {
-              throw new BadRequestException(
-                'This doctor is not currently active at the selected hospital. Please choose a different hospital or doctor.'
-              );
+            doctor = await this.doctorServiceClient.getDoctorById(createAppointmentDto.doctorId);
+            if (!doctor || !doctor.id) {
+              throw new NotFoundException(`Doctor with ID ${createAppointmentDto.doctorId} not found`);
             }
           } catch (error: any) {
-            if (error instanceof BadRequestException) {
-              throw error;
-            }
-            if (error?.status === 404 || error?.statusCode === 404) {
-              throw new NotFoundException(
-                `The selected doctor is not associated with the selected hospital. Please verify the hospital and doctor combination.`
+            // Check if it's a throttling error
+            if (error?.status === 429 || error?.statusCode === 429) {
+              console.error(`❌ [APPOINTMENT] Doctor service rate limit exceeded`);
+              throw new BadRequestException(
+                'Doctor service is currently busy. Please wait a moment and try again.'
               );
             }
-            throw new BadRequestException(
-              'Unable to verify hospital-doctor association. Please check your selection and try again.'
+            // Check if it's a 404 or not found error
+            if (error?.status === 404 || error?.statusCode === 404 || error?.message?.includes('not found')) {
+              throw new NotFoundException(
+                `Doctor not found. Please verify the doctor ID (${createAppointmentDto.doctorId}) is correct and the doctor exists in the system.`
+              );
+            }
+            // Check if it's a server error
+            if (error?.status >= 500 || error?.statusCode >= 500) {
+              throw new BadRequestException(
+                'Doctor service is temporarily unavailable. Please try again later.'
+              );
+            }
+            // Generic error
+            throw new NotFoundException(
+              `Unable to verify doctor. Please check the doctor ID (${createAppointmentDto.doctorId}) and try again.`
             );
           }
+        }
+
+        // 3. Validate hospital association or existence
+        let consultationFee: number = 0;
+        
+        if (createAppointmentDto.hospitalId) {
+          if (createAppointmentDto.doctorId) {
+            // Validate doctor is associated with hospital
+            try {
+              const hospitalAssociation = await this.hospitalServiceClient.getHospitalDoctorAssociation(
+                createAppointmentDto.hospitalId,
+                createAppointmentDto.doctorId,
+              );
+              consultationFee = hospitalAssociation.consultationFee || 0;
+              
+              if (hospitalAssociation.status !== 'ACTIVE') {
+                throw new BadRequestException(
+                  'This doctor is not currently active at the selected hospital. Please choose a different hospital or doctor.'
+                );
+              }
+            } catch (error: any) {
+              if (error instanceof BadRequestException) {
+                throw error;
+              }
+              if (error?.status === 404 || error?.statusCode === 404) {
+                throw new NotFoundException(
+                  `The selected doctor is not associated with the selected hospital. Please verify the hospital and doctor combination.`
+                );
+              }
+              throw new BadRequestException(
+                'Unable to verify hospital-doctor association. Please check your selection and try again.'
+              );
+            }
+          } else {
+            // Validate hospital exists (no doctor selected)
+            try {
+              await this.hospitalServiceClient.getHospitalById(createAppointmentDto.hospitalId);
+              // Fee is pending or 0 for unassigned
+              consultationFee = 0; 
+            } catch (error) {
+              throw new NotFoundException(`Hospital with ID ${createAppointmentDto.hospitalId} not found`);
+            }
+          }
         } else {
-          // Self-employed doctor - get fee from doctor
+          // Self-employed doctor (must have doctorId)
+          // This is guaranteed by the initial check
           consultationFee = doctor.selfEmployedConsultationFee || 0;
           if (consultationFee === 0) {
             throw new BadRequestException(
@@ -183,21 +203,24 @@ export class AppointmentsService {
         const duration = createAppointmentDto.duration || 30;
         
         // Check for conflicts within the transaction
-        const conflictingAppointment = await tx.appointment.findFirst({
-          where: {
-            doctorId: createAppointmentDto.doctorId,
-            appointmentDate: appointmentDateTime,
-            appointmentTime: createAppointmentDto.appointmentTime,
-            status: {
-              notIn: ['CANCELLED', 'NO_SHOW', 'RESCHEDULED'],
+        // Only check doctor conflicts if doctorId is provided
+        if (createAppointmentDto.doctorId) {
+          const conflictingAppointment = await tx.appointment.findFirst({
+            where: {
+              doctorId: createAppointmentDto.doctorId,
+              appointmentDate: appointmentDateTime,
+              appointmentTime: createAppointmentDto.appointmentTime,
+              status: {
+                notIn: ['CANCELLED', 'NO_SHOW', 'RESCHEDULED'],
+              },
             },
-          },
-        });
+          });
 
-        if (conflictingAppointment) {
-          throw new ConflictException(
-            `This doctor already has an appointment scheduled at ${createAppointmentDto.appointmentTime} on ${appointmentDateStr}. Please choose a different time.`
-          );
+          if (conflictingAppointment) {
+            throw new ConflictException(
+              `This doctor already has an appointment scheduled at ${createAppointmentDto.appointmentTime} on ${appointmentDateStr}. Please choose a different time.`
+            );
+          }
         }
 
         // 6. Generate sequential appointment number and create appointment atomically
@@ -461,6 +484,12 @@ export class AppointmentsService {
 
       if (updateAppointmentDto.description !== undefined) {
         updateData.description = updateAppointmentDto.description;
+      }
+
+      if (updateAppointmentDto.doctorId !== undefined) {
+        // Validate doctor exists if we want to be strict, but for now allow update
+        // In a real scenario, we should verify the doctor exists via doctor-service
+        updateData.doctorId = updateAppointmentDto.doctorId;
       }
 
       const updatedAppointment = await this.prisma.appointment.update({

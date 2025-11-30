@@ -22,8 +22,9 @@ model Hospital {
   city      String
   phone     String?
   email     String?
-  website   String?
-  isActive  Boolean      @default(true)
+  website       String?
+  bookingPolicy BookingPolicy @default(DIRECT_DOCTOR)
+  isActive      Boolean       @default(true)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -132,6 +133,13 @@ model Doctor {
 enum HospitalType {
   HOSPITAL
   CLINIC
+
+  @@schema("hospitals")
+}
+
+enum BookingPolicy {
+  HOSPITAL_ASSIGNED
+  DIRECT_DOCTOR
 
   @@schema("hospitals")
 }

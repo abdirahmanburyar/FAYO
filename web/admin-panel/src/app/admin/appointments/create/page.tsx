@@ -37,7 +37,7 @@ interface AppointmentFormData {
   patientId: string; // Will be set after finding or creating patient
   
   // Appointment Information
-  doctorId: string;
+  doctorId?: string;
   hospitalId: string;
   specialtyId: string;
   appointmentDate: string;
@@ -68,6 +68,7 @@ const checkIfShiftOngoing = (startTime?: string, endTime?: string): boolean => {
 
 export default function CreateAppointmentPage() {
   const router = useRouter();
+  const [bookingMethod, setBookingMethod] = useState<'DOCTOR' | 'HOSPITAL'>('DOCTOR');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<AppointmentFormData>({
@@ -122,6 +123,45 @@ export default function CreateAppointmentPage() {
   const [loadingDoctors, setLoadingDoctors] = useState(true);
   const [loadingHospitals, setLoadingHospitals] = useState(true);
   const [loadingDoctorHospitals, setLoadingDoctorHospitals] = useState(false);
+  const [filteredDoctors, setFilteredDoctors] = useState<SelectOption[]>([]);
+
+  // Filter doctors when hospital is selected in HOSPITAL mode
+  useEffect(() => {
+    if (bookingMethod === 'HOSPITAL' && formData.hospitalId) {
+      // In a real app, we would fetch doctors for this specific hospital
+      // For now, we'll use the doctors list and filter if we had hospital association data
+      // Or we can fetch hospital doctors endpoint
+      const fetchHospitalDoctors = async () => {
+        try {
+          setLoadingDoctors(true);
+          // Use the correct endpoint to get doctors of a hospital
+          const response = await fetch(`${API_CONFIG.HOSPITAL_SERVICE_URL}/api/v1/hospitals/${formData.hospitalId}/doctors`, {
+             headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (response.ok) {
+            const hospitalDoctors = await response.json();
+            // Filter doctors list to only those in this hospital
+            const doctorIds = new Set(hospitalDoctors.map((hd: any) => hd.doctorId));
+            const filtered = doctors.filter(d => doctorIds.has(d.value));
+            setFilteredDoctors(filtered);
+          } else {
+            // Fallback if endpoint fails or not implemented
+            setFilteredDoctors(doctors); 
+          }
+        } catch (error) {
+          console.error('Error fetching hospital doctors:', error);
+          setFilteredDoctors(doctors);
+        } finally {
+          setLoadingDoctors(false);
+        }
+      };
+      
+      fetchHospitalDoctors();
+    } else {
+      setFilteredDoctors(doctors);
+    }
+  }, [bookingMethod, formData.hospitalId, doctors]);
 
   // Fetch doctors
   useEffect(() => {
@@ -454,8 +494,18 @@ export default function CreateAppointmentPage() {
       return;
     }
     
-    if (!formData.doctorId || !formData.appointmentDate || !formData.appointmentTime) {
+    if ((bookingMethod === 'DOCTOR' && !formData.doctorId) || 
+        (bookingMethod === 'HOSPITAL' && !formData.hospitalId) || 
+        !formData.appointmentDate || !formData.appointmentTime) {
       setError('Please fill in all required fields');
+      return;
+    }
+
+    // If Hospital mode and DIRECT_DOCTOR policy, doctor is required
+    if (bookingMethod === 'HOSPITAL' && 
+        selectedHospital?.bookingPolicy === 'DIRECT_DOCTOR' && 
+        !formData.doctorId) {
+      setError('This hospital requires selecting a doctor for appointments');
       return;
     }
 
@@ -666,6 +716,11 @@ export default function CreateAppointmentPage() {
 
         return slots;
       }
+    } else if (bookingMethod === 'HOSPITAL' && !selectedHospitalDoctor) {
+      // Hospital selected but no doctor assigned yet - use generic hours (e.g. 8-20)
+      // In real app, we might use hospital global hours
+      startHour = 8;
+      endHour = 20;
     }
 
     // Self-employed or no hospital shift defined - use default times (8 AM to 8 PM)
@@ -797,76 +852,167 @@ export default function CreateAppointmentPage() {
             </div>
           </div>
 
-          {/* Doctor Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Doctor <span className="text-red-500">*</span>
-            </label>
-            <SearchableSelect
-              options={doctors}
-              value={formData.doctorId}
-              onChange={(value) => setFormData({ ...formData, doctorId: value, hospitalId: '' })}
-              placeholder="Select a doctor"
-              loading={loadingDoctors}
-            />
-            {selectedDoctor && (
-              <div className="mt-2 p-3 bg-green-50 rounded-lg">
-                <div className="text-sm text-gray-700">
-                  <p><strong>Name:</strong> {selectedDoctor.user?.firstName} {selectedDoctor.user?.lastName}</p>
-                  <p><strong>License:</strong> {selectedDoctor.licenseNumber}</p>
-                  <p><strong>Experience:</strong> {selectedDoctor.experience} years</p>
-                  {selectedDoctor.specialties && selectedDoctor.specialties.length > 0 && (
-                    <p><strong>Specialties:</strong> {selectedDoctor.specialties.map(s => s.name).join(', ')}</p>
-                  )}
-                </div>
-              </div>
-            )}
+          {/* Booking Method Toggle */}
+          <div className="flex p-1 bg-gray-100 rounded-lg mb-6">
+            <button
+              type="button"
+              onClick={() => {
+                setBookingMethod('DOCTOR');
+                setFormData(prev => ({ ...prev, hospitalId: '', doctorId: '' }));
+              }}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
+                bookingMethod === 'DOCTOR' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Book by Doctor
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setBookingMethod('HOSPITAL');
+                setFormData(prev => ({ ...prev, hospitalId: '', doctorId: '' }));
+              }}
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
+                bookingMethod === 'HOSPITAL' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Book by Hospital
+            </button>
           </div>
 
-          {/* Hospital Selection - Only show if doctor has hospital associations */}
-          {formData.doctorId && !isSelfEmployed && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hospital/Clinic {doctorHospitals.length > 0 ? '(Optional)' : ''}
-              </label>
-              {loadingDoctorHospitals ? (
-                <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 flex items-center space-x-2">
-                  <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-sm text-gray-500">Loading doctor's hospitals...</span>
-                </div>
-              ) : (
-                <>
-                  <SearchableSelect
-                    options={doctorHospitals}
-                    value={formData.hospitalId}
-                    onChange={(value) => setFormData({ ...formData, hospitalId: value })}
-                    placeholder={doctorHospitals.length > 0 
-                      ? "Select a hospital (optional - will use self-employed fee if not selected)"
-                      : "No hospitals available"}
-                    loading={false}
-                  />
-                  {selectedHospital && selectedHospitalDoctor && (
-                    <div className="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                      <div className="text-sm text-gray-700">
-                        <p><strong>Hospital:</strong> {selectedHospital.name} ({selectedHospital.type})</p>
-                        <p><strong>Address:</strong> {selectedHospital.address}, {selectedHospital.city}</p>
-                        {selectedHospitalDoctor.shift && (
-                          <p><strong>Shift:</strong> {selectedHospitalDoctor.shift}</p>
-                        )}
-                        {selectedHospitalDoctor.startTime && selectedHospitalDoctor.endTime && (
-                          <p><strong>Working Hours:</strong> {selectedHospitalDoctor.startTime} - {selectedHospitalDoctor.endTime}</p>
-                        )}
-                        {isShiftOngoing && (
-                          <p className="mt-1 text-green-700 font-medium">
-                            ✓ Shift is currently ongoing
-                          </p>
-                        )}
-                      </div>
+          {bookingMethod === 'DOCTOR' ? (
+            <>
+              {/* Doctor Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Doctor <span className="text-red-500">*</span>
+                </label>
+                <SearchableSelect
+                  options={doctors}
+                  value={formData.doctorId || ''}
+                  onChange={(value) => setFormData({ ...formData, doctorId: value, hospitalId: '' })}
+                  placeholder="Select a doctor"
+                  loading={loadingDoctors}
+                />
+                {selectedDoctor && (
+                  <div className="mt-2 p-3 bg-green-50 rounded-lg">
+                    <div className="text-sm text-gray-700">
+                      <p><strong>Name:</strong> {selectedDoctor.user?.firstName} {selectedDoctor.user?.lastName}</p>
+                      <p><strong>License:</strong> {selectedDoctor.licenseNumber}</p>
+                      <p><strong>Experience:</strong> {selectedDoctor.experience} years</p>
+                      {selectedDoctor.specialties && selectedDoctor.specialties.length > 0 && (
+                        <p><strong>Specialties:</strong> {selectedDoctor.specialties.map(s => s.name).join(', ')}</p>
+                      )}
                     </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Hospital Selection - Only show if doctor has hospital associations */}
+              {formData.doctorId && !isSelfEmployed && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Hospital/Clinic {doctorHospitals.length > 0 ? '(Optional)' : ''}
+                  </label>
+                  {loadingDoctorHospitals ? (
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 flex items-center space-x-2">
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-sm text-gray-500">Loading doctor's hospitals...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <SearchableSelect
+                        options={doctorHospitals}
+                        value={formData.hospitalId}
+                        onChange={(value) => setFormData({ ...formData, hospitalId: value })}
+                        placeholder={doctorHospitals.length > 0 
+                          ? "Select a hospital (optional - will use self-employed fee if not selected)"
+                          : "No hospitals available"}
+                        loading={false}
+                      />
+                      {selectedHospital && selectedHospitalDoctor && (
+                        <div className="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                          <div className="text-sm text-gray-700">
+                            <p><strong>Hospital:</strong> {selectedHospital.name} ({selectedHospital.type})</p>
+                            <p><strong>Address:</strong> {selectedHospital.address}, {selectedHospital.city}</p>
+                            {selectedHospitalDoctor.shift && (
+                              <p><strong>Shift:</strong> {selectedHospitalDoctor.shift}</p>
+                            )}
+                            {selectedHospitalDoctor.startTime && selectedHospitalDoctor.endTime && (
+                              <p><strong>Working Hours:</strong> {selectedHospitalDoctor.startTime} - {selectedHospitalDoctor.endTime}</p>
+                            )}
+                            {isShiftOngoing && (
+                              <p className="mt-1 text-green-700 font-medium">
+                                ✓ Shift is currently ongoing
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
-                </>
+                </div>
               )}
-            </div>
+            </>
+          ) : (
+            <>
+              {/* Hospital Selection First */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Hospital <span className="text-red-500">*</span>
+                </label>
+                <SearchableSelect
+                  options={allHospitals}
+                  value={formData.hospitalId}
+                  onChange={async (value) => {
+                    setFormData(prev => ({ ...prev, hospitalId: value, doctorId: '' }));
+                    // Load hospital details to get booking policy
+                    if (value) {
+                      try {
+                        const hospital = await hospitalApi.getHospitalById(value);
+                        setSelectedHospital(hospital);
+                      } catch (err) {
+                        console.error(err);
+                      }
+                    }
+                  }}
+                  placeholder="Select a hospital"
+                  loading={loadingHospitals}
+                />
+              </div>
+
+              {/* Display Booking Policy */}
+              {selectedHospital && (
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="text-sm text-blue-800">
+                    <p><strong>Booking Policy:</strong> {selectedHospital.bookingPolicy === 'HOSPITAL_ASSIGNED' ? 'Hospital Assigns Doctor' : 'Direct Doctor Booking'}</p>
+                    {selectedHospital.bookingPolicy === 'HOSPITAL_ASSIGNED' && (
+                      <p className="text-xs mt-1">You can book an appointment now and the hospital will assign a doctor later.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Optional or Required Doctor Selection based on policy */}
+              {formData.hospitalId && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Doctor {selectedHospital?.bookingPolicy === 'HOSPITAL_ASSIGNED' ? '(Optional)' : <span className="text-red-500">*</span>}
+                  </label>
+                  <SearchableSelect
+                    options={filteredDoctors}
+                    value={formData.doctorId || ''}
+                    onChange={(value) => setFormData({ ...formData, doctorId: value })}
+                    placeholder={selectedHospital?.bookingPolicy === 'HOSPITAL_ASSIGNED' ? "Assign doctor now (optional)" : "Select a doctor"}
+                    loading={loadingDoctors}
+                  />
+                </div>
+              )}
+            </>
           )}
           
           {/* Self-Employed Notice */}
@@ -909,6 +1055,9 @@ export default function CreateAppointmentPage() {
                 )}
                 {!formData.hospitalId && (
                   <span className="ml-2 text-xs text-gray-500">(Self-employed: 8:00 AM - 8:00 PM)</span>
+                )}
+                {bookingMethod === 'HOSPITAL' && !selectedHospitalDoctor && (
+                   <span className="ml-2 text-xs text-gray-500">(General Hospital Hours)</span>
                 )}
               </label>
               {timeSlots.length === 0 ? (
