@@ -1,7 +1,6 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import Image from 'next/image';
 import {
   X,
   Home,
@@ -89,13 +88,22 @@ export default function AdminSidebar({ isOpen, onClose, adminUser }: AdminSideba
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 flex items-center justify-center relative">
-                <Image 
+                <img 
                   src="/logo.png" 
                   alt="FAYO Logo" 
-                  width={40}
-                  height={40}
-                  className="object-contain"
-                  priority
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    // Fallback to text if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                    const parent = target.parentElement;
+                    if (parent && !parent.querySelector('.logo-fallback')) {
+                      const fallback = document.createElement('div');
+                      fallback.className = 'logo-fallback w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 rounded flex items-center justify-center';
+                      fallback.innerHTML = '<span class="text-white font-bold text-xs">FAYO</span>';
+                      parent.appendChild(fallback);
+                    }
+                  }}
                 />
               </div>
               <div>
@@ -172,13 +180,22 @@ export default function AdminSidebar({ isOpen, onClose, adminUser }: AdminSideba
               <div className="flex items-center justify-between p-6 border-b border-gray-200">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 flex items-center justify-center relative">
-                    <Image 
+                    <img 
                       src="/logo.png" 
                       alt="FAYO Logo" 
-                      width={40}
-                      height={40}
-                      className="object-contain"
-                      priority
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        // Fallback to text if image fails to load
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent && !parent.querySelector('.logo-fallback')) {
+                          const fallback = document.createElement('div');
+                          fallback.className = 'logo-fallback w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 rounded flex items-center justify-center';
+                          fallback.innerHTML = '<span class="text-white font-bold text-xs">FAYO</span>';
+                          parent.appendChild(fallback);
+                        }
+                      }}
                     />
                   </div>
                   <div>
