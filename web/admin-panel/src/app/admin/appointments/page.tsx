@@ -1274,36 +1274,36 @@ export default function AppointmentsPage() {
                   </div>
                 </div>
               ) : (
-                /* Professional Airline Ticket Style Appointment Card */
-                <div className="relative bg-white rounded-2xl shadow-lg border-2 border-gray-200 hover:shadow-xl hover:border-blue-300 transition-all overflow-hidden">
+                /* Professional Airline Ticket Style Appointment Card - Compact */
+                <div className="relative bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl hover:border-blue-300 transition-all overflow-hidden">
                   {/* Top Gradient Bar */}
-                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
                   
                   {isLoadingDetails ? (
-                    <div className="flex items-center justify-center py-16">
-                      <RefreshCw className="w-8 h-8 text-blue-400 animate-spin" />
-                      <span className="ml-3 text-gray-700 font-medium">Loading appointment details...</span>
+                    <div className="flex items-center justify-center py-12">
+                      <RefreshCw className="w-6 h-6 text-blue-400 animate-spin" />
+                      <span className="ml-2 text-gray-700 text-sm">Loading...</span>
                     </div>
                   ) : (
                     <div className="flex flex-col lg:flex-row">
-                      {/* Left Side - Doctor Portrait Section */}
-                      <div className="lg:w-56 flex-shrink-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6 flex flex-col items-center justify-center border-r-2 border-dashed border-gray-300 relative">
+                      {/* Left Side - Doctor Portrait Section - Compact */}
+                      <div className="lg:w-40 flex-shrink-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-3 flex flex-col items-center justify-center border-r border-dashed border-gray-300 relative">
                         {/* Perforated Edge Effect */}
-                        <div className="absolute right-0 top-0 bottom-0 w-3 flex flex-col justify-center gap-1.5">
-                          {Array.from({ length: 10 }).map((_, i) => (
-                            <div key={i} className="w-1.5 h-4 bg-gray-300 rounded-full"></div>
+                        <div className="absolute right-0 top-0 bottom-0 w-2 flex flex-col justify-center gap-1">
+                          {Array.from({ length: 8 }).map((_, i) => (
+                            <div key={i} className="w-1 h-3 bg-gray-300 rounded-full"></div>
                           ))}
                         </div>
                         
                         {details?.doctor ? (
                           <>
-                            {/* Large Doctor Portrait */}
-                            <div className="relative mb-4">
+                            {/* Compact Doctor Portrait */}
+                            <div className="relative mb-2">
                               {details.doctor.imageUrl ? (
                                 <img 
                                   src={details.doctor.imageUrl} 
                                   alt={`Dr. ${details.doctor.user?.firstName} ${details.doctor.user?.lastName}`}
-                                  className="w-36 h-44 rounded-2xl object-cover object-center border-4 border-white shadow-2xl"
+                                  className="w-28 h-32 rounded-xl object-cover object-center border-2 border-white shadow-lg"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.style.display = 'none';
@@ -1313,182 +1313,182 @@ export default function AppointmentsPage() {
                                 />
                               ) : null}
                               <div 
-                                className={`w-36 h-44 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white border-4 border-white shadow-2xl ${details.doctor.imageUrl ? 'hidden' : ''}`}
+                                className={`w-28 h-32 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white border-2 border-white shadow-lg ${details.doctor.imageUrl ? 'hidden' : ''}`}
                               >
-                                <span className="text-6xl font-bold">
+                                <span className="text-4xl font-bold">
                                   {details.doctor.user?.firstName?.[0] || 'D'}{details.doctor.user?.lastName?.[0] || ''}
                                 </span>
                               </div>
-                              {/* Availability Badge */}
-                              <div className={`absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-7 h-7 rounded-full border-4 border-white shadow-xl ${details.doctor.isAvailable ? 'bg-green-500' : 'bg-gray-400'}`} title={details.doctor.isAvailable ? 'Available' : 'Unavailable'}></div>
+                              {/* Availability Badge - Smaller */}
+                              <div className={`absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-5 h-5 rounded-full border-2 border-white shadow-lg ${details.doctor.isAvailable ? 'bg-green-500' : 'bg-gray-400'}`} title={details.doctor.isAvailable ? 'Available' : 'Unavailable'}></div>
                             </div>
                             
-                            {/* Doctor Info */}
+                            {/* Doctor Info - Compact */}
                             <div className="text-center">
-                              <h3 className="font-bold text-gray-900 text-base mb-1">
+                              <h3 className="font-bold text-gray-900 text-sm mb-0.5">
                                 Dr. {details.doctor.user?.firstName} {details.doctor.user?.lastName}
                               </h3>
                               {details.doctor.specialties && details.doctor.specialties.length > 0 && (
-                                <p className="text-xs text-gray-600 font-semibold mb-1">
+                                <p className="text-xs text-gray-600 font-medium mb-0.5">
                                   {details.doctor.specialties[0].name}
                                 </p>
                               )}
-                              <p className="text-xs text-gray-500 font-mono bg-white/60 px-2 py-1 rounded">
+                              <p className="text-xs text-gray-500 font-mono bg-white/60 px-1.5 py-0.5 rounded text-[10px]">
                                 {details.doctor.licenseNumber}
                               </p>
                             </div>
                           </>
                         ) : (
                           <div className="text-center">
-                            <div className="w-36 h-44 rounded-2xl bg-gray-200 flex items-center justify-center mb-4 border-4 border-white shadow-2xl">
-                              <UserIcon className="w-16 h-16 text-gray-400" />
+                            <div className="w-28 h-32 rounded-xl bg-gray-200 flex items-center justify-center mb-2 border-2 border-white shadow-lg">
+                              <UserIcon className="w-10 h-10 text-gray-400" />
                             </div>
-                            <p className="text-sm text-gray-600 font-medium">
-                              {appointment.doctorId ? 'Doctor Assigned' : 'Pending Assignment'}
+                            <p className="text-xs text-gray-600 font-medium">
+                              {appointment.doctorId ? 'Assigned' : 'Pending'}
                             </p>
                           </div>
                         )}
                       </div>
 
-                      {/* Right Side - Ticket Information */}
-                      <div className="flex-1 p-6">
-                        <div className="flex flex-col lg:flex-row gap-6">
+                      {/* Right Side - Ticket Information - Compact */}
+                      <div className="flex-1 p-4">
+                        <div className="flex flex-col lg:flex-row gap-4">
                           {/* Main Ticket Content */}
-                          <div className="flex-1 space-y-5">
-                            {/* Ticket Header with Appointment Number */}
-                            <div className="flex items-start justify-between pb-4 border-b-2 border-gray-200">
+                          <div className="flex-1 space-y-3">
+                            {/* Ticket Header with Appointment Number - Compact */}
+                            <div className="flex items-start justify-between pb-3 border-b border-gray-200">
                               <div className="flex-1">
-                                <div className="inline-flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-5 py-2.5 rounded-xl shadow-lg mb-3">
-                                  <span className="text-xs font-bold mr-3 opacity-90 tracking-wider">APPT #</span>
-                                  <span className="text-3xl font-black tracking-wider">
+                                <div className="inline-flex items-center bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1.5 rounded-lg shadow-md mb-2">
+                                  <span className="text-[10px] font-bold mr-2 opacity-90 tracking-wider">APPT #</span>
+                                  <span className="text-xl font-black tracking-wider">
                                     {formatAppointmentNumber(appointment.appointmentNumber)}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className={`inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-lg shadow-sm ${getStatusBadgeColor(appointment.status)}`}>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className={`inline-flex items-center px-2 py-1 text-[10px] font-bold rounded-md shadow-sm ${getStatusBadgeColor(appointment.status)}`}>
                                     {getStatusIcon(appointment.status)}
-                                    <span className="ml-1.5">{appointment.status}</span>
+                                    <span className="ml-1">{appointment.status}</span>
                                   </span>
-                                  <span className={`inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-lg shadow-sm ${getPaymentStatusBadgeColor(appointment.paymentStatus)}`}>
+                                  <span className={`inline-flex items-center px-2 py-1 text-[10px] font-bold rounded-md shadow-sm ${getPaymentStatusBadgeColor(appointment.paymentStatus)}`}>
                                     {appointment.paymentStatus}
                                   </span>
                                 </div>
                               </div>
                               
-                              {/* Consultation Type Icon */}
-                              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl">
+                              {/* Consultation Type Icon - Smaller */}
+                              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white shadow-lg">
                                 {getConsultationTypeIcon(appointment.consultationType)}
                               </div>
                             </div>
 
-                            {/* Appointment Details Grid - Professional Layout */}
-                            <div className="grid grid-cols-2 gap-3">
+                            {/* Appointment Details Grid - Compact */}
+                            <div className="grid grid-cols-2 gap-2">
                               {/* Date */}
-                              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
-                                <div className="flex items-center text-blue-600 text-xs font-semibold mb-2 uppercase tracking-wide">
-                                  <Calendar className="w-4 h-4 mr-1.5" />
+                              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-2.5 border border-blue-100">
+                                <div className="flex items-center text-blue-600 text-[10px] font-semibold mb-1 uppercase tracking-wide">
+                                  <Calendar className="w-3 h-3 mr-1" />
                                   <span>Date</span>
                                 </div>
-                                <p className="font-bold text-gray-900 text-lg">{formatDate(appointment.appointmentDate)}</p>
+                                <p className="font-bold text-gray-900 text-sm">{formatDate(appointment.appointmentDate)}</p>
                               </div>
                               
                               {/* Time */}
-                              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4 border border-indigo-100">
-                                <div className="flex items-center text-indigo-600 text-xs font-semibold mb-2 uppercase tracking-wide">
-                                  <Clock className="w-4 h-4 mr-1.5" />
+                              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-2.5 border border-indigo-100">
+                                <div className="flex items-center text-indigo-600 text-[10px] font-semibold mb-1 uppercase tracking-wide">
+                                  <Clock className="w-3 h-3 mr-1" />
                                   <span>Time</span>
                                 </div>
-                                <p className="font-bold text-gray-900 text-lg">{formatTime(appointment.appointmentTime)}</p>
+                                <p className="font-bold text-gray-900 text-sm">{formatTime(appointment.appointmentTime)}</p>
                               </div>
 
                               {/* Duration */}
-                              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-100">
-                                <div className="text-purple-600 text-xs font-semibold mb-2 uppercase tracking-wide">Duration</div>
-                                <p className="font-bold text-gray-900 text-lg">{appointment.duration} min</p>
+                              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-2.5 border border-purple-100">
+                                <div className="text-purple-600 text-[10px] font-semibold mb-1 uppercase tracking-wide">Duration</div>
+                                <p className="font-bold text-gray-900 text-sm">{appointment.duration} min</p>
                               </div>
                               
                               {/* Fee */}
-                              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-4 border border-green-100">
-                                <div className="text-green-600 text-xs font-semibold mb-2 uppercase tracking-wide">Fee</div>
-                                <p className="font-bold text-green-700 text-lg">{formatCurrency(appointment.consultationFee)}</p>
+                              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-2.5 border border-green-100">
+                                <div className="text-green-600 text-[10px] font-semibold mb-1 uppercase tracking-wide">Fee</div>
+                                <p className="font-bold text-green-700 text-sm">{formatCurrency(appointment.consultationFee)}</p>
                               </div>
                             </div>
 
-                            {/* Patient & Hospital Info - Side by Side */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t-2 border-gray-200">
+                            {/* Patient & Hospital Info - Compact */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2 border-t border-gray-200">
                               {/* Patient */}
-                              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                                <div className="flex items-center text-gray-700 text-xs font-semibold mb-2 uppercase tracking-wide">
-                                  <UserIcon className="w-4 h-4 mr-1.5" />
+                              <div className="bg-gray-50 rounded-lg p-2.5 border border-gray-200">
+                                <div className="flex items-center text-gray-700 text-[10px] font-semibold mb-1 uppercase tracking-wide">
+                                  <UserIcon className="w-3 h-3 mr-1" />
                                   <span>Patient</span>
                                 </div>
                                 {details?.patient ? (
                                   <div>
-                                    <p className="font-bold text-gray-900 text-base">{details.patient.firstName} {details.patient.lastName}</p>
+                                    <p className="font-bold text-gray-900 text-sm">{details.patient.firstName} {details.patient.lastName}</p>
                                     {details.patient.phone && (
-                                      <p className="text-xs text-gray-600 mt-1.5 flex items-center">
-                                        <Phone className="w-3.5 h-3.5 mr-1.5" />
+                                      <p className="text-[10px] text-gray-600 mt-0.5 flex items-center">
+                                        <Phone className="w-3 h-3 mr-1" />
                                         {details.patient.phone}
                                       </p>
                                     )}
                                   </div>
                                 ) : (
-                                  <p className="text-xs text-gray-500">ID: {appointment.patientId.substring(0, 8)}...</p>
+                                  <p className="text-[10px] text-gray-500">ID: {appointment.patientId.substring(0, 8)}...</p>
                                 )}
                               </div>
 
                               {/* Hospital (if exists) */}
                               {appointment.hospitalId && details?.hospital && (
-                                <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                                  <div className="flex items-center text-gray-700 text-xs font-semibold mb-2 uppercase tracking-wide">
-                                    <Building2 className="w-4 h-4 mr-1.5" />
+                                <div className="bg-gray-50 rounded-lg p-2.5 border border-gray-200">
+                                  <div className="flex items-center text-gray-700 text-[10px] font-semibold mb-1 uppercase tracking-wide">
+                                    <Building2 className="w-3 h-3 mr-1" />
                                     <span>Hospital</span>
                                   </div>
-                                  <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-2">
                                     {details.hospital.logoUrl ? (
                                       <img 
                                         src={details.hospital.logoUrl} 
                                         alt={details.hospital.name}
-                                        className="w-10 h-10 rounded-lg object-contain border-2 border-gray-200 bg-white shadow-sm"
+                                        className="w-8 h-8 rounded-lg object-contain border border-gray-200 bg-white shadow-sm"
                                         onError={(e) => {
                                           const target = e.target as HTMLImageElement;
                                           target.style.display = 'none';
                                         }}
                                       />
                                     ) : (
-                                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-sm">
-                                        <Building2 className="w-5 h-5 text-white" />
+                                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-sm">
+                                        <Building2 className="w-4 h-4 text-white" />
                                       </div>
                                     )}
                                     <div>
-                                      <p className="font-bold text-gray-900 text-sm">{details.hospital.name}</p>
-                                      <p className="text-xs text-gray-600">{details.hospital.type}</p>
+                                      <p className="font-bold text-gray-900 text-xs">{details.hospital.name}</p>
+                                      <p className="text-[10px] text-gray-600">{details.hospital.type}</p>
                                     </div>
                                   </div>
                                 </div>
                               )}
                             </div>
 
-                            {/* Reason */}
+                            {/* Reason - Compact */}
                             {appointment.reason && (
-                              <div className="pt-3 border-t-2 border-gray-200">
-                                <p className="text-xs text-gray-500 font-semibold mb-1.5 uppercase tracking-wide">Reason for Visit</p>
-                                <p className="text-sm text-gray-900 font-medium bg-gray-50 rounded-lg p-3 border border-gray-200">{appointment.reason}</p>
+                              <div className="pt-2 border-t border-gray-200">
+                                <p className="text-[10px] text-gray-500 font-semibold mb-1 uppercase tracking-wide">Reason</p>
+                                <p className="text-xs text-gray-900 font-medium bg-gray-50 rounded-lg p-2 border border-gray-200 line-clamp-2">{appointment.reason}</p>
                               </div>
                             )}
                           </div>
 
-                          {/* Action Buttons - Right Side */}
-                          <div className="flex flex-col items-center space-y-2 lg:border-l-2 lg:border-dashed lg:border-gray-300 lg:pl-6 lg:min-w-[120px]">
+                          {/* Action Buttons - Right Side - Compact */}
+                          <div className="flex flex-col items-center space-y-1.5 lg:border-l lg:border-dashed lg:border-gray-300 lg:pl-4 lg:min-w-[90px]">
                             {appointment.consultationType === 'VIDEO' && 
                              appointment.status !== 'CANCELLED' && 
                              appointment.status !== 'COMPLETED' && (
                               <button
                                 onClick={() => handleStartVideoCall(appointment)}
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors shadow-md text-sm font-medium flex items-center justify-center gap-2"
+                                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-md transition-colors shadow-sm text-xs font-medium flex items-center justify-center gap-1.5"
                                 title="Start Video Call"
                               >
-                                <Video className="w-4 h-4" />
+                                <Video className="w-3.5 h-3.5" />
                                 <span>Call</span>
                               </button>
                             )}
@@ -1501,10 +1501,10 @@ export default function AppointmentsPage() {
                                   e.stopPropagation();
                                   handleOpenAssignDoctorModal(appointment);
                                 }}
-                                className="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors shadow-md text-sm font-medium flex items-center justify-center gap-2"
+                                className="w-full bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1.5 rounded-md transition-colors shadow-sm text-xs font-medium flex items-center justify-center gap-1.5"
                                 title="Assign Doctor"
                               >
-                                <UserIcon className="w-4 h-4" />
+                                <UserIcon className="w-3.5 h-3.5" />
                                 <span>Assign</span>
                               </button>
                             )}
@@ -1517,10 +1517,10 @@ export default function AppointmentsPage() {
                                   e.stopPropagation();
                                   handleOpenPaymentModal(appointment);
                                 }}
-                                className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors shadow-md text-sm font-medium flex items-center justify-center gap-2"
+                                className="w-full bg-green-600 hover:bg-green-700 text-white px-2.5 py-1.5 rounded-md transition-colors shadow-sm text-xs font-medium flex items-center justify-center gap-1.5"
                                 title="Process Payment"
                               >
-                                <DollarSign className="w-4 h-4" />
+                                <DollarSign className="w-3.5 h-3.5" />
                                 <span>Pay</span>
                               </button>
                             )}
@@ -1533,10 +1533,10 @@ export default function AppointmentsPage() {
                                   e.stopPropagation();
                                   handlePrintReceipt(appointment);
                                 }}
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors shadow-md text-sm font-medium flex items-center justify-center gap-2"
+                                className="w-full bg-gray-600 hover:bg-gray-700 text-white px-2.5 py-1.5 rounded-md transition-colors shadow-sm text-xs font-medium flex items-center justify-center gap-1.5"
                                 title="Print Receipt"
                               >
-                                <Printer className="w-4 h-4" />
+                                <Printer className="w-3.5 h-3.5" />
                                 <span>Receipt</span>
                               </button>
                             )}
@@ -1546,7 +1546,7 @@ export default function AppointmentsPage() {
                               <select
                                 value={appointment.status}
                                 onChange={(e) => handleStatusChange(appointment.id, e.target.value as AppointmentStatus)}
-                                className="w-full bg-white border-2 border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer font-medium"
+                                className="w-full bg-white border border-gray-300 rounded-md px-2 py-1.5 text-[10px] text-gray-700 hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer font-medium"
                                 title="Change Status"
                               >
                                 <option value="PENDING">Pending</option>
@@ -1557,23 +1557,23 @@ export default function AppointmentsPage() {
                             )}
                             
                             {/* Edit & Cancel Buttons */}
-                            <div className="flex gap-2 w-full">
+                            <div className="flex gap-1.5 w-full">
                               {appointment.status !== 'CANCELLED' && appointment.status !== 'COMPLETED' && (
                                 <button
                                   onClick={() => handleEdit(appointment)}
-                                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-1"
+                                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1.5 rounded-md transition-colors text-xs font-medium flex items-center justify-center gap-1"
                                   title="Edit"
                                 >
-                                  <Edit className="w-4 h-4" />
+                                  <Edit className="w-3.5 h-3.5" />
                                 </button>
                               )}
                               {appointment.status !== 'CANCELLED' && appointment.status !== 'COMPLETED' && (
                                 <button
                                   onClick={() => handleCancel(appointment.id)}
-                                  className="flex-1 bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-1"
+                                  className="flex-1 bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1.5 rounded-md transition-colors text-xs font-medium flex items-center justify-center gap-1"
                                   title="Cancel"
                                 >
-                                  <XCircle className="w-4 h-4" />
+                                  <XCircle className="w-3.5 h-3.5" />
                                 </button>
                               )}
                             </div>
