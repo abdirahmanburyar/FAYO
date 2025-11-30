@@ -5,7 +5,7 @@
 const getServiceUrl = (servicePath: string, directPort: string): string => {
   // Specialty-service always uses VPS IP address
   if (servicePath === 'specialty-service') {
-    return `http://31.97.58.62:${directPort}`;
+    return `http://72.62.51.50:${directPort}`;
   }
   
   // Check if we're in browser (client-side)

@@ -87,7 +87,7 @@ export class HospitalsService {
       if (!createHospitalDto.userId) {
         console.log('[HOSPITAL-CREATE] No userId provided, creating new user in user-service...');
         
-        const userServiceUrl = this.configService.get('USER_SERVICE_URL') || 'http://31.97.58.62:3001';
+        const userServiceUrl = this.configService.get('USER_SERVICE_URL') || 'http://72.62.51.50:3001';
         const createUserUrl = `${userServiceUrl}/api/v1/users`;
         
         try {
@@ -152,7 +152,7 @@ export class HospitalsService {
       if (createdUserId) {
         console.error('[HOSPITAL-CREATE] ❌ Hospital creation failed, rolling back user creation...');
         try {
-          const userServiceUrl = this.configService.get('USER_SERVICE_URL') || 'http://31.97.58.62:3001';
+          const userServiceUrl = this.configService.get('USER_SERVICE_URL') || 'http://72.62.51.50:3001';
           const deleteUserUrl = `${userServiceUrl}/api/v1/users/${createdUserId}`;
           
           await firstValueFrom(

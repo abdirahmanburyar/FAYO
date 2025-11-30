@@ -19,7 +19,7 @@
         <!-- Development server IP - allows HTTP for development -->
         <domain includeSubdomains="true">10.86.182.69</domain>
         <!-- Production server IP - allows HTTP (should be changed to HTTPS in production) -->
-        <domain includeSubdomains="true">31.97.58.62</domain>
+        <domain includeSubdomains="true">72.62.51.50</domain>
     </domain-config>
     
     <!-- Production: Only allow HTTPS -->

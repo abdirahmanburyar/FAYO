@@ -35,7 +35,7 @@ This document describes the complete end-to-end video calling workflow implement
 **Location**: `mobile/flutter_app/lib/screens/home_screen.dart`
 
 1. `CallSocketService` is initialized when user logs in
-2. Connects to WebSocket: `http://31.97.58.62:3010/ws/calls`
+2. Connects to WebSocket: `http://72.62.51.50:3010/ws/calls`
 3. Listens for `call_invitation` events
 4. When received, shows accept/decline dialog
 5. User accepts → proceeds to Step 4
@@ -167,15 +167,15 @@ JWT_SECRET=your_jwt_secret
 
 **Frontend - Admin Panel**:
 ```bash
-CALL_SERVICE_URL=http://31.97.58.62:3010
-NEXT_PUBLIC_CALL_SERVICE_URL=http://31.97.58.62:3010
+CALL_SERVICE_URL=http://72.62.51.50:3010
+NEXT_PUBLIC_CALL_SERVICE_URL=http://72.62.51.50:3010
 ```
 
 **Frontend - Flutter**:
 ```dart
 // In call_config.dart
-static const String baseUrl = 'http://31.97.58.62:3010/api/v1';
-static const String websocketUrl = 'http://31.97.58.62:3010';
+static const String baseUrl = 'http://72.62.51.50:3010/api/v1';
+static const String websocketUrl = 'http://72.62.51.50:3010';
 ```
 
 ## ✅ Implementation Checklist

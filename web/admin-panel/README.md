@@ -49,8 +49,8 @@ A modern, responsive admin panel built with Next.js 14, TypeScript, and Tailwind
 3. **Environment Configuration**
    Create a `.env.local` file:
    ```env
-   USER_SERVICE_URL=http://31.97.58.62:3001
-   NEXT_PUBLIC_API_URL=http://31.97.58.62:3001/api/v1
+   USER_SERVICE_URL=http://72.62.51.50:3001
+   NEXT_PUBLIC_API_URL=http://72.62.51.50:3001/api/v1
    ```
 
 4. **Start the development server**
@@ -72,7 +72,7 @@ A modern, responsive admin panel built with Next.js 14, TypeScript, and Tailwind
 
 2. **Access the admin panel**
    - Admin Panel: `http://localhost:3000`
-   - User Service: `http://31.97.58.62:3001`
+   - User Service: `http://72.62.51.50:3001`
 
 ### Manual Docker Build
 
@@ -84,8 +84,8 @@ A modern, responsive admin panel built with Next.js 14, TypeScript, and Tailwind
 2. **Run the container**
    ```bash
    docker run -p 3000:3000 \
-     -e USER_SERVICE_URL=http://31.97.58.62:3001 \
-     -e NEXT_PUBLIC_API_URL=http://31.97.58.62:3001/api/v1 \
+     -e USER_SERVICE_URL=http://72.62.51.50:3001 \
+     -e NEXT_PUBLIC_API_URL=http://72.62.51.50:3001/api/v1 \
      fayo-admin-panel
    ```
 
@@ -110,7 +110,7 @@ A modern, responsive admin panel built with Next.js 14, TypeScript, and Tailwind
 
 3. **Or manually create via API**
    ```bash
-   curl -X POST http://31.97.58.62:3001/api/v1/auth/admin-login \
+   curl -X POST http://72.62.51.50:3001/api/v1/auth/admin-login \
      -H "Content-Type: application/json" \
      -d '{"username":"0001","password":"admin123"}'
    ```
@@ -155,8 +155,8 @@ admin-panel/
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `USER_SERVICE_URL` | Backend user service URL | `http://31.97.58.62:3001` |
-| `NEXT_PUBLIC_API_URL` | Public API URL | `http://31.97.58.62:3001/api/v1` |
+| `USER_SERVICE_URL` | Backend user service URL | `http://72.62.51.50:3001` |
+| `NEXT_PUBLIC_API_URL` | Public API URL | `http://72.62.51.50:3001/api/v1` |
 
 ### API Endpoints
 

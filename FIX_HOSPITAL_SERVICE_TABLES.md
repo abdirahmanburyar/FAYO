@@ -48,6 +48,6 @@ docker exec -i postgres psql -U postgres -d hospital_service -c "SELECT table_na
 
 Test the API:
 ```bash
-curl http://31.97.58.62:3002/api/v1/hospitals
+curl http://72.62.51.50:3002/api/v1/hospitals
 ```
 

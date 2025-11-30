@@ -31,10 +31,10 @@ export class AppointmentWebSocketService {
     if (typeof window !== 'undefined') {
       // Use HTTP base URL - Socket.IO will handle the path
       // Always use VPS IP address for appointment-service WebSocket
-      const appointmentServiceUrl = process.env.NEXT_PUBLIC_APPOINTMENT_SERVICE_URL || 'http://31.97.58.62:3005';
+      const appointmentServiceUrl = process.env.NEXT_PUBLIC_APPOINTMENT_SERVICE_URL || 'http://72.62.51.50:3005';
       return appointmentServiceUrl;
     }
-    return 'http://31.97.58.62:3005';
+    return 'http://72.62.51.50:3005';
   }
 
   connect() {

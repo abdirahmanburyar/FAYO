@@ -7,7 +7,7 @@ export class UserServiceClient {
   private readonly baseUrl: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.baseUrl = this.configService.get<string>('USER_SERVICE_URL') || 'http://31.97.58.62:3001';
+    this.baseUrl = this.configService.get<string>('USER_SERVICE_URL') || 'http://72.62.51.50:3001';
   }
 
   async getUserById(userId: string): Promise<any> {

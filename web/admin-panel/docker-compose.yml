@@ -8,7 +8,7 @@ services:
     environment:
       - NODE_ENV=production
       - USER_SERVICE_URL=http://user-service:3001
-      - NEXT_PUBLIC_API_URL=http://31.97.58.62:3001/api/v1
+      - NEXT_PUBLIC_API_URL=http://72.62.51.50:3001/api/v1
     depends_on:
       - user-service
     networks:

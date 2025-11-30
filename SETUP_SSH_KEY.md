@@ -40,7 +40,7 @@ ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa_github_actions -N "" -C "github-actio
 
 **Linux/macOS:**
 ```bash
-sshpass -p "Buryar@2020#" ssh-copy-id -i ~/.ssh/id_rsa_github_actions.pub root@31.97.58.62
+sshpass -p "Buryar@2020#" ssh-copy-id -i ~/.ssh/id_rsa_github_actions.pub root@72.62.51.50
 ```
 
 **Windows (using PowerShell):**
@@ -49,12 +49,12 @@ sshpass -p "Buryar@2020#" ssh-copy-id -i ~/.ssh/id_rsa_github_actions.pub root@3
 $publicKey = Get-Content ~/.ssh/id_rsa_github_actions.pub
 
 # Copy to VPS (you'll need to enter password)
-ssh root@31.97.58.62 "mkdir -p ~/.ssh && echo '$publicKey' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+ssh root@72.62.51.50 "mkdir -p ~/.ssh && echo '$publicKey' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
 ```
 
 Or manually:
 1. Copy the content of `~/.ssh/id_rsa_github_actions.pub`
-2. SSH to your VPS: `ssh root@31.97.58.62`
+2. SSH to your VPS: `ssh root@72.62.51.50`
 3. Run: `mkdir -p ~/.ssh && nano ~/.ssh/authorized_keys`
 4. Paste the public key and save
 5. Run: `chmod 600 ~/.ssh/authorized_keys`
@@ -87,7 +87,7 @@ Copy the entire output (including `-----BEGIN OPENSSH PRIVATE KEY-----` and `---
 Test the SSH connection:
 
 ```bash
-ssh -i ~/.ssh/id_rsa_github_actions root@31.97.58.62 "echo 'SSH connection successful!'"
+ssh -i ~/.ssh/id_rsa_github_actions root@72.62.51.50 "echo 'SSH connection successful!'"
 ```
 
 If this works, your setup is complete!
@@ -111,7 +111,7 @@ If this works, your setup is complete!
 
 Add the VPS to known hosts:
 ```bash
-ssh-keyscan -H 31.97.58.62 >> ~/.ssh/known_hosts
+ssh-keyscan -H 72.62.51.50 >> ~/.ssh/known_hosts
 ```
 
 ### GitHub Actions still fails

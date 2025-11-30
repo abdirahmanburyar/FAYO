@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const queryString = searchParams.toString();
     // Hardcode VPS IP address for specialty-service (always use external IP, not Docker service name)
-    const specialtyServiceUrl = 'http://31.97.58.62:3004';
+    const specialtyServiceUrl = 'http://72.62.51.50:3004';
     const url = `${specialtyServiceUrl}${API_CONFIG.ENDPOINTS.SPECIALTIES}${queryString ? `?${queryString}` : ''}`;
     
     console.log('Proxying GET specialties request to:', url);
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('Error proxying specialties request:', error);
-    const specialtyServiceUrl = process.env.SPECIALTY_SERVICE_URL || 'http://31.97.58.62:3004';
+    const specialtyServiceUrl = process.env.SPECIALTY_SERVICE_URL || 'http://72.62.51.50:3004';
       const errorMessage = error.name === 'AbortError' 
       ? 'Request timeout - specialty-service may be unreachable'
       : error.message || 'Internal server error';
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     // Hardcode VPS IP address for specialty-service (always use external IP, not Docker service name)
-    const specialtyServiceUrl = 'http://31.97.58.62:3004';
+    const specialtyServiceUrl = 'http://72.62.51.50:3004';
     const url = `${specialtyServiceUrl}${API_CONFIG.ENDPOINTS.SPECIALTIES}`;
     
     console.log('Proxying POST specialties request to:', url);

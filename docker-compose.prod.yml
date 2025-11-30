@@ -121,7 +121,7 @@ services:
       - fayo-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://31.97.58.62:3001/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      test: ["CMD", "node", "-e", "require('http').get('http://72.62.51.50:3001/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -292,7 +292,7 @@ services:
       PORT: 3006
       HOST: 0.0.0.0
       KAFKA_BROKER: kafka:9092
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://31.97.58.62:3001}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://72.62.51.50:3001}
       ADMIN_PANEL_URL: ${ADMIN_PANEL_URL:-http://localhost:3000}
     depends_on:
       postgres:
@@ -326,13 +326,13 @@ services:
       APPOINTMENT_SERVICE_URL: ${APPOINTMENT_SERVICE_URL:-http://appointment-service:3005}
       PAYMENT_SERVICE_URL: ${PAYMENT_SERVICE_URL:-http://payment-service:3006}
       # Client-side URLs (for browser) - use external IP or domain
-      NEXT_PUBLIC_USER_SERVICE_URL: ${NEXT_PUBLIC_USER_SERVICE_URL:-http://31.97.58.62:3001}
-      NEXT_PUBLIC_HOSPITAL_SERVICE_URL: ${NEXT_PUBLIC_HOSPITAL_SERVICE_URL:-http://31.97.58.62:3002}
-      NEXT_PUBLIC_DOCTOR_SERVICE_URL: ${NEXT_PUBLIC_DOCTOR_SERVICE_URL:-http://31.97.58.62:3003}
-      NEXT_PUBLIC_SPECIALTY_SERVICE_URL: ${NEXT_PUBLIC_SPECIALTY_SERVICE_URL:-http://31.97.58.62:3004}
-      NEXT_PUBLIC_APPOINTMENT_SERVICE_URL: ${NEXT_PUBLIC_APPOINTMENT_SERVICE_URL:-http://31.97.58.62:3005}
-      NEXT_PUBLIC_PAYMENT_SERVICE_URL: ${NEXT_PUBLIC_PAYMENT_SERVICE_URL:-http://31.97.58.62:3006}
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://31.97.58.62:3001/api/v1}
+      NEXT_PUBLIC_USER_SERVICE_URL: ${NEXT_PUBLIC_USER_SERVICE_URL:-http://72.62.51.50:3001}
+      NEXT_PUBLIC_HOSPITAL_SERVICE_URL: ${NEXT_PUBLIC_HOSPITAL_SERVICE_URL:-http://72.62.51.50:3002}
+      NEXT_PUBLIC_DOCTOR_SERVICE_URL: ${NEXT_PUBLIC_DOCTOR_SERVICE_URL:-http://72.62.51.50:3003}
+      NEXT_PUBLIC_SPECIALTY_SERVICE_URL: ${NEXT_PUBLIC_SPECIALTY_SERVICE_URL:-http://72.62.51.50:3004}
+      NEXT_PUBLIC_APPOINTMENT_SERVICE_URL: ${NEXT_PUBLIC_APPOINTMENT_SERVICE_URL:-http://72.62.51.50:3005}
+      NEXT_PUBLIC_PAYMENT_SERVICE_URL: ${NEXT_PUBLIC_PAYMENT_SERVICE_URL:-http://72.62.51.50:3006}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://72.62.51.50:3001/api/v1}
     depends_on:
       - user-service
       - hospital-service

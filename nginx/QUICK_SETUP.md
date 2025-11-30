@@ -21,7 +21,7 @@ sudo mkdir -p /etc/nginx/ssl
 sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
   -keyout /etc/nginx/ssl/privkey.pem \
   -out /etc/nginx/ssl/fullchain.pem \
-  -subj "/C=US/ST=State/L=City/O=FAYO/CN=31.97.58.62"
+  -subj "/C=US/ST=State/L=City/O=FAYO/CN=72.62.51.50"
 ```
 
 ### 4. Create Nginx Config
@@ -35,7 +35,7 @@ Paste this configuration:
 server {
     listen 80;
     listen [::]:80;
-    server_name 31.97.58.62;
+    server_name 72.62.51.50;
 
     # Redirect all HTTP to HTTPS
     return 301 https://$server_name$request_uri;
@@ -45,7 +45,7 @@ server {
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name 31.97.58.62;
+    server_name 72.62.51.50;
 
     # SSL Configuration
     ssl_certificate /etc/nginx/ssl/fullchain.pem;
@@ -106,13 +106,13 @@ sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT
 ```
 
 ### 7. Verify HTTPS is Working
-1. Open browser and go to: `https://31.97.58.62`
+1. Open browser and go to: `https://72.62.51.50`
 2. You'll see a security warning (self-signed cert) - click "Advanced" → "Proceed"
 3. The admin panel should load over HTTPS
 
 ## Important Notes
 
-- **Always use HTTPS** for the admin panel: `https://31.97.58.62` (not `http://`)
+- **Always use HTTPS** for the admin panel: `https://72.62.51.50` (not `http://`)
 - Browsers require HTTPS for `getUserMedia` (camera/microphone access)
 - Self-signed certificates will show a warning - this is normal for development
 - For production, use Let's Encrypt with a domain name

@@ -5,15 +5,15 @@
 ```bash
 # Test specialty-service directly
 curl http://localhost:3004/api/v1/health
-curl http://31.97.58.62:3004/api/v1/health
+curl http://72.62.51.50:3004/api/v1/health
 
 # Test specialty-service specialties endpoint
 curl http://localhost:3004/api/v1/specialties
-curl http://31.97.58.62:3004/api/v1/specialties
+curl http://72.62.51.50:3004/api/v1/specialties
 
 # Test admin-panel proxy route (from host)
 curl http://localhost:3000/api/v1/specialties
-curl http://31.97.58.62:3000/api/v1/specialties
+curl http://72.62.51.50:3000/api/v1/specialties
 ```
 
 ## Check Admin Panel Logs

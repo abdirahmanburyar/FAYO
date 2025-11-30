@@ -87,7 +87,7 @@ npm run start:dev
 
 ### 3. Access Services
 - **RabbitMQ**: http://localhost:15672 (guest/guest)
-- **User Service**: http://31.97.58.62:3001
+- **User Service**: http://72.62.51.50:3001
 - **PostgreSQL**: localhost:5432 (postgres/postgres)
 - **Redis**: localhost:6379
 - **Kafka**: localhost:9092

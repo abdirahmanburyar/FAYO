@@ -6,7 +6,7 @@ This guide covers installing and configuring nginx on CentOS for FAYO Healthcare
 
 - CentOS 7/8/9 or Rocky Linux / AlmaLinux
 - Root or sudo access
-- VPS IP: 31.97.58.62
+- VPS IP: 72.62.51.50
 
 ## 🚀 Installation Steps
 
@@ -77,14 +77,14 @@ sudo nginx -t
 # nginx: configuration file /etc/nginx/nginx.conf test is successful
 ```
 
-Visit `http://31.97.58.62` in your browser. You should see the default nginx welcome page.
+Visit `http://72.62.51.50` in your browser. You should see the default nginx welcome page.
 
 ## 🔐 SSL Certificate Setup
 
 ### Option 1: Let's Encrypt (Recommended - Free SSL)
 
 **Prerequisites:**
-- Domain name pointing to your VPS IP (31.97.58.62)
+- Domain name pointing to your VPS IP (72.62.51.50)
 - Ports 80 and 443 open
 
 **Install Certbot:**
@@ -120,7 +120,7 @@ sudo mkdir -p /etc/nginx/ssl
 sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
   -keyout /etc/nginx/ssl/privkey.pem \
   -out /etc/nginx/ssl/fullchain.pem \
-  -subj "/C=US/ST=State/L=City/O=FAYO/CN=31.97.58.62"
+  -subj "/C=US/ST=State/L=City/O=FAYO/CN=72.62.51.50"
 ```
 
 **Set permissions:**
@@ -264,7 +264,7 @@ sudo firewall-cmd --reload
 
 ```bash
 # Test SSL connection
-openssl s_client -connect 31.97.58.62:443 -servername 31.97.58.62
+openssl s_client -connect 72.62.51.50:443 -servername 72.62.51.50
 
 # Check certificate expiration (Let's Encrypt)
 sudo certbot certificates
@@ -329,9 +329,9 @@ After installation, verify:
 
 - [ ] Nginx is running: `sudo systemctl status nginx`
 - [ ] Configuration is valid: `sudo nginx -t`
-- [ ] HTTP redirects to HTTPS: Visit `http://31.97.58.62`
-- [ ] HTTPS works: Visit `https://31.97.58.62`
-- [ ] Admin panel accessible: `https://31.97.58.62`
+- [ ] HTTP redirects to HTTPS: Visit `http://72.62.51.50`
+- [ ] HTTPS works: Visit `https://72.62.51.50`
+- [ ] Admin panel accessible: `https://72.62.51.50`
 - [ ] SSL certificate valid (no browser warnings for Let's Encrypt)
 - [ ] Firewall allows ports 80 and 443
 - [ ] Logs show no errors: `sudo tail /var/log/nginx/error.log`
@@ -340,7 +340,7 @@ After installation, verify:
 
 After nginx is installed and configured:
 
-1. **Test the admin panel**: `https://31.97.58.62`
+1. **Test the admin panel**: `https://72.62.51.50`
 2. **Verify backend services** are running on their ports
 3. **Test video calling** from admin panel
 4. **Monitor logs** for any issues

@@ -19,7 +19,7 @@ Go to your GitHub repository and add the following secrets:
    - Value: Your VPS root password (e.g., `Buryar@2020#`)
 
 2. **`VPS_HOST`**
-   - Value: Your VPS IP address (e.g., `31.97.58.62`)
+   - Value: Your VPS IP address (e.g., `72.62.51.50`)
 
 ## Step 2: Prepare VPS
 
@@ -44,7 +44,7 @@ docker-compose --version
 SSH to your VPS and create the `.env` file:
 
 ```bash
-ssh root@31.97.58.62
+ssh root@72.62.51.50
 mkdir -p /root/fayo
 cd /root/fayo
 nano .env

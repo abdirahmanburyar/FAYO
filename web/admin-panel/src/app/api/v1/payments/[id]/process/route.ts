@@ -19,7 +19,7 @@ export async function PATCH(
     const { id } = params;
     const body = await request.json();
     // Hardcode VPS IP address for payment-service
-    const paymentServiceUrl = 'http://31.97.58.62:3006';
+    const paymentServiceUrl = 'http://72.62.51.50:3006';
     const url = `${paymentServiceUrl}/api/v1/payments/${id}/process`;
     
     console.log('Proxying PATCH payment process request to:', url);

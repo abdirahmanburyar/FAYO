@@ -7,7 +7,7 @@ This directory contains the nginx configuration for setting up HTTPS with SSL ce
 - Nginx installed on your VPS
   - **Ubuntu/Debian**: See installation steps below
   - **CentOS/Rocky Linux**: See `INSTALL_CENTOS.md` for detailed CentOS instructions
-- Domain name pointing to your VPS IP (31.97.58.62) - Optional but recommended for Let's Encrypt
+- Domain name pointing to your VPS IP (72.62.51.50) - Optional but recommended for Let's Encrypt
 - Root or sudo access to the VPS
 
 ## 🚀 Quick Installation
@@ -61,7 +61,7 @@ See detailed instructions in `INSTALL_CENTOS.md`
    sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
      -keyout /etc/nginx/ssl/privkey.pem \
      -out /etc/nginx/ssl/fullchain.pem \
-     -subj "/C=US/ST=State/L=City/O=FAYO/CN=31.97.58.62"
+     -subj "/C=US/ST=State/L=City/O=FAYO/CN=72.62.51.50"
    ```
 
 3. **Set permissions:**
@@ -105,12 +105,12 @@ See detailed instructions in `INSTALL_CENTOS.md`
 - **HTTP (80)**: Redirects to HTTPS for admin panel
 
 ### Services Access:
-- **Admin Panel**: `https://31.97.58.62` (via nginx SSL)
-- **User Service**: `http://31.97.58.62:3001` (direct access)
-- **Hospital Service**: `http://31.97.58.62:3002` (direct access)
-- **Doctor Service**: `http://31.97.58.62:3003` (direct access)
-- **Shared Service**: `http://31.97.58.62:3004` (direct access)
-- **Call Service**: `http://31.97.58.62:3010` (direct access)
+- **Admin Panel**: `https://72.62.51.50` (via nginx SSL)
+- **User Service**: `http://72.62.51.50:3001` (direct access)
+- **Hospital Service**: `http://72.62.51.50:3002` (direct access)
+- **Doctor Service**: `http://72.62.51.50:3003` (direct access)
+- **Shared Service**: `http://72.62.51.50:3004` (direct access)
+- **Call Service**: `http://72.62.51.50:3010` (direct access)
 
 **Note**: This configuration only provides SSL for the admin panel. All backend services are accessed directly via HTTP on their respective ports.
 
@@ -118,8 +118,8 @@ See detailed instructions in `INSTALL_CENTOS.md`
 
 **Important**: This configuration only provides SSL for the admin panel. All backend services continue to use HTTP on their direct ports.
 
-1. **Admin Panel** - Access via `https://31.97.58.62` (nginx provides SSL)
-2. **Backend Services** - Access directly via `http://31.97.58.62:PORT` (no SSL, direct access)
+1. **Admin Panel** - Access via `https://72.62.51.50` (nginx provides SSL)
+2. **Backend Services** - Access directly via `http://72.62.51.50:PORT` (no SSL, direct access)
 3. **Flutter App** - Uses direct HTTP connections to services
 
 **Note**: For production with full HTTPS, you would need to either:
@@ -141,7 +141,7 @@ sudo tail -f /var/log/nginx/access.log
 
 ### Test SSL certificate:
 ```bash
-openssl s_client -connect 31.97.58.62:443 -servername 31.97.58.62
+openssl s_client -connect 72.62.51.50:443 -servername 72.62.51.50
 ```
 
 ### Check if ports are open:

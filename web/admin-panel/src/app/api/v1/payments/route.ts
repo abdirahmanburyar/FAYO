@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const queryString = searchParams.toString();
     // Hardcode VPS IP address for payment-service
-    const paymentServiceUrl = 'http://31.97.58.62:3006';
+    const paymentServiceUrl = 'http://72.62.51.50:3006';
     const url = `${paymentServiceUrl}/api/v1/payments${queryString ? `?${queryString}` : ''}`;
     
     console.log('Proxying GET payments request to:', url);
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('Error proxying payments request:', error);
-    const paymentServiceUrl = 'http://31.97.58.62:3006';
+    const paymentServiceUrl = 'http://72.62.51.50:3006';
     const errorMessage = error.name === 'AbortError' 
       ? 'Request timeout - payment-service may be unreachable'
       : error.message || 'Internal server error';
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     // Hardcode VPS IP address for payment-service
-    const paymentServiceUrl = 'http://31.97.58.62:3006';
+    const paymentServiceUrl = 'http://72.62.51.50:3006';
     const url = `${paymentServiceUrl}/api/v1/payments`;
     
     console.log('Proxying POST payments request to:', url);

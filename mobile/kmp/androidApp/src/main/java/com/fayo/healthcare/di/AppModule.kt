@@ -26,7 +26,7 @@ val appModule = module {
         val useHttps = false // Set to true for production with HTTPS
         
         // Server configuration
-        val baseHost = "31.97.58.62" // Production server IP
+        val baseHost = "72.62.51.50" // Production server IP
         val protocol = if (useHttps) "https" else "http"
         
         // For production with HTTPS, you might use a domain name instead of IP

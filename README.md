@@ -140,7 +140,7 @@ docker run -p 3001:3001 \
 ## 📚 API Documentation
 
 ### Service Endpoints
-- **User Service**: `http://31.97.58.62:3001/api/v1`
+- **User Service**: `http://72.62.51.50:3001/api/v1`
 - **Hospital Service**: `http://localhost:3002/api/v1`
 - **Doctor Service**: `http://localhost:3003/api/v1`
 - **Shared Service**: `http://localhost:3004/api/v1`
@@ -148,7 +148,7 @@ docker run -p 3001:3001 \
 - **Admin Panel**: `http://localhost:3000`
 
 ### Health Checks
-- User Service: `http://31.97.58.62:3001/health`
+- User Service: `http://72.62.51.50:3001/health`
 - Hospital Service: `http://localhost:3002/health`
 - Doctor Service: `http://localhost:3003/health`
 - Shared Service: `http://localhost:3004/health`

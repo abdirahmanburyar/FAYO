@@ -3,7 +3,7 @@
 # Test script to check if specialty-service is reachable
 # Run this on the VPS server: bash test-specialty-service.sh
 
-SPECIALTY_SERVICE_URL="http://31.97.58.62:3004"
+SPECIALTY_SERVICE_URL="http://72.62.51.50:3004"
 ENDPOINT="/api/v1/specialties"
 
 echo "🔍 Testing specialty-service connectivity..."
@@ -13,7 +13,7 @@ echo ""
 
 # Test 1: Check if port is open
 echo "📡 Test 1: Checking if port 3004 is open..."
-if nc -z -v 31.97.58.62 3004 2>&1 | grep -q "succeeded"; then
+if nc -z -v 72.62.51.50 3004 2>&1 | grep -q "succeeded"; then
     echo "✅ Port 3004 is open and accessible"
 else
     echo "❌ Port 3004 is not accessible"

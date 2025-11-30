@@ -44,11 +44,11 @@ docker logs hospital-service --tail 50
 
 After fixing, test the endpoint:
 ```bash
-curl http://31.97.58.62:3002/api/v1/doctors
+curl http://72.62.51.50:3002/api/v1/doctors
 ```
 
 Or test via the hospital doctors endpoint:
 ```bash
-curl http://31.97.58.62:3002/api/v1/hospitals/{hospitalId}/doctors
+curl http://72.62.51.50:3002/api/v1/hospitals/{hospitalId}/doctors
 ```
 

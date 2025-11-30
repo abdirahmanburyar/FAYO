@@ -20,7 +20,7 @@ ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa_github_actions -N "" -C "github-actio
 
 **Option A: Using sshpass (if installed)**
 ```bash
-sshpass -p "Buryar@2020#" ssh-copy-id -i ~/.ssh/id_rsa_github_actions.pub root@31.97.58.62
+sshpass -p "Buryar@2020#" ssh-copy-id -i ~/.ssh/id_rsa_github_actions.pub root@72.62.51.50
 ```
 
 **Option B: Manual (recommended)**
@@ -31,7 +31,7 @@ cat ~/.ssh/id_rsa_github_actions.pub
 # 2. Copy the output (starts with ssh-rsa...)
 
 # 3. SSH to your VPS
-ssh root@31.97.58.62
+ssh root@72.62.51.50
 
 # 4. On the VPS, run:
 mkdir -p ~/.ssh
@@ -63,7 +63,7 @@ cat ~/.ssh/id_rsa_github_actions
 ### 5. Test the Setup
 
 ```bash
-ssh -i ~/.ssh/id_rsa_github_actions root@31.97.58.62 "echo 'Success!'"
+ssh -i ~/.ssh/id_rsa_github_actions root@72.62.51.50 "echo 'Success!'"
 ```
 
 If this works, you're all set! 🎉
@@ -71,7 +71,7 @@ If this works, you're all set! 🎉
 ## 📋 Direct Links
 
 - **GitHub Secrets**: https://github.com/abdirahmanburyar/FAYO/settings/secrets/actions
-- **VPS IP**: 31.97.58.62
+- **VPS IP**: 72.62.51.50
 - **VPS User**: root
 - **VPS Password**: Buryar@2020#
 

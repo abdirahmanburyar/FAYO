@@ -27,7 +27,7 @@ DOMAIN=yourdomain.com ./scripts/setup-https.sh
 ./scripts/setup-https.sh
 
 # With custom IP
-VPS_IP=31.97.58.62 ./scripts/setup-https.sh
+VPS_IP=72.62.51.50 ./scripts/setup-https.sh
 ```
 
 **Requirements:**
@@ -47,7 +47,7 @@ VPS_IP=31.97.58.62 ./scripts/setup-https.sh
 **Manual execution on VPS:**
 
 ```bash
-ssh root@31.97.58.62
+ssh root@72.62.51.50
 cd /opt/fayo
 chmod +x scripts/setup-https.sh
 DOMAIN=yourdomain.com ./scripts/setup-https.sh

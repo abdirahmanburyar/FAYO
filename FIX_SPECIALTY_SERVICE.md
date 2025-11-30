@@ -48,7 +48,7 @@ docker exec specialty-service curl http://localhost:3004/api/v1/health
 curl http://localhost:3004/api/v1/health
 
 # Test from external IP
-curl http://31.97.58.62:3004/api/v1/health
+curl http://72.62.51.50:3004/api/v1/health
 ```
 
 ## Common Fixes
