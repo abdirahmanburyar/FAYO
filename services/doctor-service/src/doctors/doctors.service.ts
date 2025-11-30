@@ -371,6 +371,9 @@ export class DoctorsService {
       if (doctorData.researchInterests !== undefined) {
         cleanedDoctorData.researchInterests = doctorData.researchInterests && doctorData.researchInterests.trim() !== '' ? doctorData.researchInterests.trim() : null;
       }
+      if (doctorData.imageUrl !== undefined) {
+        cleanedDoctorData.imageUrl = doctorData.imageUrl && doctorData.imageUrl.trim() !== '' ? doctorData.imageUrl.trim() : null;
+      }
       
       console.log('📝 [SERVICE] Cleaned doctor data:', cleanedDoctorData);
       console.log('📝 [SERVICE] Specialty IDs:', specialtyIds);
