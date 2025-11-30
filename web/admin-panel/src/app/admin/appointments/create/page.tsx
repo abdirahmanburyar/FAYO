@@ -998,16 +998,16 @@ export default function CreateAppointmentPage() {
               )}
 
               {/* Optional or Required Doctor Selection based on policy */}
-              {formData.hospitalId && (
+              {formData.hospitalId && selectedHospital?.bookingPolicy === 'DIRECT_DOCTOR' && (
                 <div className="mt-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Doctor {selectedHospital?.bookingPolicy === 'HOSPITAL_ASSIGNED' ? '(Optional)' : <span className="text-red-500">*</span>}
+                    Doctor <span className="text-red-500">*</span>
                   </label>
                   <SearchableSelect
                     options={filteredDoctors}
                     value={formData.doctorId || ''}
                     onChange={(value) => setFormData({ ...formData, doctorId: value })}
-                    placeholder={selectedHospital?.bookingPolicy === 'HOSPITAL_ASSIGNED' ? "Assign doctor now (optional)" : "Select a doctor"}
+                    placeholder="Select a doctor"
                     loading={loadingDoctors}
                   />
                 </div>
