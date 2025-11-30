@@ -34,6 +34,8 @@ export default function DoctorsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSpecialty, setFilterSpecialty] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(12);
 
   // Fetch doctors from API
   const fetchDoctors = async () => {
@@ -85,13 +87,22 @@ export default function DoctorsPage() {
     const matchesSpecialty = filterSpecialty === 'ALL' || 
       (doctor.specialties || []).some(s => s.name === filterSpecialty || s.id === filterSpecialty);
     const matchesStatus = filterStatus === 'ALL' || 
-      (filterStatus === 'VERIFIED' && doctor.isVerified) ||
-      (filterStatus === 'UNVERIFIED' && !doctor.isVerified) ||
       (filterStatus === 'AVAILABLE' && doctor.isAvailable) ||
       (filterStatus === 'UNAVAILABLE' && !doctor.isAvailable);
 
     return matchesSearch && matchesSpecialty && matchesStatus;
   });
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredDoctors.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedDoctors = filteredDoctors.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterSpecialty, filterStatus]);
 
   const getSpecialtyBadgeColor = (specialty: string) => {
     const colors = [
@@ -106,18 +117,14 @@ export default function DoctorsPage() {
     return colors[index];
   };
 
-  const getStatusBadgeColor = (isVerified: boolean, isAvailable: boolean) => {
-    if (isVerified && isAvailable) return 'bg-green-100 text-green-800';
-    if (isVerified && !isAvailable) return 'bg-yellow-100 text-yellow-800';
-    if (!isVerified) return 'bg-red-100 text-red-800';
-    return 'bg-gray-100 text-gray-800';
+  const getStatusBadgeColor = (isAvailable: boolean) => {
+    if (isAvailable) return 'bg-green-100 text-green-800';
+    return 'bg-yellow-100 text-yellow-800';
   };
 
-  const getStatusText = (isVerified: boolean, isAvailable: boolean) => {
-    if (isVerified && isAvailable) return 'Active';
-    if (isVerified && !isAvailable) return 'Unavailable';
-    if (!isVerified) return 'Unverified';
-    return 'Unknown';
+  const getStatusText = (isAvailable: boolean) => {
+    if (isAvailable) return 'Available';
+    return 'Unavailable';
   };
 
   // Load specialties from doctor-service
@@ -157,8 +164,6 @@ export default function DoctorsPage() {
   
   const statusOptions: SelectOption[] = [
     { value: 'ALL', label: 'All Status' },
-    { value: 'VERIFIED', label: 'Verified' },
-    { value: 'UNVERIFIED', label: 'Unverified' },
     { value: 'AVAILABLE', label: 'Available' },
     { value: 'UNAVAILABLE', label: 'Unavailable' }
   ];
@@ -269,9 +274,9 @@ export default function DoctorsPage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Verified Doctors</p>
+              <p className="text-sm font-medium text-gray-600">Active Doctors</p>
               <p className="text-2xl font-bold text-green-600">
-                {doctors.filter(d => d.isVerified).length}
+                {doctors.filter(d => d.isAvailable).length}
               </p>
             </div>
             <Shield className="w-8 h-8 text-green-600" />
@@ -357,9 +362,34 @@ export default function DoctorsPage() {
         </div>
       </div>
 
+      {/* Results Count and Per Page Selection */}
+      <div className="flex items-center justify-between bg-white px-4 py-3 rounded-lg border border-gray-200">
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-gray-600 font-medium">
+            Showing {startIndex + 1}-{Math.min(endIndex, filteredDoctors.length)} of {filteredDoctors.length} doctors
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="text-sm text-gray-600 font-medium">Per page:</label>
+          <select
+            value={itemsPerPage}
+            onChange={(e) => {
+              setItemsPerPage(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value={6}>6</option>
+            <option value={12}>12</option>
+            <option value={24}>24</option>
+            <option value={48}>48</option>
+          </select>
+        </div>
+      </div>
+
       {/* Doctors Grid - Portrait Style */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredDoctors.map((doctor, index) => {
+        {paginatedDoctors.map((doctor, index) => {
           if (!doctor) {
             return null;
           }
@@ -375,7 +405,7 @@ export default function DoctorsPage() {
           const cardClasses = `rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group border-2 ${
             !doctor.isActive
               ? 'bg-red-50 border-red-200'
-              : (!doctor.isVerified ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-200 hover:border-blue-300')
+              : (!doctor.isAvailable ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-200 hover:border-blue-300')
           }`;
 
           return (
@@ -407,16 +437,14 @@ export default function DoctorsPage() {
                       </span>
                     </div>
                   )}
-                  {/* Status Badge Overlay */}
+                  {/* Status Badge Overlay - Only Availability */}
                   <div className="absolute top-2 right-2">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold shadow-lg ${
-                      doctor.isVerified && doctor.isAvailable 
+                      doctor.isAvailable 
                         ? 'bg-green-500 text-white' 
-                        : doctor.isVerified 
-                          ? 'bg-yellow-500 text-white'
-                          : 'bg-red-500 text-white'
+                        : 'bg-yellow-500 text-white'
                     }`}>
-                      {doctor.isVerified && doctor.isAvailable ? 'Active' : doctor.isVerified ? 'Unavailable' : 'Unverified'}
+                      {doctor.isAvailable ? 'Available' : 'Unavailable'}
                     </span>
                   </div>
                   {/* Hover Overlay for Actions */}
@@ -522,6 +550,59 @@ export default function DoctorsPage() {
           <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No doctors found</h3>
           <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {filteredDoctors.length > itemsPerPage && (
+        <div className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200">
+          <div className="text-sm text-gray-600">
+            Page {currentPage} of {totalPages}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Previous
+            </button>
+            {/* Page Numbers */}
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      currentPage === pageNum
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>

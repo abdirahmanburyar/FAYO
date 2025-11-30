@@ -45,7 +45,10 @@ fun BookAppointmentScreen(
 ) {
     var doctor by remember { mutableStateOf<DoctorDto?>(null) }
     var hospital by remember { mutableStateOf<HospitalDto?>(null) }
+    var availableDoctors by remember { mutableStateOf<List<DoctorDto>>(emptyList()) }
+    var selectedDoctorId by remember { mutableStateOf<String?>(doctorId) }
     var isLoadingData by remember { mutableStateOf(true) }
+    var isLoadingDoctors by remember { mutableStateOf(false) }
     var selectedDate by remember { mutableStateOf<Date?>(null) }
     var selectedTime by remember { mutableStateOf<String>("") }
     var consultationType by remember { mutableStateOf("IN_PERSON") }
@@ -81,47 +84,89 @@ fun BookAppointmentScreen(
         }
     }
     
-    // Load doctor or hospital data
-    LaunchedEffect(doctorId, hospitalId) {
+    // Hospital is core functionality - always required first
+    // Load hospital data first
+    LaunchedEffect(hospitalId) {
         scope.launch {
+            if (hospitalId == null) {
+                error = "Hospital is required to book an appointment"
+                isLoadingData = false
+                return@launch
+            }
+            
             isLoadingData = true
             
-            if (doctorId != null) {
-                apiClient.getDoctorById(doctorId)
+            // Load hospital first (core functionality)
+            apiClient.getHospitalById(hospitalId)
+                .onSuccess { hospitalData ->
+                    hospital = hospitalData
+                    
+                    // If hospital has DIRECT_DOCTOR policy, load doctors
+                    if (hospitalData.bookingPolicy == "DIRECT_DOCTOR") {
+                        isLoadingDoctors = true
+                        apiClient.getHospitalDoctors(hospitalId)
+                            .onSuccess { hospitalDoctors ->
+                                availableDoctors = hospitalDoctors.mapNotNull { it.doctor }
+                                
+                                // If doctorId was provided, select that doctor
+                                if (doctorId != null) {
+                                    selectedDoctorId = doctorId
+                                    availableDoctors.find { it.id == doctorId }?.let {
+                                        doctor = it
+                                    }
+                                }
+                                isLoadingDoctors = false
+                            }
+                            .onFailure {
+                                error = "Failed to load doctors for this hospital"
+                                isLoadingDoctors = false
+                            }
+                    } else {
+                        // HOSPITAL_ASSIGNED policy - no doctor selection needed
+                        selectedDoctorId = null
+                        doctor = null
+                    }
+                    
+                    isLoadingData = false
+                }
+                .onFailure {
+                    error = "Failed to load hospital information"
+                    isLoadingData = false
+                }
+        }
+    }
+    
+    // Load selected doctor details if doctor is selected
+    LaunchedEffect(selectedDoctorId) {
+        if (selectedDoctorId != null) {
+            scope.launch {
+                apiClient.getDoctorById(selectedDoctorId!!)
                     .onSuccess {
                         doctor = it
-                        // If we have hospitalId but booking via doctor, we might want to fetch hospital too
-                        // but usually doctor info is enough for header
                     }
                     .onFailure {
                         error = "Failed to load doctor information"
                     }
-            } else if (hospitalId != null) {
-                apiClient.getHospitalById(hospitalId)
-                    .onSuccess {
-                        hospital = it
-                    }
-                    .onFailure {
-                        error = "Failed to load hospital information"
-                    }
             }
-            
-            isLoadingData = false
+        } else {
+            doctor = null
         }
     }
     
     // Load booked appointments
-    // Reload when doctorId, hospitalId or selectedDate changes
-    LaunchedEffect(doctorId, hospitalId, selectedDate) {
+    // Reload when selectedDoctorId, hospitalId or selectedDate changes
+    LaunchedEffect(selectedDoctorId, hospitalId, selectedDate) {
         scope.launch {
+            if (hospitalId == null) return@launch
+            
             isLoadingAppointments = true
-            // Get appointments for this doctor/hospital, and if date is selected, filter by date range
+            // Get appointments for this hospital (and doctor if selected), and if date is selected, filter by date range
             val startDate = selectedDate?.let { dateFormatter.format(it) }
             val endDate = selectedDate?.let { dateFormatter.format(it) }
             
             apiClient.getAppointments(
-                doctorId = doctorId,
-                hospitalId = if (doctorId == null) hospitalId else null, // Only use hospitalId if doctor is not selected
+                doctorId = selectedDoctorId, // Use selectedDoctorId instead of doctorId
+                hospitalId = hospitalId, // Always use hospitalId (core functionality)
                 startDate = startDate,
                 endDate = endDate
             )
@@ -222,11 +267,176 @@ fun BookAppointmentScreen(
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
             ) {
-                // Header Card
-                if (doctor != null) {
-                    DoctorHeaderCard(doctor = doctor!!)
-                } else if (hospital != null) {
+                // Header Card - Always show hospital (core functionality)
+                if (hospital != null) {
                     HospitalHeaderCard(hospital = hospital!!)
+                }
+                
+                // Doctor Selection - Only show if hospital has DIRECT_DOCTOR policy
+                if (hospital?.bookingPolicy == "DIRECT_DOCTOR") {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "Select Doctor",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Gray900,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                    
+                    if (isLoadingDoctors) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Gray100)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = SkyBlue600
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "Loading doctors...",
+                                    color = Gray600,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+                    } else if (availableDoctors.isEmpty()) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = ErrorRed.copy(alpha = 0.1f))
+                        ) {
+                            Text(
+                                text = "No doctors available for this hospital",
+                                modifier = Modifier.padding(16.dp),
+                                textAlign = TextAlign.Center,
+                                color = ErrorRed,
+                                fontSize = 14.sp
+                            )
+                        }
+                    } else {
+                        // Doctor Selection List
+                        availableDoctors.forEach { availableDoctor ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                                    .clickable {
+                                        selectedDoctorId = availableDoctor.id
+                                    },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (selectedDoctorId == availableDoctor.id) 
+                                        SkyBlue600.copy(alpha = 0.1f) 
+                                    else 
+                                        Color.White
+                                ),
+                                border = if (selectedDoctorId == availableDoctor.id) 
+                                    androidx.compose.foundation.BorderStroke(2.dp, SkyBlue600) 
+                                else 
+                                    null
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // Doctor Avatar
+                                    Box(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(SkyBlue100),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "${availableDoctor.user?.firstName?.firstOrNull() ?: 'D'}${availableDoctor.user?.lastName?.firstOrNull() ?: 'R'}",
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = SkyBlue600
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Dr. ${availableDoctor.user?.firstName ?: ""} ${availableDoctor.user?.lastName ?: ""}",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Gray900
+                                        )
+                                        if (availableDoctor.specialty?.isNotBlank() == true) {
+                                            Text(
+                                                text = availableDoctor.specialty!!,
+                                                fontSize = 14.sp,
+                                                color = Gray600
+                                            )
+                                        }
+                                    }
+                                    if (selectedDoctorId == availableDoctor.id) {
+                                        Icon(
+                                            Icons.Default.CheckCircle,
+                                            contentDescription = "Selected",
+                                            tint = SkyBlue600,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if (hospital?.bookingPolicy == "HOSPITAL_ASSIGNED") {
+                    // Info message for HOSPITAL_ASSIGNED policy
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = SkyBlue100)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                tint = SkyBlue600,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Hospital Will Assign Doctor",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Gray900
+                                )
+                                Text(
+                                    text = "No doctor selection needed. The hospital will assign an appropriate doctor after booking.",
+                                    fontSize = 12.sp,
+                                    color = Gray600,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                        }
+                    }
                 }
                 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -427,11 +637,25 @@ fun BookAppointmentScreen(
                             isLoading = true
                             error = null
                             
+                            // Validate: hospital is always required
+                            if (hospitalId == null) {
+                                error = "Hospital is required to book an appointment"
+                                isLoading = false
+                                return@launch
+                            }
+                            
+                            // Validate: doctor is required only if hospital has DIRECT_DOCTOR policy
+                            if (hospital?.bookingPolicy == "DIRECT_DOCTOR" && selectedDoctorId == null) {
+                                error = "Please select a doctor for this hospital"
+                                isLoading = false
+                                return@launch
+                            }
+                            
                             val appointmentDate = dateFormatter.format(selectedDate!!)
                             val request = CreateAppointmentRequest(
                                 patientId = patientId,
-                                doctorId = doctorId,
-                                hospitalId = hospitalId,
+                                doctorId = selectedDoctorId, // Use selectedDoctorId instead of doctorId
+                                hospitalId = hospitalId, // Always required (core functionality)
                                 specialtyId = null,
                                 appointmentDate = appointmentDate,
                                 appointmentTime = selectedTime,

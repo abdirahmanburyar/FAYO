@@ -244,11 +244,6 @@ export default function DoctorProfilePage() {
             <div className="flex-1 pt-2 md:pb-1">
               <div className="flex flex-wrap items-center gap-3 mb-1">
                 <h1 className="text-3xl font-bold text-gray-900">{displayName}</h1>
-                {doctor.isVerified && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold border border-blue-100">
-                    <Shield className="w-3 h-3 mr-1" /> Verified
-                  </span>
-                )}
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${doctor.isAvailable ? 'bg-green-50 text-green-700 border-green-100' : 'bg-gray-50 text-gray-600 border-gray-100'}`}>
                   <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${doctor.isAvailable ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                   {doctor.isAvailable ? 'Available for Booking' : 'Unavailable'}
