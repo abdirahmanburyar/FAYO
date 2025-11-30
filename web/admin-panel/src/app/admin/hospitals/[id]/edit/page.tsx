@@ -25,6 +25,7 @@ interface HospitalFormData {
   phone: string;
   email: string;
   website: string;
+  bookingPolicy: 'DIRECT_DOCTOR' | 'HOSPITAL_ASSIGNED';
   isActive: boolean;
 }
 
@@ -67,6 +68,7 @@ export default function EditHospitalPage() {
     phone: '',
     email: '',
     website: '',
+    bookingPolicy: 'DIRECT_DOCTOR',
     isActive: true
   });
 
@@ -89,6 +91,7 @@ export default function EditHospitalPage() {
           phone: hospital.phone || '',
           email: hospital.email || '',
           website: hospital.website || '',
+          bookingPolicy: hospital.bookingPolicy || 'DIRECT_DOCTOR',
           isActive: hospital.isActive
         });
       } catch (error) {
@@ -131,6 +134,7 @@ export default function EditHospitalPage() {
         phone: formData.phone || undefined,
         email: formData.email || undefined,
         website: formData.website || undefined,
+        bookingPolicy: formData.bookingPolicy,
         isActive: formData.isActive
       };
 
@@ -235,6 +239,21 @@ export default function EditHospitalPage() {
                   placeholder="Select city"
                   searchPlaceholder="Search cities..."
                   allowClear
+                />
+              </div>
+
+              <div>
+                <SearchableSelect
+                  label="Booking Policy"
+                  required
+                  options={[
+                    { value: 'DIRECT_DOCTOR', label: 'Patient Selects Doctor' },
+                    { value: 'HOSPITAL_ASSIGNED', label: 'Hospital Assigns Doctor' }
+                  ]}
+                  value={formData.bookingPolicy}
+                  onChange={(value) => handleInputChange('bookingPolicy', value as 'DIRECT_DOCTOR' | 'HOSPITAL_ASSIGNED')}
+                  placeholder="Select booking policy"
+                  searchPlaceholder="Search policies..."
                 />
               </div>
             </div>
