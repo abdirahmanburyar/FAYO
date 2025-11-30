@@ -626,35 +626,33 @@ export default function AppointmentsPage() {
   const handleSaveAssignDoctor = async () => {
     if (!assigningAppointment || !assignDoctorId) return;
 
+    const appointmentId = assigningAppointment.id;
+    
     try {
       // Update appointment with new doctorId
-      // We need an endpoint for this or use generic update
-      // Note: updating doctorId might require checking schedule conflicts in backend
-      await appointmentsApi.updateAppointment(assigningAppointment.id, {
-        // We need to cast to any if doctorId is not in UpdateAppointmentDto yet, 
-        // but backend should support it if we added it to schema?
-        // Wait, UpdateAppointmentDto in frontend usually matches backend.
-        // I should check UpdateAppointmentDto in frontend.
-        // It doesn't have doctorId in the interface I read earlier!
-        // I need to add it to UpdateAppointmentDto in appointmentsApi.ts if I want to update it.
-      } as any); 
-      
-      // Actually, let's look at UpdateAppointmentDto in appointmentsApi.ts
-      // It doesn't have doctorId. I should add it.
-      
-      // For now, I will cast to any to bypass TS check, assuming backend accepts it.
-      // Backend `update` method in `appointments.service.ts` uses `UpdateAppointmentDto` which extends `PartialType(CreateAppointmentDto)`.
-      // `CreateAppointmentDto` HAS `doctorId`. So `UpdateAppointmentDto` should have it too (optional).
-      // So backend is fine. Frontend interface needs update.
-      
-      await appointmentsApi.updateAppointment(assigningAppointment.id, {
+      await appointmentsApi.updateAppointment(appointmentId, {
         doctorId: assignDoctorId 
+      } as any);
+
+      // Update the appointment in local state immediately
+      setAppointments((prev) => {
+        return prev.map(apt => 
+          apt.id === appointmentId 
+            ? { ...apt, doctorId: assignDoctorId }
+            : apt
+        );
       });
 
+      // Close modal
       setShowAssignDoctorModal(false);
       setAssigningAppointment(null);
       setAssignDoctorId('');
-      await fetchAppointments();
+
+      // Only reload details for the specific appointment that was updated
+      const updatedAppointment = appointments.find(apt => apt.id === appointmentId);
+      if (updatedAppointment) {
+        await loadAppointmentDetails(appointmentId, { ...updatedAppointment, doctorId: assignDoctorId });
+      }
     } catch (error) {
       console.error('Error assigning doctor:', error);
       alert(error instanceof Error ? error.message : 'Failed to assign doctor');
@@ -1380,36 +1378,36 @@ export default function AppointmentsPage() {
                               </div>
                             </div>
 
-                            {/* Appointment Details Grid - Compact */}
-                            <div className="grid grid-cols-2 gap-1.5">
+                            {/* Appointment Details Grid - One Row */}
+                            <div className="grid grid-cols-4 gap-1.5">
                               {/* Date */}
-                              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-md p-2 border border-blue-100">
+                              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-md p-1.5 border border-blue-100">
                                 <div className="flex items-center text-blue-600 text-[9px] font-semibold mb-0.5 uppercase tracking-wide">
-                                  <Calendar className="w-2.5 h-2.5 mr-0.5" />
+                                  <Calendar className="w-2 h-2 mr-0.5" />
                                   <span>Date</span>
                                 </div>
-                                <p className="font-bold text-gray-900 text-xs">{formatDate(appointment.appointmentDate)}</p>
+                                <p className="font-bold text-gray-900 text-[10px] leading-tight">{formatDate(appointment.appointmentDate)}</p>
                               </div>
                               
                               {/* Time */}
-                              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-md p-2 border border-indigo-100">
+                              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-md p-1.5 border border-indigo-100">
                                 <div className="flex items-center text-indigo-600 text-[9px] font-semibold mb-0.5 uppercase tracking-wide">
-                                  <Clock className="w-2.5 h-2.5 mr-0.5" />
+                                  <Clock className="w-2 h-2 mr-0.5" />
                                   <span>Time</span>
                                 </div>
-                                <p className="font-bold text-gray-900 text-xs">{formatTime(appointment.appointmentTime)}</p>
+                                <p className="font-bold text-gray-900 text-[10px] leading-tight">{formatTime(appointment.appointmentTime)}</p>
                               </div>
 
                               {/* Duration */}
-                              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-md p-2 border border-purple-100">
+                              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-md p-1.5 border border-purple-100">
                                 <div className="text-purple-600 text-[9px] font-semibold mb-0.5 uppercase tracking-wide">Duration</div>
-                                <p className="font-bold text-gray-900 text-xs">{appointment.duration} min</p>
+                                <p className="font-bold text-gray-900 text-[10px] leading-tight">{appointment.duration} min</p>
                               </div>
                               
                               {/* Fee */}
-                              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-md p-2 border border-green-100">
+                              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-md p-1.5 border border-green-100">
                                 <div className="text-green-600 text-[9px] font-semibold mb-0.5 uppercase tracking-wide">Fee</div>
-                                <p className="font-bold text-green-700 text-xs">{formatCurrency(appointment.consultationFee)}</p>
+                                <p className="font-bold text-green-700 text-[10px] leading-tight">{formatCurrency(appointment.consultationFee)}</p>
                               </div>
                             </div>
 

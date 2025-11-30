@@ -1,10 +1,12 @@
 package com.fayo.healthcare.ui.screens.hospitals
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -48,7 +50,6 @@ fun HospitalDetailsScreen(
     var isLoading by remember { mutableStateOf(true) }
     var isLoadingDoctors by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var selectedTabIndex by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
 
     // Load hospital data
@@ -67,9 +68,9 @@ fun HospitalDetailsScreen(
         }
     }
 
-    // Load doctors when Doctors tab is selected
-    LaunchedEffect(selectedTabIndex, hospitalId) {
-        if (selectedTabIndex == 1 && doctors.isEmpty() && !isLoadingDoctors) {
+    // Load doctors immediately (no tab needed)
+    LaunchedEffect(hospitalId) {
+        if (doctors.isEmpty() && !isLoadingDoctors) {
             scope.launch {
                 println("👨‍⚕️ [Screen] Loading doctors for hospital: $hospitalId")
                 isLoadingDoctors = true
@@ -111,8 +112,9 @@ fun HospitalDetailsScreen(
                     ExtendedFloatingActionButton(
                         onClick = {
                             if (hospitalData.bookingPolicy == "DIRECT_DOCTOR") {
-                                // Switch to Doctors tab
-                                selectedTabIndex = 1
+                                // Scroll to doctors section (they're already visible in scrollable layout)
+                                // Just navigate to booking with hospital
+                                onNavigateToBooking(hospitalData)
                             } else {
                                 // Navigate to booking (Hospital Assigned)
                                 onNavigateToBooking(hospitalData)
@@ -165,41 +167,40 @@ fun HospitalDetailsScreen(
                 }
             } else {
                 hospital?.let { hospitalData ->
-                    Column(
+                    // Load doctors immediately (no tab needed)
+                    LaunchedEffect(hospitalId) {
+                        if (doctors.isEmpty() && !isLoadingDoctors) {
+                            scope.launch {
+                                isLoadingDoctors = true
+                                apiClient.getHospitalDoctors(hospitalId)
+                                    .onSuccess { doctorList ->
+                                        doctors = doctorList
+                                        isLoadingDoctors = false
+                                    }
+                                    .onFailure {
+                                        isLoadingDoctors = false
+                                    }
+                            }
+                        }
+                    }
+                    
+                    // Scrollable layout with header and doctors
+                    LazyColumn(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Header Section
-                        HospitalHeaderSection(hospital = hospitalData)
-
-                        // Tabs
-                        TabRow(
-                            selectedTabIndex = selectedTabIndex,
-                            containerColor = Color.White,
-                            contentColor = SkyBlue600
-                        ) {
-                            Tab(
-                                selected = selectedTabIndex == 0,
-                                onClick = { selectedTabIndex = 0 },
-                                text = { Text("Services", fontWeight = if (selectedTabIndex == 0) FontWeight.Bold else FontWeight.Normal) }
-                            )
-                            Tab(
-                                selected = selectedTabIndex == 1,
-                                onClick = { selectedTabIndex = 1 },
-                                text = { Text("Doctors", fontWeight = if (selectedTabIndex == 1) FontWeight.Bold else FontWeight.Normal) }
-                            )
+                        // Header Section (Scrollable)
+                        item {
+                            HospitalHeaderSection(hospital = hospitalData)
                         }
-
-                        // Tab Content
-                        when (selectedTabIndex) {
-                            0 -> ServicesTabContent()
-                            1 -> DoctorsTabContent(
+                        
+                        // Doctors Section
+                        item {
+                            DoctorsSection(
                                 doctors = doctors,
                                 isLoading = isLoadingDoctors,
                                 isBookingEnabled = hospitalData.bookingPolicy == "DIRECT_DOCTOR",
                                 onDoctorClick = { doctorId ->
-                                    hospital?.let { 
-                                        onNavigateToDoctorBooking(doctorId, it.id)
-                                    }
+                                    onNavigateToDoctorBooking(doctorId, hospitalData.id)
                                 }
                             )
                         }
@@ -218,11 +219,11 @@ fun HospitalHeaderSection(hospital: HospitalDto) {
             .background(SkyBlue600)
             .padding(20.dp)
     ) {
-        // Hospital Icon
+        // Hospital Logo - Larger and more prominent
         Box(
             modifier = Modifier
-                .size(80.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .size(100.dp)
+                .clip(RoundedCornerShape(20.dp))
                 .background(Color.White.copy(alpha = 0.2f)),
             contentAlignment = Alignment.Center
         ) {
@@ -237,28 +238,14 @@ fun HospitalHeaderSection(hospital: HospitalDto) {
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                val context = LocalContext.current
-                val imageResId = context.resources.getIdentifier("hospital", "drawable", context.packageName)
-                
-                if (imageResId != 0) {
-                    Image(
-                        painter = painterResource(id = imageResId),
-                        contentDescription = "Hospital logo",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.LocalHospital,
-                        contentDescription = null,
-                        modifier = Modifier.size(50.dp),
-                        tint = Color.White
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.LocalHospital,
+                    contentDescription = null,
+                    modifier = Modifier.size(60.dp),
+                    tint = Color.White
+                )
             }
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = hospital.name,
@@ -313,43 +300,7 @@ fun InfoRow(icon: ImageVector, text: String) {
 }
 
 @Composable
-fun ServicesTabContent() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BackgroundLight),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Construction,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = Gray400
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "Coming Soon",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = Gray600
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Services will be available soon",
-                fontSize = 14.sp,
-                color = Gray500
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DoctorsTabContent(
+fun DoctorsSection(
     doctors: List<HospitalDoctorDto>,
     isLoading: Boolean,
     isBookingEnabled: Boolean = true,
@@ -367,19 +318,13 @@ fun DoctorsTabContent(
     val filteredDoctors = remember(doctors, searchQuery, selectedSpecialty) {
         doctors.filter { hospitalDoctor ->
             val doctor = hospitalDoctor.doctor
-            // Only filter out if doctor is completely null - allow display even without user data
-            if (doctor == null) {
-                println("⚠️ [Screen] Filtering out hospitalDoctor ${hospitalDoctor.id} - doctor is null")
-                return@filter false
-            }
+            if (doctor == null) return@filter false
 
-            // If user data is missing, still show the doctor but with limited info
             val doctorName = "${doctor.user?.firstName ?: ""} ${doctor.user?.lastName ?: ""}".trim()
             val matchesName = searchQuery.isBlank() || 
                 (if (doctorName.isNotBlank()) {
                     doctorName.contains(searchQuery, ignoreCase = true)
                 } else {
-                    // If no name, try matching by doctor ID or specialty
                     doctor.id.contains(searchQuery, ignoreCase = true) ||
                     doctor.specialty.contains(searchQuery, ignoreCase = true)
                 })
@@ -393,15 +338,24 @@ fun DoctorsTabContent(
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .background(BackgroundLight)
     ) {
+        // Section Title
+        Text(
+            text = "Our Doctors",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = Gray900,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
+        )
+
         // Filters Section
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color.White)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
             // Search by name
             OutlinedTextField(
@@ -429,10 +383,9 @@ fun DoctorsTabContent(
                 )
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Filter by specialty
             if (specialties.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                
                 var expanded by remember { mutableStateOf(false) }
                 Box(modifier = Modifier.fillMaxWidth()) {
                     ExposedDropdownMenuBox(
@@ -484,17 +437,23 @@ fun DoctorsTabContent(
             }
         }
 
+        Spacer(modifier = Modifier.height(8.dp))
+
         // Doctors List
         if (isLoading) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 48.dp),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(color = SkyBlue600)
             }
         } else if (filteredDoctors.isEmpty()) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 48.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
@@ -516,12 +475,12 @@ fun DoctorsTabContent(
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(filteredDoctors) { hospitalDoctor ->
-                    DoctorCard(
+                    ProfessionalDoctorCard(
                         hospitalDoctor = hospitalDoctor,
                         isClickable = isBookingEnabled,
                         onClick = { 
@@ -536,20 +495,23 @@ fun DoctorsTabContent(
 }
 
 @Composable
-fun DoctorCard(
+fun ProfessionalDoctorCard(
     hospitalDoctor: HospitalDoctorDto,
     isClickable: Boolean = true,
     onClick: () -> Unit
 ) {
     val doctor = hospitalDoctor.doctor
     val user = doctor?.user
+    val firstName = user?.firstName ?: ""
+    val lastName = user?.lastName ?: ""
+    val doctorName = "$firstName $lastName".trim().takeIf { it.isNotBlank() } ?: "Dr. ${doctor?.id?.takeLast(8) ?: hospitalDoctor.doctorId.takeLast(8)}"
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .then(if (isClickable) Modifier.clickable { onClick() } else Modifier),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Row(
@@ -558,12 +520,16 @@ fun DoctorCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Doctor Avatar
+            // Professional Doctor Portrait - Larger
             Box(
                 modifier = Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(SkyBlue100),
+                    .size(100.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                            colors = listOf(SkyBlue100, SkyBlue200)
+                        )
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 if (doctor?.imageUrl != null) {
@@ -572,16 +538,29 @@ fun DoctorCard(
                             .data(doctor.imageUrl)
                             .crossfade(true)
                             .build(),
-                        contentDescription = "Doctor avatar",
+                        contentDescription = "Doctor portrait",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        modifier = Modifier.size(36.dp),
-                        tint = SkyBlue600
+                    // Fallback with initials
+                    Text(
+                        text = "${firstName.firstOrNull() ?: 'D'}${lastName.firstOrNull() ?: 'R'}",
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SkyBlue600
+                    )
+                }
+                
+                // Availability Badge
+                doctor?.isAvailable?.let { isAvailable ->
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(16.dp)
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(if (isAvailable) SuccessGreen else Gray400)
+                            .border(3.dp, Color.White, androidx.compose.foundation.shape.CircleShape)
                     )
                 }
             }
@@ -592,13 +571,8 @@ fun DoctorCard(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                // Doctor name - use user data if available, otherwise use doctor ID or specialty
-                val doctorName = if (user != null) {
-                    "${user.firstName} ${user.lastName}".trim().takeIf { it.isNotBlank() }
-                } else null
-                
                 Text(
-                    text = doctorName ?: doctor?.specialty ?: "Doctor ${doctor?.id?.takeLast(8) ?: hospitalDoctor.doctorId.takeLast(8)}",
+                    text = "Dr. $doctorName",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Gray900
@@ -609,53 +583,71 @@ fun DoctorCard(
                 doctor?.specialty?.let { specialty ->
                     Text(
                         text = specialty,
-                        fontSize = 14.sp,
+                        fontSize = 15.sp,
                         color = SkyBlue600,
-                        fontWeight = FontWeight.Medium
-                    )
-                } ?: run {
-                    // Show doctor ID if specialty is missing
-                    Text(
-                        text = "ID: ${hospitalDoctor.doctorId.takeLast(8)}",
-                        fontSize = 14.sp,
-                        color = Gray500
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Row(
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // Role Badge
                     Text(
                         text = hospitalDoctor.role,
                         fontSize = 12.sp,
-                        color = Gray600,
+                        color = Gray700,
                         modifier = Modifier
                             .background(Gray100, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .padding(horizontal = 10.dp, vertical = 4.dp),
+                        fontWeight = FontWeight.Medium
                     )
 
+                    // Consultation Fee
                     hospitalDoctor.consultationFee?.let { fee ->
-                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "$${fee / 100}",
-                            fontSize = 12.sp,
+                            fontSize = 13.sp,
                             color = SuccessGreen,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
                 doctor?.experience?.let { experience ->
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "$experience years experience",
-                        fontSize = 12.sp,
-                        color = Gray500
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Work,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = Gray500
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "$experience years experience",
+                            fontSize = 12.sp,
+                            color = Gray600
+                        )
+                    }
                 }
+            }
+            
+            // Arrow Icon if clickable
+            if (isClickable) {
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = "View doctor",
+                    tint = Gray400,
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
     }
 }
+

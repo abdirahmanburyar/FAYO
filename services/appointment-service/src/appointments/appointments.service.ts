@@ -497,6 +497,9 @@ export class AppointmentsService {
         data: updateData,
       });
 
+      // Publish Kafka event for appointment update (especially for date/time changes)
+      await this.publishAppointmentUpdatedEvent(updatedAppointment);
+
       console.log('✅ [APPOINTMENT] Appointment updated:', updatedAppointment.id);
       return updatedAppointment;
     } catch (error) {
@@ -621,6 +624,18 @@ export class AppointmentsService {
     } catch (error) {
       // Log error but don't fail the appointment creation
       console.error('❌ [APPOINTMENT] Error publishing appointment event:', error);
+    }
+  }
+
+  private async publishAppointmentUpdatedEvent(appointment: any) {
+    try {
+      // Publish to Kafka
+      await this.kafkaService.publishAppointmentUpdated(appointment);
+      
+      console.log('📤 [APPOINTMENT] Published appointment.updated event to Kafka');
+    } catch (error) {
+      // Log error but don't fail the appointment update
+      console.error('❌ [APPOINTMENT] Error publishing appointment updated event:', error);
     }
   }
 }

@@ -439,20 +439,31 @@ export default function CreateAppointmentPage() {
     loadHospitalDetails();
   }, [formData.hospitalId, formData.doctorId, selectedDoctor, isSelfEmployed]);
 
-  // Fetch existing appointments for the selected doctor and date to check conflicts
+  // Fetch existing appointments for the selected hospital/doctor and date to check conflicts
   useEffect(() => {
     const fetchExistingAppointments = async () => {
-      if (!formData.doctorId || !formData.appointmentDate) {
+      if (!formData.appointmentDate) {
         setExistingAppointments([]);
         return;
       }
 
       try {
-        const appointments = await appointmentsApi.getAppointments({
-          doctorId: formData.doctorId,
+        const filters: any = {
           startDate: formData.appointmentDate,
           endDate: formData.appointmentDate,
-        });
+        };
+        
+        // If hospital is selected, filter by hospital
+        if (formData.hospitalId) {
+          filters.hospitalId = formData.hospitalId;
+        }
+        
+        // If doctor is selected, filter by doctor
+        if (formData.doctorId) {
+          filters.doctorId = formData.doctorId;
+        }
+        
+        const appointments = await appointmentsApi.getAppointments(filters);
         setExistingAppointments(appointments);
       } catch (error) {
         console.error('Error fetching existing appointments:', error);
@@ -461,7 +472,7 @@ export default function CreateAppointmentPage() {
     };
 
     fetchExistingAppointments();
-  }, [formData.doctorId, formData.appointmentDate]);
+  }, [formData.hospitalId, formData.doctorId, formData.appointmentDate]);
 
   // Periodically check if shift is ongoing (update every minute)
   useEffect(() => {
@@ -688,12 +699,13 @@ export default function CreateAppointmentPage() {
         ) {
           const timeString = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
           
-          // Check if this time slot conflicts with existing appointments
+          // Check if this time slot conflicts with existing appointments (check by date AND time)
           const isConflict = existingAppointments.some(apt => {
             if (apt.status === 'CANCELLED' || apt.status === 'NO_SHOW' || apt.status === 'RESCHEDULED') {
               return false;
             }
-            return apt.appointmentTime === timeString;
+            const aptDate = new Date(apt.appointmentDate).toISOString().split('T')[0];
+            return aptDate === formData.appointmentDate && apt.appointmentTime === timeString;
           });
 
           if (!isConflict) {
@@ -723,12 +735,13 @@ export default function CreateAppointmentPage() {
       for (let minute = 0; minute < 60; minute += interval) {
         const timeString = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
         
-        // Check if this time slot conflicts with existing appointments
+        // Check if this time slot conflicts with existing appointments (check by date AND time)
         const isConflict = existingAppointments.some(apt => {
           if (apt.status === 'CANCELLED' || apt.status === 'NO_SHOW' || apt.status === 'RESCHEDULED') {
             return false;
           }
-          return apt.appointmentTime === timeString;
+          const aptDate = new Date(apt.appointmentDate).toISOString().split('T')[0];
+          return aptDate === formData.appointmentDate && apt.appointmentTime === timeString;
         });
 
         if (!isConflict) {
