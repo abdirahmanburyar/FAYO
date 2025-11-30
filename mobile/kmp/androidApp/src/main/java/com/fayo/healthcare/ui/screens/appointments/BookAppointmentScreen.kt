@@ -378,9 +378,9 @@ fun BookAppointmentScreen(
                                             fontWeight = FontWeight.SemiBold,
                                             color = Gray900
                                         )
-                                        if (availableDoctor.specialty?.isNotBlank() == true) {
+                                        if (availableDoctor.specialty.isNotBlank()) {
                                             Text(
-                                                text = availableDoctor.specialty!!,
+                                                text = availableDoctor.specialty,
                                                 fontSize = 14.sp,
                                                 color = Gray600
                                             )

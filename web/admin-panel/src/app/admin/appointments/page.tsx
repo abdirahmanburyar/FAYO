@@ -368,11 +368,35 @@ export default function AppointmentsPage() {
     return matchesSearch && matchesStatus && matchesPaymentStatus && matchesConsultationType && matchesDateRange;
   });
 
+  // Sort appointments from latest to oldest (by date and time)
+  const sortedAppointments = [...filteredAppointments].sort((a, b) => {
+    // First sort by appointment date
+    const dateA = new Date(a.appointmentDate).getTime();
+    const dateB = new Date(b.appointmentDate).getTime();
+    
+    if (dateB !== dateA) {
+      return dateB - dateA; // Descending order (newest first)
+    }
+    
+    // If same date, sort by appointment time (descending)
+    const timeA = a.appointmentTime || '';
+    const timeB = b.appointmentTime || '';
+    
+    if (timeB !== timeA) {
+      return timeB.localeCompare(timeA); // Descending order (latest time first)
+    }
+    
+    // If same date and time, sort by created date (descending)
+    const createdA = new Date(a.createdAt || 0).getTime();
+    const createdB = new Date(b.createdAt || 0).getTime();
+    return createdB - createdA;
+  });
+
   // Pagination calculations
-  const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedAppointments.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedAppointments = filteredAppointments.slice(startIndex, endIndex);
+  const paginatedAppointments = sortedAppointments.slice(startIndex, endIndex);
 
   // Reset to page 1 when search term changes
   useEffect(() => {
@@ -1041,7 +1065,7 @@ export default function AppointmentsPage() {
             {/* Left: Results Count and Date Info */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
               <span className="text-sm text-gray-700 font-medium">
-                Showing <span className="text-gray-900 font-semibold">{startIndex + 1}-{Math.min(endIndex, filteredAppointments.length)}</span> of <span className="text-gray-900 font-semibold">{filteredAppointments.length}</span> appointments
+                Showing <span className="text-gray-900 font-semibold">{startIndex + 1}-{Math.min(endIndex, sortedAppointments.length)}</span> of <span className="text-gray-900 font-semibold">{sortedAppointments.length}</span> appointments
               </span>
               {(startDate || endDate) && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-lg border border-blue-200">
@@ -1587,7 +1611,7 @@ export default function AppointmentsPage() {
         })}
         </div>
 
-        {filteredAppointments.length === 0 && !loading && (
+        {sortedAppointments.length === 0 && !loading && (
           <div className="text-center py-12">
             <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No appointments found</h3>
@@ -1596,7 +1620,7 @@ export default function AppointmentsPage() {
         )}
 
         {/* Pagination Controls */}
-        {filteredAppointments.length > itemsPerPage && (
+        {sortedAppointments.length > itemsPerPage && (
           <div className="flex items-center justify-between bg-white p-4 rounded-lg border border-gray-200">
             <div className="text-sm text-gray-600">
               Page {currentPage} of {totalPages}

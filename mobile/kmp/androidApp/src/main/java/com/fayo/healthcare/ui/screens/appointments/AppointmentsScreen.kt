@@ -44,7 +44,7 @@ import coil.request.ImageRequest
 @Composable
 fun AppointmentsScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToDetails: (String) -> Unit = {}, // Optional callback if we add details screen
+    @Suppress("UNUSED_PARAMETER") onNavigateToDetails: (String) -> Unit = {}, // Optional callback if we add details screen
     viewModel: AppointmentsViewModel = koinViewModel(),
     apiClient: ApiClient = koinInject()
 ) {

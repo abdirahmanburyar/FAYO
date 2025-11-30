@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -54,17 +55,29 @@ fun HospitalDetailsScreen(
 
     // Load hospital data
     LaunchedEffect(hospitalId) {
+        if (hospitalId.isBlank()) {
+            error = "Invalid hospital ID"
+            isLoading = false
+            return@LaunchedEffect
+        }
+        
         scope.launch {
-            isLoading = true
-            apiClient.getHospitalById(hospitalId)
-                .onSuccess { 
-                    hospital = it
-                    isLoading = false
-                }
-                .onFailure { 
-                    error = it.message
-                    isLoading = false
-                }
+            try {
+                isLoading = true
+                apiClient.getHospitalById(hospitalId)
+                    .onSuccess { 
+                        hospital = it
+                        isLoading = false
+                        error = null
+                    }
+                    .onFailure { e ->
+                        error = e.message ?: "Failed to load hospital"
+                        isLoading = false
+                    }
+            } catch (e: Exception) {
+                error = e.message ?: "Unexpected error occurred"
+                isLoading = false
+            }
         }
     }
 
@@ -171,38 +184,126 @@ fun HospitalDetailsScreen(
                     LaunchedEffect(hospitalId) {
                         if (doctors.isEmpty() && !isLoadingDoctors) {
                             scope.launch {
-                                isLoadingDoctors = true
-                                apiClient.getHospitalDoctors(hospitalId)
-                                    .onSuccess { doctorList ->
-                                        doctors = doctorList
-                                        isLoadingDoctors = false
-                                    }
-                                    .onFailure {
-                                        isLoadingDoctors = false
-                                    }
+                                try {
+                                    isLoadingDoctors = true
+                                    apiClient.getHospitalDoctors(hospitalId)
+                                        .onSuccess { doctorList ->
+                                            doctors = doctorList
+                                            isLoadingDoctors = false
+                                        }
+                                        .onFailure { error ->
+                                            println("❌ [Screen] Error loading doctors: ${error.message}")
+                                            isLoadingDoctors = false
+                                        }
+                                } catch (e: Exception) {
+                                    println("❌ [Screen] Exception loading doctors: ${e.message}")
+                                    isLoadingDoctors = false
+                                }
                             }
                         }
                     }
                     
-                    // Scrollable layout with header and doctors
+                    // Filter doctors (outside LazyColumn)
+                    val filteredDoctors = remember(doctors) {
+                        doctors.filter { hospitalDoctor ->
+                            hospitalDoctor.doctor != null
+                        }
+                    }
+                    
+                    // Scrollable layout with header and doctors - flattened structure (no nested LazyColumn)
                     LazyColumn(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Header Section (Scrollable)
+                        // Header Section
                         item {
                             HospitalHeaderSection(hospital = hospitalData)
                         }
                         
-                        // Doctors Section
+                        // Doctors Section Title
                         item {
-                            DoctorsSection(
-                                doctors = doctors,
-                                isLoading = isLoadingDoctors,
-                                isBookingEnabled = hospitalData.bookingPolicy == "DIRECT_DOCTOR",
-                                onDoctorClick = { doctorId ->
-                                    onNavigateToDoctorBooking(doctorId, hospitalData.id)
-                                }
+                            Text(
+                                text = "Our Doctors",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Gray900,
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)
                             )
+                        }
+                        
+                        // Loading State
+                        if (isLoadingDoctors) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 48.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(color = SkyBlue600)
+                                }
+                            }
+                        } else if (filteredDoctors.isEmpty()) {
+                            // Empty State
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 48.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.PersonOff,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(64.dp),
+                                            tint = Gray400
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Text(
+                                            text = if (doctors.isEmpty()) "No doctors available" else "No doctors found",
+                                            fontSize = 16.sp,
+                                            color = Gray600
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            // Doctors List
+                            items(filteredDoctors) { hospitalDoctor ->
+                                ProfessionalDoctorCard(
+                                    hospitalDoctor = hospitalDoctor,
+                                    isClickable = hospitalData.bookingPolicy == "DIRECT_DOCTOR",
+                                    onClick = { 
+                                        try {
+                                            val id = hospitalDoctor.doctor?.id ?: hospitalDoctor.doctorId
+                                            onNavigateToDoctorBooking(id, hospitalData.id)
+                                        } catch (e: Exception) {
+                                            println("❌ [Screen] Error navigating to doctor booking: ${e.message}")
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                } ?: run {
+                    // Hospital is null but not loading - show error
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Hospital not found",
+                            fontSize = 18.sp,
+                            color = ErrorRed
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = onNavigateBack) {
+                            Text("Go Back")
                         }
                     }
                 }
@@ -299,6 +400,7 @@ fun InfoRow(icon: ImageVector, text: String) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DoctorsSection(
     doctors: List<HospitalDoctorDto>,
@@ -526,7 +628,7 @@ fun ProfessionalDoctorCard(
                     .size(100.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(
-                        brush = androidx.compose.ui.graphics.Brush.linearGradient(
+                        brush = Brush.linearGradient(
                             colors = listOf(SkyBlue100, SkyBlue200)
                         )
                     ),
@@ -558,9 +660,9 @@ fun ProfessionalDoctorCard(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
                             .size(16.dp)
-                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .clip(CircleShape)
                             .background(if (isAvailable) SuccessGreen else Gray400)
-                            .border(3.dp, Color.White, androidx.compose.foundation.shape.CircleShape)
+                            .border(3.dp, Color.White, CircleShape)
                     )
                 }
             }
