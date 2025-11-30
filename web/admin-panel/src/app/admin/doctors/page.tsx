@@ -414,7 +414,7 @@ export default function DoctorsPage() {
                   )}
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold text-gray-900 truncate">
-                      Dr. {firstName} {lastName}
+                      {firstName !== 'Unknown' ? `Dr. ${firstName} ${lastName}` : `Dr. (ID: ${doctor.userId?.substring(0, 8) || 'Unknown'})`}
                     </h3>
                     <p className="text-xs text-gray-500 truncate mt-1">{email}</p>
                   </div>
