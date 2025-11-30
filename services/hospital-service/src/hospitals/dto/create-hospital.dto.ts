@@ -35,6 +35,10 @@ export class CreateHospitalDto {
   website?: string;
 
   @IsOptional()
+  @IsString()
+  logoUrl?: string;
+
+  @IsOptional()
   @IsEnum(BookingPolicy)
   bookingPolicy?: BookingPolicy;
 

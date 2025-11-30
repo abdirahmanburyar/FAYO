@@ -64,18 +64,23 @@ export default function DoctorsPage() {
   }, []);
 
   const filteredDoctors = doctors.filter(doctor => {
-    // Add null checks for doctor and user properties
-    if (!doctor || !doctor.user) {
+    // Add null checks for doctor properties
+    if (!doctor) {
       return false;
     }
 
     const doctorSpecialtyNames = (doctor.specialties || []).map(s => s.name).join(' ');
+    const firstName = doctor.user?.firstName || '';
+    const lastName = doctor.user?.lastName || '';
+    const email = doctor.user?.email || '';
+    const licenseNumber = doctor.licenseNumber || '';
+
     const matchesSearch = 
-      (doctor.user.firstName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (doctor.user.lastName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (doctor.user.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       doctorSpecialtyNames.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (doctor.licenseNumber || '').toLowerCase().includes(searchTerm.toLowerCase());
+      licenseNumber.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesSpecialty = filterSpecialty === 'ALL' || 
       (doctor.specialties || []).some(s => s.name === filterSpecialty || s.id === filterSpecialty);
@@ -355,22 +360,23 @@ export default function DoctorsPage() {
       {/* Doctors Grid - Odoo Style */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {filteredDoctors.map((doctor, index) => {
-          // Add null checks and fallbacks
-          if (!doctor || !doctor.user) {
+          if (!doctor) {
             return null;
           }
 
-          const firstName = doctor.user.firstName || 'Unknown';
-          const lastName = doctor.user.lastName || 'Doctor';
-          const email = doctor.user.email || 'No email';
-          const phone = doctor.user.phone || '';
+          const firstName = doctor.user?.firstName || 'Unknown';
+          const lastName = doctor.user?.lastName || 'Doctor';
+          const email = doctor.user?.email || 'No email';
+          const phone = doctor.user?.phone || '';
           const specialties = doctor.specialties || [];
           const licenseNumber = doctor.licenseNumber || 'N/A';
           const bio = doctor.bio || '';
+          const imageUrl = doctor.imageUrl;
 
           // Debug: Log doctor data to see what we're getting
           console.log('Doctor data:', {
             id: doctor.id,
+            hasUser: !!doctor.user,
             specialties: specialties,
             specialtiesLength: specialties.length,
             doctorSpecialties: doctor.doctorSpecialties
@@ -393,11 +399,19 @@ export default function DoctorsPage() {
               {/* Header with Avatar and Name */}
               <div className="p-4 pb-3">
                 <div className="flex items-start space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-white font-semibold text-sm">
-                      {firstName[0]}{lastName[0]}
-                    </span>
-                  </div>
+                  {imageUrl ? (
+                    <img 
+                      src={imageUrl} 
+                      alt={`Dr. ${firstName} ${lastName}`}
+                      className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-gray-200"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-semibold text-sm">
+                        {firstName[0]}{lastName[0]}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold text-gray-900 truncate">
                       Dr. {firstName} {lastName}
@@ -458,7 +472,8 @@ export default function DoctorsPage() {
                 </button>
                 <button 
                   onClick={async () => {
-                    if (confirm(`Are you sure you want to delete Dr. ${doctor.user?.firstName || ''} ${doctor.user?.lastName || ''}? This action cannot be undone.`)) {
+                    const doctorName = doctor.user ? `Dr. ${doctor.user.firstName} ${doctor.user.lastName}` : 'this doctor';
+                    if (confirm(`Are you sure you want to delete ${doctorName}? This action cannot be undone.`)) {
                       try {
                         await doctorApi.deleteDoctor(doctor.id);
                         fetchDoctors(); // Refresh the list

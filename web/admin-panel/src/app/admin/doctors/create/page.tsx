@@ -815,15 +815,45 @@ export default function CreateDoctorPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Profile Image URL
+                    Profile Image
                   </label>
-                  <input
-                    type="url"
-                    value={formData.imageUrl}
-                    onChange={(e) => handleInputChange('imageUrl', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://example.com/doctor-image.jpg"
-                  />
+                  <div className="flex items-center space-x-4">
+                    {formData.imageUrl && (
+                      <img 
+                        src={formData.imageUrl} 
+                        alt="Profile" 
+                        className="w-16 h-16 rounded-full object-cover border border-gray-200"
+                      />
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+
+                        try {
+                          const uploadFormData = new FormData();
+                          uploadFormData.append('file', file);
+
+                          const response = await fetch('/api/upload', {
+                            method: 'POST',
+                            body: uploadFormData,
+                          });
+
+                          if (!response.ok) throw new Error('Upload failed');
+
+                          const data = await response.json();
+                          handleInputChange('imageUrl', data.url);
+                        } catch (error) {
+                          console.error('Error uploading image:', error);
+                          setError('Failed to upload image');
+                        }
+                      }}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">Upload a professional profile picture (JPG, PNG)</p>
                 </div>
               </div>
 
