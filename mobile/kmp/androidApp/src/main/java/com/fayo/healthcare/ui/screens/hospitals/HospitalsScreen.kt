@@ -46,6 +46,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.Image
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -446,23 +448,35 @@ fun HospitalCard(
                         .background(SkyBlue100),
                     contentAlignment = Alignment.Center
                 ) {
-                    val context = LocalContext.current
-                    val imageResId = context.resources.getIdentifier("hospital", "drawable", context.packageName)
-                    
-                    if (imageResId != 0) {
-                        Image(
-                            painter = painterResource(id = imageResId),
+                    if (hospital.logoUrl != null) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(hospital.logoUrl)
+                                .crossfade(true)
+                                .build(),
                             contentDescription = "Hospital logo",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
                         )
                     } else {
-                        Icon(
-                            imageVector = Icons.Default.MedicalServices,
-                            contentDescription = null,
-                            modifier = Modifier.size(36.dp),
-                            tint = SkyBlue600
-                        )
+                        val context = LocalContext.current
+                        val imageResId = context.resources.getIdentifier("hospital", "drawable", context.packageName)
+                        
+                        if (imageResId != 0) {
+                            Image(
+                                painter = painterResource(id = imageResId),
+                                contentDescription = "Hospital logo",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.MedicalServices,
+                                contentDescription = null,
+                                modifier = Modifier.size(36.dp),
+                                tint = SkyBlue600
+                            )
+                        }
                     }
                 }
                 

@@ -328,13 +328,21 @@ export default function HospitalsPage() {
 
             <div className="flex items-start justify-between mb-4 mt-2">
               <div className="flex items-center space-x-3">
-                <div className={`w-12 h-12 rounded-lg flex items-center justify-center shadow-sm ${
-                  hospital.type === 'HOSPITAL'
-                    ? 'bg-blue-50 text-blue-600'
-                    : 'bg-green-50 text-green-600'
-                }`}>
-                  <Building2 className="w-6 h-6" />
-                </div>
+                {hospital.logoUrl ? (
+                  <img 
+                    src={hospital.logoUrl} 
+                    alt={hospital.name}
+                    className="w-12 h-12 rounded-lg object-contain bg-white border border-gray-200"
+                  />
+                ) : (
+                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center shadow-sm ${
+                    hospital.type === 'HOSPITAL'
+                      ? 'bg-blue-50 text-blue-600'
+                      : 'bg-green-50 text-green-600'
+                  }`}>
+                    <Building2 className="w-6 h-6" />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <button
                     onClick={() => router.push(`/admin/hospitals/${hospital.id}`)}

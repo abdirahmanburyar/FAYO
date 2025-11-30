@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -21,6 +22,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -34,11 +37,14 @@ import org.koin.compose.koinInject
 import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
 import java.util.*
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppointmentsScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToDetails: (String) -> Unit = {}, // Optional callback if we add details screen
     viewModel: AppointmentsViewModel = koinViewModel(),
     apiClient: ApiClient = koinInject()
 ) {
@@ -294,25 +300,52 @@ fun AirlineTicketCard(
                             letterSpacing = 1.sp
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = doctorName,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Gray900
-                        )
-                        doctor?.specialty?.takeIf { it.isNotBlank() }?.let { specialty ->
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = specialty,
-                                fontSize = 14.sp,
-                                color = Gray600
-                            )
+                        
+                        // Avatar + Name
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (doctor?.imageUrl != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .background(SkyBlue100)
+                                ) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(doctor!!.imageUrl)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = "Doctor avatar",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                            }
+                            
+                            Column {
+                                Text(
+                                    text = doctorName,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Gray900,
+                                    lineHeight = 22.sp
+                                )
+                                
+                                doctor?.specialty?.takeIf { it.isNotBlank() }?.let { specialty ->
+                                    Text(
+                                        text = specialty,
+                                        fontSize = 14.sp,
+                                        color = Gray600
+                                    )
+                                }
+                            }
                         }
                     }
                     
                     // Right Side - Details
                     Column(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(0.7f),
                         horizontalAlignment = Alignment.End
                     ) {
                         Text(
@@ -327,7 +360,8 @@ fun AirlineTicketCard(
                             text = appointment.consultationType.replace("_", " "),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Gray900
+                            color = Gray900,
+                            textAlign = TextAlign.End
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(

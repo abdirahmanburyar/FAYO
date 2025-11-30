@@ -1187,17 +1187,27 @@ export default function AppointmentsPage() {
                           Doctor
                         </h4>
                         {details?.doctor ? (
-                          <div className="space-y-1.5 text-xs">
-                            <p className="font-semibold text-sky-900">{details.doctor.user?.firstName} {details.doctor.user?.lastName}</p>
-                            <p className="text-sky-700">License: <span className="font-medium">{details.doctor.licenseNumber}</span></p>
-                            {details.doctor.specialties && details.doctor.specialties.length > 0 && (
-                              <p className="text-sky-700">
-                                <span className="font-medium">Specialty:</span> <span className="text-sky-800">{details.doctor.specialties.map((s: any) => s.name).join(', ')}</span>
-                              </p>
+                          <div className="flex gap-3">
+                            {details.doctor.imageUrl ? (
+                              <img 
+                                src={details.doctor.imageUrl} 
+                                alt="Doctor" 
+                                className="w-10 h-10 rounded-full object-cover border border-sky-200"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-sky-100 flex items-center justify-center text-sky-600 font-bold text-xs border border-sky-200">
+                                {details.doctor.user?.firstName?.[0]}{details.doctor.user?.lastName?.[0]}
+                              </div>
                             )}
-                            {details.doctor.user?.phone && (
-                              <p className="flex items-center text-sky-700"><Phone className="w-3 h-3 mr-1.5 text-sky-500" />{details.doctor.user.phone}</p>
-                            )}
+                            <div className="space-y-1 text-xs flex-1">
+                              <p className="font-semibold text-sky-900">{details.doctor.user?.firstName} {details.doctor.user?.lastName}</p>
+                              <p className="text-sky-700">License: <span className="font-medium">{details.doctor.licenseNumber}</span></p>
+                              {details.doctor.specialties && details.doctor.specialties.length > 0 && (
+                                <p className="text-sky-700 truncate" title={details.doctor.specialties.map((s: any) => s.name).join(', ')}>
+                                  <span className="font-medium">Spec:</span> {details.doctor.specialties[0].name}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         ) : (
                           <p className="text-xs text-sky-600">
@@ -1214,9 +1224,18 @@ export default function AppointmentsPage() {
                             Hospital
                           </h4>
                           {details?.hospital ? (
-                            <div className="space-y-1.5 text-xs">
-                              <p className="font-semibold text-sky-900">{details.hospital.name}</p>
-                              <p className="text-sky-700">{details.hospital.type}</p>
+                            <div className="flex gap-2 items-start">
+                              {details.hospital.logoUrl && (
+                                <img 
+                                  src={details.hospital.logoUrl} 
+                                  alt="Hospital" 
+                                  className="w-8 h-8 rounded object-contain bg-white border border-sky-200"
+                                />
+                              )}
+                              <div className="space-y-1 text-xs">
+                                <p className="font-semibold text-sky-900">{details.hospital.name}</p>
+                                <p className="text-sky-700">{details.hospital.type}</p>
+                              </div>
                             </div>
                           ) : (
                             <p className="text-xs text-sky-600">ID: {appointment.hospitalId.substring(0, 8)}...</p>

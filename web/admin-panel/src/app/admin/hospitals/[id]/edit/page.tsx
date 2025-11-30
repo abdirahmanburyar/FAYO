@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { hospitalApi } from '@/services/hospitalApi';
 import SearchableSelect from '@/components/ui/SearchableSelect';
+import { API_CONFIG } from '@/config/api';
 
 interface HospitalFormData {
   name: string;
@@ -315,16 +316,44 @@ export default function EditHospitalPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Logo URL
+                Hospital Logo
               </label>
-              <div className="relative">
-                <Globe className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+              <div className="flex items-center space-x-4">
+                {formData.logoUrl && (
+                  <img 
+                    src={formData.logoUrl} 
+                    alt="Logo" 
+                    className="w-16 h-16 rounded object-contain border border-gray-200"
+                  />
+                )}
                 <input
-                  type="url"
-                  value={formData.logoUrl}
-                  onChange={(e) => handleInputChange('logoUrl', e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="https://example.com/logo.png"
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+
+                    try {
+                      const uploadFormData = new FormData();
+                      uploadFormData.append('file', file);
+
+                      const response = await fetch(`${API_CONFIG.HOSPITAL_SERVICE_URL}/api/v1/uploads`, {
+                        method: 'POST',
+                        body: uploadFormData,
+                      });
+
+                      if (!response.ok) throw new Error('Upload failed');
+
+                      const data = await response.json();
+                      // Construct full URL
+                      const fullUrl = `${API_CONFIG.HOSPITAL_SERVICE_URL}${data.url}`;
+                      handleInputChange('logoUrl', fullUrl);
+                    } catch (error) {
+                      console.error('Error uploading logo:', error);
+                      setError('Failed to upload logo');
+                    }
+                  }}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
                 />
               </div>
             </div>

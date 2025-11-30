@@ -27,7 +27,9 @@ import {
   Clock,
   Briefcase,
   TrendingUp,
-  Stethoscope
+  Stethoscope,
+  Camera,
+  Loader2
 } from 'lucide-react';
 import { doctorApi, Doctor } from '@/services/doctorApi';
 import { SkeletonCard } from '@/components/skeletons';
@@ -44,26 +46,62 @@ export default function DoctorProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const fetchDoctor = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const doctorData = await doctorApi.getDoctorById(doctorId);
+      setDoctor(doctorData);
+    } catch (error) {
+      console.error('Error fetching doctor:', error);
+      setError(error instanceof Error ? error.message : 'Failed to fetch doctor');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDoctor = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const doctorData = await doctorApi.getDoctorById(doctorId);
-        setDoctor(doctorData);
-      } catch (error) {
-        console.error('Error fetching doctor:', error);
-        setError(error instanceof Error ? error.message : 'Failed to fetch doctor');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (doctorId) {
       fetchDoctor();
     }
   }, [doctorId]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !doctor) return;
+
+    try {
+      setUploadingImage(true);
+      
+      // 1. Upload to doctor-service
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+
+      const uploadResponse = await fetch(`${API_CONFIG.DOCTOR_SERVICE_URL}/api/v1/uploads`, {
+        method: 'POST',
+        body: uploadFormData,
+      });
+
+      if (!uploadResponse.ok) throw new Error('Failed to upload image');
+
+      const uploadData = await uploadResponse.json();
+      const fullUrl = `${API_CONFIG.DOCTOR_SERVICE_URL}${uploadData.url}`;
+
+      // 2. Update doctor profile with new image URL
+      await doctorApi.updateDoctor(doctor.id, { imageUrl: fullUrl });
+
+      // 3. Refresh doctor data (or just update local state)
+      setDoctor(prev => prev ? { ...prev, imageUrl: fullUrl } : null);
+      
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Failed to upload image. Please try again.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const parseJsonField = (field: string | undefined): string[] => {
     if (!field) return [];
@@ -160,9 +198,15 @@ export default function DoctorProfilePage() {
         {/* Profile Info Area */}
         <div className="px-8 pb-8">
           <div className="relative flex flex-col md:flex-row items-start md:items-end -mt-12 mb-6 gap-6">
-            {/* Avatar */}
+            {/* Avatar with Upload */}
             <div className="relative group">
-              <div className="w-32 h-32 rounded-2xl border-4 border-white shadow-xl bg-white overflow-hidden flex-shrink-0">
+              <div className="w-32 h-32 rounded-2xl border-4 border-white shadow-xl bg-white overflow-hidden flex-shrink-0 relative">
+                {uploadingImage ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-20">
+                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                  </div>
+                ) : null}
+                
                 {doctor.imageUrl ? (
                   <img 
                     src={doctor.imageUrl} 
@@ -176,8 +220,23 @@ export default function DoctorProfilePage() {
                     </span>
                   </div>
                 )}
+                
+                {/* Upload Overlay */}
+                <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10">
+                  <div className="text-white flex flex-col items-center">
+                    <Camera className="w-8 h-8 mb-1" />
+                    <span className="text-xs font-medium">Change Photo</span>
+                  </div>
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={uploadingImage}
+                  />
+                </label>
               </div>
-              <div className={`absolute bottom-2 right-2 w-5 h-5 rounded-full border-2 border-white ${doctor.isAvailable ? 'bg-green-500' : 'bg-gray-400'}`} title={doctor.isAvailable ? 'Online' : 'Offline'}></div>
+              <div className={`absolute bottom-2 right-2 w-5 h-5 rounded-full border-2 border-white z-20 ${doctor.isAvailable ? 'bg-green-500' : 'bg-gray-400'}`} title={doctor.isAvailable ? 'Online' : 'Offline'}></div>
             </div>
 
             {/* Name & Badges */}

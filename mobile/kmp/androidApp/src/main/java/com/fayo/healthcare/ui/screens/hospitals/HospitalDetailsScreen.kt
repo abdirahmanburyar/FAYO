@@ -31,6 +31,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.clickable
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -224,23 +226,35 @@ fun HospitalHeaderSection(hospital: HospitalDto) {
                 .background(Color.White.copy(alpha = 0.2f)),
             contentAlignment = Alignment.Center
         ) {
-            val context = LocalContext.current
-            val imageResId = context.resources.getIdentifier("hospital", "drawable", context.packageName)
-            
-            if (imageResId != 0) {
-                Image(
-                    painter = painterResource(id = imageResId),
+            if (hospital.logoUrl != null) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(hospital.logoUrl)
+                        .crossfade(true)
+                        .build(),
                     contentDescription = "Hospital logo",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
                 )
             } else {
-                Icon(
-                    imageVector = Icons.Default.LocalHospital,
-                    contentDescription = null,
-                    modifier = Modifier.size(50.dp),
-                    tint = Color.White
-                )
+                val context = LocalContext.current
+                val imageResId = context.resources.getIdentifier("hospital", "drawable", context.packageName)
+                
+                if (imageResId != 0) {
+                    Image(
+                        painter = painterResource(id = imageResId),
+                        contentDescription = "Hospital logo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.LocalHospital,
+                        contentDescription = null,
+                        modifier = Modifier.size(50.dp),
+                        tint = Color.White
+                    )
+                }
             }
         }
 
@@ -552,12 +566,24 @@ fun DoctorCard(
                     .background(SkyBlue100),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    modifier = Modifier.size(36.dp),
-                    tint = SkyBlue600
-                )
+                if (doctor?.imageUrl != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(doctor.imageUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Doctor avatar",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(36.dp),
+                        tint = SkyBlue600
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(16.dp))
