@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { HospitalsModule } from './hospitals/hospitals.module';
 import { HospitalDoctorsModule } from './hospital-doctors/hospital-doctors.module';
 import { HealthController } from './health/health.controller';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { HealthController } from './health/health.controller';
     AuthModule,
     HospitalsModule,
     HospitalDoctorsModule,
+    UploadModule,
   ],
   controllers: [HealthController],
 })

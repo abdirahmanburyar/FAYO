@@ -1,15 +1,23 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { WebSocketServerService } from './websocket/websocket-server';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { join } from 'path';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
   const logger = new Logger('HospitalService');
+
+  // Serve static files from /app/uploads
+  // This corresponds to the volume mounted in docker-compose
+  app.useStaticAssets('/app/uploads', {
+    prefix: '/uploads/',
+  });
 
   // Security middleware
   app.use(helmet({

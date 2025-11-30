@@ -7,6 +7,7 @@ import { SpecialtyServiceModule } from './common/specialty-service/specialty-ser
 import { DoctorsModule } from './doctors/doctors.module';
 import { HealthController } from './health/health.controller';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     RedisModule,
     SpecialtyServiceModule,
     DoctorsModule,
+    UploadModule,
   ],
   controllers: [HealthController],
   providers: [

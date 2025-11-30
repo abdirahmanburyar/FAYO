@@ -27,6 +27,7 @@ import { doctorApi, Doctor, CreateDoctorDto, UpdateDoctorDto } from '@/services/
 import { specialtiesApi, Specialty } from '@/services/specialtiesApi';
 import { SearchableSelect, SelectOption } from '@/components/ui';
 import MultiSelect from '@/components/ui/MultiSelect';
+import { API_CONFIG } from '@/config/api';
 
 interface DoctorFormData {
   // User Information
@@ -836,7 +837,7 @@ export default function CreateDoctorPage() {
                           const uploadFormData = new FormData();
                           uploadFormData.append('file', file);
 
-                          const response = await fetch('/api/upload', {
+                          const response = await fetch(`${API_CONFIG.DOCTOR_SERVICE_URL}/api/v1/uploads`, {
                             method: 'POST',
                             body: uploadFormData,
                           });
@@ -844,7 +845,9 @@ export default function CreateDoctorPage() {
                           if (!response.ok) throw new Error('Upload failed');
 
                           const data = await response.json();
-                          handleInputChange('imageUrl', data.url);
+                          // Construct full URL
+                          const fullUrl = `${API_CONFIG.DOCTOR_SERVICE_URL}${data.url}`;
+                          handleInputChange('imageUrl', fullUrl);
                         } catch (error) {
                           console.error('Error uploading image:', error);
                           setError('Failed to upload image');
