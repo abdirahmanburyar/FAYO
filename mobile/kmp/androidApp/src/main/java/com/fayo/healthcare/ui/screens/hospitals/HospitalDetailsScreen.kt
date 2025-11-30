@@ -193,6 +193,7 @@ fun HospitalDetailsScreen(
                             1 -> DoctorsTabContent(
                                 doctors = doctors,
                                 isLoading = isLoadingDoctors,
+                                isBookingEnabled = hospitalData.bookingPolicy == "DIRECT_DOCTOR",
                                 onDoctorClick = { doctorId ->
                                     hospital?.let { 
                                         onNavigateToDoctorBooking(doctorId, it.id)
@@ -337,6 +338,7 @@ fun ServicesTabContent() {
 fun DoctorsTabContent(
     doctors: List<HospitalDoctorDto>,
     isLoading: Boolean,
+    isBookingEnabled: Boolean = true,
     onDoctorClick: (String) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -507,6 +509,7 @@ fun DoctorsTabContent(
                 items(filteredDoctors) { hospitalDoctor ->
                     DoctorCard(
                         hospitalDoctor = hospitalDoctor,
+                        isClickable = isBookingEnabled,
                         onClick = { 
                             val id = hospitalDoctor.doctor?.id ?: hospitalDoctor.doctorId
                             onDoctorClick(id) 
@@ -521,6 +524,7 @@ fun DoctorsTabContent(
 @Composable
 fun DoctorCard(
     hospitalDoctor: HospitalDoctorDto,
+    isClickable: Boolean = true,
     onClick: () -> Unit
 ) {
     val doctor = hospitalDoctor.doctor
@@ -529,7 +533,7 @@ fun DoctorCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .then(if (isClickable) Modifier.clickable { onClick() } else Modifier),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
