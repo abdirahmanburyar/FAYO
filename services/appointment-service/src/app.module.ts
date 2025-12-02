@@ -9,7 +9,6 @@ import { AgoraModule } from './agora/agora.module';
 import { HealthController } from './health/health.controller';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { WebsocketModule } from './websocket/websocket.module';
-import { KafkaModule } from './kafka/kafka.module';
 import { RabbitMQModule } from './rabbitmq/rabbitmq.module';
 
 @Module({
@@ -24,7 +23,6 @@ import { RabbitMQModule } from './rabbitmq/rabbitmq.module';
     }]),
     DatabaseModule,
     WebsocketModule,
-    KafkaModule,
     RabbitMQModule,
     AgoraModule,
     AppointmentsModule,

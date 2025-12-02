@@ -4,7 +4,6 @@ import { SpecialtyServiceClient } from '../common/specialty-service/specialty-se
 import { CreateHospitalDto } from './dto/create-hospital.dto';
 import { UpdateHospitalDto } from './dto/update-hospital.dto';
 import { AddDoctorDto } from './dto/add-doctor.dto';
-import { KafkaService } from '../kafka/kafka.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { WebSocketServerService } from '../websocket/websocket-server';
 import { ConfigService } from '@nestjs/config';
@@ -15,7 +14,6 @@ import { firstValueFrom } from 'rxjs';
 export class HospitalsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly kafkaService: KafkaService,
     private readonly eventEmitter: EventEmitter2,
     private readonly specialtyServiceClient: SpecialtyServiceClient,
     private readonly httpService: HttpService,
@@ -141,9 +139,8 @@ export class HospitalsService {
 
       // Emit events for real-time updates (only after successful transaction)
       this.eventEmitter.emit('hospital.created', hospital);
-      await this.kafkaService.publishHospitalCreated(hospital);
       
-      // Broadcast via WebSocket if available
+      // Broadcast via WebSocket (replaces Kafka)
       this.broadcastHospitalCreated(hospital);
 
       return hospital;
@@ -455,9 +452,8 @@ export class HospitalsService {
 
       // Emit events for real-time updates
       this.eventEmitter.emit('hospital.updated', hospital);
-      await this.kafkaService.publishHospitalUpdated(hospital);
       
-      // Broadcast via WebSocket if available
+      // Broadcast via WebSocket (replaces Kafka)
       this.broadcastHospitalUpdated(hospital);
 
       return hospital;
@@ -489,9 +485,8 @@ export class HospitalsService {
 
       // Emit events for real-time updates
       this.eventEmitter.emit('hospital.deleted', { hospitalId: id });
-      await this.kafkaService.publishHospitalDeleted(id);
       
-      // Broadcast via WebSocket if available
+      // Broadcast via WebSocket (replaces Kafka)
       this.broadcastHospitalDeleted(id);
 
       return { message: 'Hospital deleted successfully' };

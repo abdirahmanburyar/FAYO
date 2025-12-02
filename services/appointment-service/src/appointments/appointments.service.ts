@@ -6,8 +6,8 @@ import { UserServiceClient } from '../common/clients/user-service.client';
 import { SpecialtyServiceClient } from '../common/clients/specialty-service.client';
 import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
-import { KafkaService } from '../kafka/kafka.service';
 import { RabbitMQService } from '../rabbitmq/rabbitmq.service';
+import { AppointmentGateway } from '../websocket/appointment.gateway';
 
 @Injectable()
 export class AppointmentsService {
@@ -17,8 +17,8 @@ export class AppointmentsService {
     private readonly hospitalServiceClient: HospitalServiceClient,
     private readonly userServiceClient: UserServiceClient,
     private readonly specialtyServiceClient: SpecialtyServiceClient,
-    private readonly kafkaService: KafkaService,
     private readonly rabbitMQService: RabbitMQService,
+    private readonly appointmentGateway: AppointmentGateway,
   ) {}
 
   async create(createAppointmentDto: CreateAppointmentDto) {
@@ -614,13 +614,13 @@ export class AppointmentsService {
 
   private async publishAppointmentCreatedEvent(appointment: any) {
     try {
-      // Publish to Kafka
-      await this.kafkaService.publishAppointmentCreated(appointment);
+      // Broadcast directly via WebSocket (replaces Kafka)
+      this.appointmentGateway.broadcastAppointmentCreated(appointment);
       
       // Also publish to RabbitMQ as backup
       await this.rabbitMQService.publishAppointmentCreated(appointment);
       
-      console.log('📤 [APPOINTMENT] Published appointment.created event to Kafka and RabbitMQ');
+      console.log('📤 [APPOINTMENT] Published appointment.created event via WebSocket and RabbitMQ');
     } catch (error) {
       // Log error but don't fail the appointment creation
       console.error('❌ [APPOINTMENT] Error publishing appointment event:', error);
@@ -629,10 +629,10 @@ export class AppointmentsService {
 
   private async publishAppointmentUpdatedEvent(appointment: any) {
     try {
-      // Publish to Kafka
-      await this.kafkaService.publishAppointmentUpdated(appointment);
+      // Broadcast directly via WebSocket (replaces Kafka)
+      this.appointmentGateway.broadcastAppointmentUpdated(appointment);
       
-      console.log('📤 [APPOINTMENT] Published appointment.updated event to Kafka');
+      console.log('📤 [APPOINTMENT] Published appointment.updated event via WebSocket');
     } catch (error) {
       // Log error but don't fail the appointment update
       console.error('❌ [APPOINTMENT] Error publishing appointment updated event:', error);

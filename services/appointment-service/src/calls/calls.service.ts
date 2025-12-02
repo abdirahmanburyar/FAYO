@@ -7,7 +7,6 @@ import {
 import { PrismaService } from '../common/database/prisma.service';
 import { AgoraService } from '../agora/agora.service';
 import { CreateCallDto } from './dto/create-call.dto';
-import { KafkaService } from '../kafka/kafka.service';
 import { RabbitMQService } from '../rabbitmq/rabbitmq.service';
 import { AppointmentGateway } from '../websocket/appointment.gateway';
 
@@ -18,7 +17,6 @@ export class CallsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly agoraService: AgoraService,
-    private readonly kafkaService: KafkaService,
     private readonly rabbitMQService: RabbitMQService,
     private readonly appointmentGateway: AppointmentGateway,
   ) {}
@@ -257,7 +255,7 @@ export class CallsService {
   }
 
   /**
-   * Publish call.created event to Kafka and RabbitMQ
+   * Publish call.created event via WebSocket and RabbitMQ
    */
   private async publishCallCreatedEvent(callSession: any, credentials: any) {
     try {
@@ -271,13 +269,13 @@ export class CallsService {
         timestamp: new Date().toISOString(),
       };
 
-      // Publish to Kafka
-      await this.kafkaService.publishCallCreated(event);
+      // Broadcast via WebSocket (replaces Kafka)
+      this.appointmentGateway.broadcastCallCreated(callSession);
 
-      // Publish to RabbitMQ
+      // Publish to RabbitMQ for async processing
       await this.rabbitMQService.publishCallCreated(event);
 
-      this.logger.log('📤 [CALL] Published call.created event to Kafka and RabbitMQ');
+      this.logger.log('📤 [CALL] Published call.created event via WebSocket and RabbitMQ');
     } catch (error) {
       this.logger.error('❌ [CALL] Error publishing call.created event:', error);
       // Don't throw - event publishing failure shouldn't fail call creation
@@ -285,7 +283,7 @@ export class CallsService {
   }
 
   /**
-   * Publish call.ended event to Kafka and RabbitMQ
+   * Publish call.ended event via WebSocket and RabbitMQ
    */
   private async publishCallEndedEvent(appointmentId: string, userId: string) {
     try {
@@ -296,13 +294,21 @@ export class CallsService {
         timestamp: new Date().toISOString(),
       };
 
-      // Publish to Kafka
-      await this.kafkaService.publishCallEnded(event);
+      // Get call session for WebSocket broadcast
+      const callSession = await this.prisma.callSession.findFirst({
+        where: { appointmentId, status: { not: 'ENDED' } },
+        orderBy: { createdAt: 'desc' },
+      });
 
-      // Publish to RabbitMQ
+      if (callSession) {
+        // Broadcast via WebSocket (replaces Kafka)
+        this.appointmentGateway.broadcastCallEnded(callSession);
+      }
+
+      // Publish to RabbitMQ for async processing
       await this.rabbitMQService.publishCallEnded(event);
 
-      this.logger.log('📤 [CALL] Published call.ended event to Kafka and RabbitMQ');
+      this.logger.log('📤 [CALL] Published call.ended event via WebSocket and RabbitMQ');
     } catch (error) {
       this.logger.error('❌ [CALL] Error publishing call.ended event:', error);
       // Don't throw - event publishing failure shouldn't fail call ending

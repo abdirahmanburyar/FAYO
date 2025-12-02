@@ -7,7 +7,6 @@ import {
 import { PrismaService } from '../common/database/prisma.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
-import { KafkaService } from '../kafka/kafka.service';
 import { PaymentStatus } from '@prisma/client';
 
 @Injectable()
@@ -16,7 +15,6 @@ export class PaymentsService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly kafkaService: KafkaService,
   ) {}
 
   /**
@@ -97,8 +95,8 @@ export class PaymentsService {
         },
       });
 
-      // Publish payment completed event
-      await this.kafkaService.publishPaymentCompleted(updatedPayment);
+      // Payment completed - events can be handled via RabbitMQ if needed
+      // Removed Kafka to reduce CPU overhead
 
       this.logger.log(`✅ Payment processed: ${paymentId}`);
 

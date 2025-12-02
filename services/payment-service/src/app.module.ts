@@ -6,7 +6,6 @@ import { DatabaseModule } from './common/database/database.module';
 import { PaymentsModule } from './payments/payments.module';
 import { HealthController } from './health/health.controller';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
-import { KafkaModule } from './kafka/kafka.module';
 
 @Module({
   imports: [
@@ -19,7 +18,6 @@ import { KafkaModule } from './kafka/kafka.module';
       limit: 100,
     }]),
     DatabaseModule,
-    KafkaModule,
     PaymentsModule,
   ],
   controllers: [HealthController],

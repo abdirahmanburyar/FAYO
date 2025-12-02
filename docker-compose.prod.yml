@@ -50,39 +50,6 @@ services:
     volumes:
       - rabbitmqdata:/var/lib/rabbitmq
 
-  kafka:
-    image: apache/kafka:3.8.1
-    container_name: kafka
-    environment:
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: 'broker,controller'
-      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
-      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093'
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
-      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
-      KAFKA_LOG_DIRS: '/var/lib/kafka/data'
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
-      KAFKA_NUM_PARTITIONS: 1
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
-    ports:
-      - '9092:9092'
-    networks:
-      - fayo-network
-    restart: unless-stopped
-    volumes:
-      - kafkadata:/var/lib/kafka/data
-    healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --list --bootstrap-server localhost:9092 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 90s
-
   # Application Services
   user-service:
     build:
@@ -141,7 +108,6 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
-      KAFKA_BROKER: kafka:9092
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       HOST: 0.0.0.0
       PORT: 3002
@@ -152,8 +118,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-      kafka:
-        condition: service_healthy
       specialty-service:
         condition: service_healthy
     networks:
@@ -246,7 +210,6 @@ services:
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
-      KAFKA_BROKER: kafka:9092
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       HOST: 0.0.0.0
       PORT: 3005
@@ -261,8 +224,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
-      kafka:
-        condition: service_healthy
       user-service:
         condition: service_healthy
       hospital-service:
@@ -291,13 +252,10 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/payment_service?schema=payments}
       PORT: 3006
       HOST: 0.0.0.0
-      KAFKA_BROKER: kafka:9092
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://72.62.51.50:3001}
       ADMIN_PANEL_URL: ${ADMIN_PANEL_URL:-http://localhost:3000}
     depends_on:
       postgres:
-        condition: service_healthy
-      kafka:
         condition: service_healthy
     networks:
       - fayo-network
@@ -358,6 +316,5 @@ volumes:
   pgdata:
   redisdata:
   rabbitmqdata:
-  kafkadata:
   admin_uploads:
 
