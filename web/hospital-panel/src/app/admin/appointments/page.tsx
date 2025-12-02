@@ -38,7 +38,6 @@ import { hospitalApi, Hospital } from '@/services/hospitalApi';
 import { SkeletonStats, SkeletonTable } from '@/components/skeletons';
 import { getAppointmentWebSocketService, AppointmentWebSocketEvent } from '@/services/appointmentWebSocket';
 import { getSoundNotificationService } from '@/utils/soundNotification';
-import { callApi } from '@/services/callApi';
 import { paymentApi, Payment } from '@/services/paymentApi';
 import { getHospitalId } from '@/utils/hospital';
 
@@ -491,46 +490,6 @@ export default function AppointmentsPage() {
     }
   };
 
-  const handleStartVideoCall = async (appointment: Appointment) => {
-    try {
-      // Get hospital user ID
-      const hospitalUser = localStorage.getItem('hospitalUser');
-      if (!hospitalUser) {
-        alert('Not authenticated. Please log in again.');
-        return;
-      }
-
-      let hospitalUserId: string;
-      try {
-        const userData = JSON.parse(hospitalUser);
-        hospitalUserId = userData.id || userData.userId;
-      } catch {
-        alert('Invalid user data. Please log in again.');
-        return;
-      }
-
-      // Only allow video calls for VIDEO consultation type
-      if (appointment.consultationType !== 'VIDEO') {
-        alert('Video calls are only available for VIDEO consultation type appointments.');
-        return;
-      }
-
-      // Only allow calls for active appointments
-      if (appointment.status === 'CANCELLED' || appointment.status === 'COMPLETED') {
-        alert('Cannot start a call for a cancelled or completed appointment.');
-        return;
-      }
-
-      // Create call session
-      const response = await callApi.createCall(appointment.id, hospitalUserId);
-      
-      // Navigate to call page
-      router.push(`/call/${appointment.id}`);
-    } catch (error) {
-      console.error('Error starting video call:', error);
-      alert(error instanceof Error ? error.message : 'Failed to start video call');
-    }
-  };
 
   // Payment handlers
   const handleOpenPaymentModal = async (appointment: Appointment) => {

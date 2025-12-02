@@ -140,7 +140,7 @@ export class HospitalsService {
       // Emit events for real-time updates (only after successful transaction)
       this.eventEmitter.emit('hospital.created', hospital);
       
-      // Broadcast via WebSocket (replaces Kafka)
+      // Broadcast via WebSocket
       this.broadcastHospitalCreated(hospital);
 
       return hospital;
@@ -453,7 +453,7 @@ export class HospitalsService {
       // Emit events for real-time updates
       this.eventEmitter.emit('hospital.updated', hospital);
       
-      // Broadcast via WebSocket (replaces Kafka)
+      // Broadcast via WebSocket
       this.broadcastHospitalUpdated(hospital);
 
       return hospital;
@@ -486,7 +486,7 @@ export class HospitalsService {
       // Emit events for real-time updates
       this.eventEmitter.emit('hospital.deleted', { hospitalId: id });
       
-      // Broadcast via WebSocket (replaces Kafka)
+      // Broadcast via WebSocket
       this.broadcastHospitalDeleted(id);
 
       return { message: 'Hospital deleted successfully' };

@@ -285,7 +285,7 @@ export class AppointmentsService {
     }, {
       timeout: 30000, // 30 second timeout for transaction
     }).then(async (appointment) => {
-      // Publish event to Kafka and RabbitMQ for real-time updates (after transaction succeeds)
+      // Publish event via WebSocket and RabbitMQ for real-time updates (after transaction succeeds)
       // This ensures events are only published if transaction succeeds
       try {
         await this.publishAppointmentCreatedEvent(appointment);
@@ -497,7 +497,7 @@ export class AppointmentsService {
         data: updateData,
       });
 
-      // Publish Kafka event for appointment update (especially for date/time changes)
+      // Publish WebSocket event for appointment update (especially for date/time changes)
       await this.publishAppointmentUpdatedEvent(updatedAppointment);
 
       console.log('✅ [APPOINTMENT] Appointment updated:', updatedAppointment.id);
@@ -614,7 +614,7 @@ export class AppointmentsService {
 
   private async publishAppointmentCreatedEvent(appointment: any) {
     try {
-      // Broadcast directly via WebSocket (replaces Kafka)
+      // Broadcast directly via WebSocket
       this.appointmentGateway.broadcastAppointmentCreated(appointment);
       
       // Also publish to RabbitMQ as backup
@@ -629,7 +629,7 @@ export class AppointmentsService {
 
   private async publishAppointmentUpdatedEvent(appointment: any) {
     try {
-      // Broadcast directly via WebSocket (replaces Kafka)
+      // Broadcast directly via WebSocket
       this.appointmentGateway.broadcastAppointmentUpdated(appointment);
       
       console.log('📤 [APPOINTMENT] Published appointment.updated event via WebSocket');

@@ -38,7 +38,6 @@ import { hospitalApi, Hospital } from '@/services/hospitalApi';
 import { SkeletonStats, SkeletonTable } from '@/components/skeletons';
 import { getAppointmentWebSocketService, AppointmentWebSocketEvent } from '@/services/appointmentWebSocket';
 import { getSoundNotificationService } from '@/utils/soundNotification';
-import { callApi } from '@/services/callApi';
 import { paymentApi, Payment } from '@/services/paymentApi';
 import { API_CONFIG } from '@/config/api';
 
@@ -532,46 +531,6 @@ export default function AppointmentsPage() {
     }
   };
 
-  const handleStartVideoCall = async (appointment: Appointment) => {
-    try {
-      // Get admin user ID
-      const adminUser = localStorage.getItem('adminUser');
-      if (!adminUser) {
-        alert('Not authenticated. Please log in again.');
-        return;
-      }
-
-      let adminUserId: string;
-      try {
-        const userData = JSON.parse(adminUser);
-        adminUserId = userData.id || userData.userId;
-      } catch {
-        alert('Invalid user data. Please log in again.');
-        return;
-      }
-
-      // Only allow video calls for VIDEO consultation type
-      if (appointment.consultationType !== 'VIDEO') {
-        alert('Video calls are only available for VIDEO consultation type appointments.');
-        return;
-      }
-
-      // Only allow calls for active appointments
-      if (appointment.status === 'CANCELLED' || appointment.status === 'COMPLETED') {
-        alert('Cannot start a call for a cancelled or completed appointment.');
-        return;
-      }
-
-      // Create call session
-      const response = await callApi.createCall(appointment.id, adminUserId);
-      
-      // Navigate to call page
-      router.push(`/call/${appointment.id}`);
-    } catch (error) {
-      console.error('Error starting video call:', error);
-      alert(error instanceof Error ? error.message : 'Failed to start video call');
-    }
-  };
 
   // Payment handlers
   const handleOpenPaymentModal = async (appointment: Appointment) => {
@@ -1501,19 +1460,6 @@ export default function AppointmentsPage() {
 
                           {/* Action Buttons - Right Side - Compact */}
                           <div className="flex flex-col items-center space-y-1 lg:border-l lg:border-dashed lg:border-gray-300 lg:pl-3 lg:min-w-[80px]">
-                            {appointment.consultationType === 'VIDEO' && 
-                             appointment.status !== 'CANCELLED' && 
-                             appointment.status !== 'COMPLETED' && (
-                              <button
-                                onClick={() => handleStartVideoCall(appointment)}
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1.5 rounded-md transition-colors shadow-sm text-xs font-medium flex items-center justify-center gap-1.5"
-                                title="Start Video Call"
-                              >
-                                <Video className="w-3.5 h-3.5" />
-                                <span>Call</span>
-                              </button>
-                            )}
-                            
                             {/* Assign Doctor Button */}
                             {!appointment.doctorId && (appointment.status === 'PENDING' || appointment.status === 'CONFIRMED') && (
                               <button

@@ -38,7 +38,6 @@ import { hospitalApi, Hospital } from '@/services/hospitalApi';
 import { SkeletonStats, SkeletonTable } from '@/components/skeletons';
 import { getAppointmentWebSocketService, AppointmentWebSocketEvent } from '@/services/appointmentWebSocket';
 import { getSoundNotificationService } from '@/utils/soundNotification';
-import { callApi } from '@/services/callApi';
 import { paymentApi, Payment } from '@/services/paymentApi';
 import { getHospitalId } from '@/utils/hospital';
 
@@ -493,40 +492,6 @@ export default function AppointmentsPage() {
     }
   };
 
-  const handleStartVideoCall = async (appointment: Appointment) => {
-    try {
-      const hospitalUser = localStorage.getItem('hospitalUser');
-      if (!hospitalUser) {
-        alert('Not authenticated. Please log in again.');
-        return;
-      }
-
-      let hospitalUserId: string;
-      try {
-        const userData = JSON.parse(hospitalUser);
-        hospitalUserId = userData.id || userData.userId;
-      } catch {
-        alert('Invalid user data. Please log in again.');
-        return;
-      }
-
-      if (appointment.consultationType !== 'VIDEO') {
-        alert('Video calls are only available for VIDEO consultation type appointments.');
-        return;
-      }
-
-      if (appointment.status === 'CANCELLED' || appointment.status === 'COMPLETED') {
-        alert('Cannot start a call for a cancelled or completed appointment.');
-        return;
-      }
-
-      const response = await callApi.createCall(appointment.id, hospitalUserId);
-      router.push(`/call/${appointment.id}`);
-    } catch (error) {
-      console.error('Error starting video call:', error);
-      alert(error instanceof Error ? error.message : 'Failed to start video call');
-    }
-  };
 
   const handleOpenPaymentModal = async (appointment: Appointment) => {
     console.log('💳 Opening payment modal for appointment:', appointment.id);
@@ -1046,17 +1011,6 @@ export default function AppointmentsPage() {
                             </div>
                           </div>
                           <div className="flex flex-col items-center space-y-2 ml-4">
-                            {appointment.consultationType === 'VIDEO' && 
-                             appointment.status !== 'CANCELLED' && 
-                             appointment.status !== 'COMPLETED' && (
-                              <button
-                                onClick={() => handleStartVideoCall(appointment)}
-                                className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition-colors shadow-sm"
-                                title="Start Video Call"
-                              >
-                                <Video className="w-4 h-4" />
-                              </button>
-                            )}
                             {appointment.status !== 'CANCELLED' && appointment.status !== 'COMPLETED' && (
                               <button
                                 onClick={() => handleEdit(appointment)}
