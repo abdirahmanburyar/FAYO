@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,6 +46,7 @@ import coil.request.ImageRequest
 fun AppointmentsScreen(
     onNavigateBack: () -> Unit,
     @Suppress("UNUSED_PARAMETER") onNavigateToDetails: (String) -> Unit = {}, // Optional callback if we add details screen
+    onNavigateToPayment: (AppointmentDto) -> Unit = {},
     viewModel: AppointmentsViewModel = koinViewModel(),
     apiClient: ApiClient = koinInject()
 ) {
@@ -157,7 +159,10 @@ fun AppointmentsScreen(
                     items(uiState.appointments) { appointment ->
                         AirlineTicketCard(
                             appointment = appointment,
-                            apiClient = apiClient
+                            apiClient = apiClient,
+                            onPayClick = {
+                                onNavigateToPayment(appointment)
+                            }
                         )
                     }
                 }
@@ -169,7 +174,8 @@ fun AppointmentsScreen(
 @Composable
 fun AirlineTicketCard(
     appointment: AppointmentDto,
-    apiClient: ApiClient
+    apiClient: ApiClient,
+    onPayClick: () -> Unit = {}
 ) {
     var doctor by remember { mutableStateOf<DoctorDto?>(null) }
     val scope = rememberCoroutineScope()
@@ -445,6 +451,37 @@ fun AirlineTicketCard(
                             modifier = Modifier.size(32.dp),
                             tint = SkyBlue600.copy(alpha = 0.5f)
                         )
+                    }
+                }
+                
+                // Payment Button (if payment is not PAID)
+                if (appointment.paymentStatus != "PAID") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(SkyBlue600)
+                            .clickable { onPayClick() }
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Payment,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Pay Now",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
                     }
                 }
             }

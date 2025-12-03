@@ -36,15 +36,17 @@ val appModule = module {
         val hospitalBaseUrl = "$protocol://$baseHost:3002/api/v1"
         val appointmentBaseUrl = "$protocol://$baseHost:3005/api/v1"
         val doctorBaseUrl = "$protocol://$baseHost:3003"
+        val paymentBaseUrl = "$protocol://$baseHost:3006/api/v1"
         
         println("🔐 [AppModule] Using ${if (useHttps) "HTTPS" else "HTTP"} for API connections")
-        println("🔐 [AppModule] Base URLs: user=$userBaseUrl, hospital=$hospitalBaseUrl, appointment=$appointmentBaseUrl")
+        println("🔐 [AppModule] Base URLs: user=$userBaseUrl, hospital=$hospitalBaseUrl, appointment=$appointmentBaseUrl, payment=$paymentBaseUrl")
         
         ApiClient(
             userBaseUrl = userBaseUrl,
             hospitalBaseUrl = hospitalBaseUrl,
             appointmentBaseUrl = appointmentBaseUrl,
             doctorBaseUrl = doctorBaseUrl,
+            paymentBaseUrl = paymentBaseUrl,
             tokenStorage = get()
         )
     }

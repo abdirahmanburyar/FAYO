@@ -2,7 +2,7 @@ package com.fayo.healthcare.ui.navigation
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -35,6 +35,8 @@ sealed class Screen(val route: String) {
     object BookAppointment : Screen("book_appointment")
     object Appointments : Screen("appointments")
     object Profile : Screen("profile")
+    object Payment : Screen("payment")
+    object QrScanner : Screen("qr_scanner")
     data class Call(val credentials: CallCredentialsDto) : Screen("call")
 }
 
@@ -232,6 +234,68 @@ fun FayoNavigation(navController: NavHostController = androidx.navigation.compos
         
         composable(Screen.Appointments.route) {
             AppointmentsScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onNavigateToPayment = { appointment ->
+                    // Pass appointment as JSON string in route
+                    val json = Json { ignoreUnknownKeys = true }
+                    val appointmentJson = json.encodeToString(appointment)
+                    val encodedAppointment = URLEncoder.encode(appointmentJson, StandardCharsets.UTF_8.toString())
+                    navController.navigate("${Screen.Payment.route}/$encodedAppointment")
+                }
+            )
+        }
+        
+        composable("${Screen.Payment.route}/{appointmentJson}") { backStackEntry ->
+            val encodedAppointment = backStackEntry.arguments?.getString("appointmentJson") ?: ""
+            val appointmentJson = try {
+                URLDecoder.decode(encodedAppointment, StandardCharsets.UTF_8.toString())
+            } catch (e: Exception) {
+                ""
+            }
+            
+            val appointment = try {
+                val json = Json { ignoreUnknownKeys = true }
+                json.decodeFromString<com.fayo.healthcare.data.models.AppointmentDto>(appointmentJson)
+            } catch (e: Exception) {
+                null
+            }
+            
+            if (appointment != null) {
+                // Get scanned QR code from saved state (if coming back from scanner)
+                val scannedQrCode = backStackEntry.savedStateHandle.get<String>("scannedQrCode")
+                
+                com.fayo.healthcare.ui.screens.payment.PaymentScreen(
+                    appointment = appointment,
+                    onNavigateBack = {
+                        navController.popBackStack()
+                    },
+                    onPaymentSuccess = {
+                        // Navigate back to appointments and refresh
+                        navController.popBackStack()
+                    },
+                    onNavigateToQrScanner = {
+                        // Pass appointment ID to QR scanner
+                        navController.navigate("${Screen.QrScanner.route}/${appointment.id}")
+                    },
+                    scannedQrCodeFromNav = scannedQrCode
+                )
+            } else {
+                // Error state
+                androidx.compose.material3.Text("Error: Failed to load appointment")
+            }
+        }
+        
+        composable("${Screen.QrScanner.route}/{appointmentId}") { backStackEntry ->
+            val appointmentId = backStackEntry.arguments?.getString("appointmentId") ?: ""
+            com.fayo.healthcare.ui.screens.payment.QrCodeScannerScreen(
+                appointmentId = appointmentId,
+                onScanComplete = { qrCode ->
+                    // Save QR code to previous screen's saved state and navigate back
+                    navController.previousBackStackEntry?.savedStateHandle?.set("scannedQrCode", qrCode)
+                    navController.popBackStack()
+                },
                 onNavigateBack = {
                     navController.popBackStack()
                 }

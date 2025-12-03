@@ -65,6 +65,12 @@ dependencies {
     // Check https://docs.agora.io/en/video-calling/get-started/get-started-sdk?platform=android for latest version
     implementation("io.agora.rtc:full-sdk:4.2.0")
 
+    // ML Kit Barcode Scanning for QR code
+    implementation("com.google.mlkit:barcode-scanning:17.2.0")
+    implementation("androidx.camera:camera-camera2:1.3.1")
+    implementation("androidx.camera:camera-lifecycle:1.3.1")
+    implementation("androidx.camera:camera-view:1.3.1")
+
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)

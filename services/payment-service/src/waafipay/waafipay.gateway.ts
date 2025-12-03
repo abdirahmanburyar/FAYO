@@ -9,7 +9,7 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 
 @WebSocketGateway({
   path: '/api/v1/ws/payments',
@@ -18,6 +18,7 @@ import { Logger, OnModuleInit } from '@nestjs/common';
     methods: ['GET', 'POST'],
   },
 })
+@Injectable()
 export class WaafipayGateway
   implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, OnModuleInit
 {

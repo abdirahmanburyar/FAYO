@@ -33,6 +33,7 @@ class ApiClient(
     private val hospitalBaseUrl: String,
     private val appointmentBaseUrl: String,
     private val doctorBaseUrl: String,
+    private val paymentBaseUrl: String,
     private val tokenStorage: TokenStorage
 ) {
     private val client = createHttpClient()
@@ -787,6 +788,94 @@ class ApiClient(
             }
         } catch (e: Exception) {
             println("❌ [API] Error getting participant credentials: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    // Payment/Waafipay APIs
+    suspend fun getPaymentQrCode(appointmentId: String): Result<QrCodeResponse> {
+        return try {
+            val url = "$paymentBaseUrl/waafipay/appointment/$appointmentId/qr"
+            println("📡 [API] GET $url")
+            
+            val response = client.get(url) {
+                addAuthHeader()
+            }
+            
+            val statusCode = response.status.value
+            println("📥 [API] Response status: $statusCode")
+            
+            if (statusCode in 200..299) {
+                val qrCode = response.body<QrCodeResponse>()
+                println("✅ [API] Got QR code: ${qrCode.qrCode} (type: ${qrCode.qrCodeType})")
+                Result.success(qrCode)
+            } else {
+                val errorText = response.bodyAsText()
+                println("❌ [API] Error response: $errorText")
+                Result.failure(Exception("HTTP $statusCode: $errorText"))
+            }
+        } catch (e: Exception) {
+            println("❌ [API] Error getting QR code: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    suspend fun initiatePayment(request: InitiatePaymentRequest): Result<InitiatePaymentResponse> {
+        return try {
+            val url = "$paymentBaseUrl/waafipay/initiate"
+            println("📡 [API] POST $url")
+            println("📤 [API] Request: appointmentId=${request.appointmentId}, amount=${request.amount}")
+            
+            val response = client.post(url) {
+                contentType(ContentType.Application.Json)
+                addAuthHeader()
+                setBody(request)
+            }
+            
+            val statusCode = response.status.value
+            println("📥 [API] Response status: $statusCode")
+            
+            if (statusCode in 200..299) {
+                val result = response.body<InitiatePaymentResponse>()
+                println("✅ [API] Payment initiated: ${result.paymentId}")
+                Result.success(result)
+            } else {
+                val errorText = response.bodyAsText()
+                println("❌ [API] Error response: $errorText")
+                Result.failure(Exception("HTTP $statusCode: $errorText"))
+            }
+        } catch (e: Exception) {
+            println("❌ [API] Error initiating payment: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getPaymentStatus(paymentId: String): Result<PaymentStatusResponse> {
+        return try {
+            val url = "$paymentBaseUrl/waafipay/status/$paymentId"
+            println("📡 [API] GET $url")
+            
+            val response = client.get(url) {
+                addAuthHeader()
+            }
+            
+            val statusCode = response.status.value
+            println("📥 [API] Response status: $statusCode")
+            
+            if (statusCode in 200..299) {
+                val status = response.body<PaymentStatusResponse>()
+                println("✅ [API] Payment status: ${status.status}")
+                Result.success(status)
+            } else {
+                val errorText = response.bodyAsText()
+                println("❌ [API] Error response: $errorText")
+                Result.failure(Exception("HTTP $statusCode: $errorText"))
+            }
+        } catch (e: Exception) {
+            println("❌ [API] Error getting payment status: ${e.message}")
             e.printStackTrace()
             Result.failure(e)
         }
