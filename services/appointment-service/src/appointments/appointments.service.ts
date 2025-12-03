@@ -124,15 +124,17 @@ export class AppointmentsService {
         
         if (createAppointmentDto.hospitalId) {
           if (createAppointmentDto.doctorId) {
-            // Doctor is selected - MUST use hospital-doctor association fee, never doctor's own fee
+            // Doctor is selected - MUST use hospital-doctor association fee from association table
+            // NEVER read from doctor.consultationFee - always use hospitalAssociation.consultationFee
             try {
               const hospitalAssociation = await this.hospitalServiceClient.getHospitalDoctorAssociation(
                 createAppointmentDto.hospitalId,
                 createAppointmentDto.doctorId,
               );
               
-              // Always use the hospital-doctor association fee (even if null/undefined, it becomes 0)
-              // This ensures we follow hospital pricing, not the doctor's individual fee
+              // IMPORTANT: Read consultation fee ONLY from hospital-doctor association table
+              // This is the single source of truth for fees when hospital is present
+              // Do NOT use doctor.consultationFee or doctor.selfEmployedConsultationFee
               consultationFee = hospitalAssociation.consultationFee ?? 0;
               
               if (hospitalAssociation.status !== 'ACTIVE') {
@@ -492,9 +494,75 @@ export class AppointmentsService {
       }
 
       if (updateAppointmentDto.doctorId !== undefined) {
-        // Validate doctor exists if we want to be strict, but for now allow update
-        // In a real scenario, we should verify the doctor exists via doctor-service
-        updateData.doctorId = updateAppointmentDto.doctorId;
+        // Doctor is being assigned or changed - need to recalculate consultation fee
+        const newDoctorId = updateAppointmentDto.doctorId;
+        const isDoctorBeingAssigned = !existingAppointment.doctorId && newDoctorId;
+        const isDoctorBeingChanged = existingAppointment.doctorId && existingAppointment.doctorId !== newDoctorId;
+        
+        if (isDoctorBeingAssigned || isDoctorBeingChanged) {
+          // Validate doctor exists
+          try {
+            const doctor = await this.doctorServiceClient.getDoctorById(newDoctorId);
+            if (!doctor || !doctor.id) {
+              throw new NotFoundException(`Doctor with ID ${newDoctorId} not found`);
+            }
+            
+            // IMPORTANT: Consultation fee MUST come from hospital-doctor association table, NOT from doctor table
+            // If appointment has a hospital, we MUST use the hospital-doctor association fee
+            if (existingAppointment.hospitalId) {
+              try {
+                const hospitalAssociation = await this.hospitalServiceClient.getHospitalDoctorAssociation(
+                  existingAppointment.hospitalId,
+                  newDoctorId,
+                );
+                
+                // Always use hospital-doctor association fee from the association table
+                // This is the ONLY source of truth for consultation fees when hospital is present
+                updateData.consultationFee = hospitalAssociation.consultationFee ?? 0;
+                
+                if (hospitalAssociation.status !== 'ACTIVE') {
+                  throw new BadRequestException(
+                    'This doctor is not currently active at the selected hospital. Please choose a different doctor.'
+                  );
+                }
+                
+                console.log(`💰 [APPOINTMENT] Updated consultation fee to ${updateData.consultationFee} from hospital-doctor association table`);
+              } catch (error: any) {
+                if (error instanceof BadRequestException) {
+                  throw error;
+                }
+                if (error?.status === 404 || error?.statusCode === 404) {
+                  throw new NotFoundException(
+                    `The selected doctor is not associated with the appointment's hospital. Please verify the doctor is associated with hospital ${existingAppointment.hospitalId}.`
+                  );
+                }
+                throw new BadRequestException(
+                  'Unable to verify hospital-doctor association. Please check the doctor selection and try again.'
+                );
+              }
+            } else {
+              // No hospital - this is a self-employed appointment
+              // Even in this case, we should ideally have a hospital, but if not, use self-employed fee
+              // However, the primary requirement is: if hospital exists, ALWAYS use hospital-doctor association
+              updateData.consultationFee = doctor.selfEmployedConsultationFee || 0;
+              if (updateData.consultationFee === 0) {
+                throw new BadRequestException(
+                  'This doctor does not have a consultation fee configured for self-employed appointments. Please contact support.'
+                );
+              }
+              console.log(`💰 [APPOINTMENT] Updated consultation fee to ${updateData.consultationFee} (self-employed - no hospital)`);
+            }
+          } catch (error: any) {
+            if (error instanceof NotFoundException || error instanceof BadRequestException) {
+              throw error;
+            }
+            throw new NotFoundException(
+              `Unable to verify doctor. Please check the doctor ID (${newDoctorId}) and try again.`
+            );
+          }
+        }
+        
+        updateData.doctorId = newDoctorId;
       }
 
       const updatedAppointment = await this.prisma.appointment.update({
