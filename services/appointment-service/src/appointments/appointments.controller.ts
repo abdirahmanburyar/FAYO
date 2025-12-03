@@ -33,8 +33,7 @@ export class AppointmentsController {
     @Query('hospitalId') hospitalId?: string,
     @Query('status') status?: string,
     @Query('paymentStatus') paymentStatus?: string,
-    @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
+    @Query('date') date?: string,
   ) {
     return this.appointmentsService.findAll({
       patientId,
@@ -42,8 +41,7 @@ export class AppointmentsController {
       hospitalId,
       status,
       paymentStatus,
-      startDate,
-      endDate,
+      date,
     });
   }
 

@@ -88,8 +88,7 @@ class AppointmentsApiService {
     hospitalId?: string;
     status?: AppointmentStatus;
     paymentStatus?: PaymentStatus;
-    startDate?: string;
-    endDate?: string;
+    date?: string;
   }): Promise<Appointment[]> {
     try {
       const queryParams = new URLSearchParams();
@@ -98,8 +97,7 @@ class AppointmentsApiService {
       if (filters?.hospitalId) queryParams.append('hospitalId', filters.hospitalId);
       if (filters?.status) queryParams.append('status', filters.status);
       if (filters?.paymentStatus) queryParams.append('paymentStatus', filters.paymentStatus);
-      if (filters?.startDate) queryParams.append('startDate', filters.startDate);
-      if (filters?.endDate) queryParams.append('endDate', filters.endDate);
+      if (filters?.date) queryParams.append('date', filters.date);
 
       const url = `${API_CONFIG.APPOINTMENT_SERVICE_URL}${API_CONFIG.ENDPOINTS.APPOINTMENTS}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
       

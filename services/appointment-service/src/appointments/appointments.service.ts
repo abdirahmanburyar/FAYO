@@ -310,8 +310,7 @@ export class AppointmentsService {
     hospitalId?: string;
     status?: string;
     paymentStatus?: string;
-    startDate?: string;
-    endDate?: string;
+    date?: string;
   }) {
     try {
       const where: any = {};
@@ -331,24 +330,15 @@ export class AppointmentsService {
       if (filters?.paymentStatus) {
         where.paymentStatus = filters.paymentStatus;
       }
-      if (filters?.startDate || filters?.endDate) {
-        // Compare dates only (YYYY-MM-DD) - ignore timezone completely
-        // Create date strings that PostgreSQL will interpret as local dates
-        where.appointmentDate = {};
-        
-        if (filters.startDate) {
-          // Use date string directly: "2025-12-04T00:00:00" (no timezone)
-          // PostgreSQL will interpret this in its configured timezone
-          const startDateStr = `${filters.startDate}T00:00:00`;
-          where.appointmentDate.gte = new Date(startDateStr);
-        }
-        
-        if (filters.endDate) {
-          // Use date string directly: "2025-12-04T23:59:59.999" (no timezone)
-          // PostgreSQL will interpret this in its configured timezone
-          const endDateStr = `${filters.endDate}T23:59:59.999`;
-          where.appointmentDate.lte = new Date(endDateStr);
-        }
+      if (filters?.date) {
+        // Filter by single date (YYYY-MM-DD) - ignore timezone completely
+        // Create date range for the entire day
+        const startDateStr = `${filters.date}T00:00:00`;
+        const endDateStr = `${filters.date}T23:59:59.999`;
+        where.appointmentDate = {
+          gte: new Date(startDateStr),
+          lte: new Date(endDateStr),
+        };
       }
 
       const appointments = await this.prisma.appointment.findMany({

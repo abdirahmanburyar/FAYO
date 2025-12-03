@@ -62,8 +62,7 @@ export default function AppointmentsPage() {
 
   // Default to today's date (extract date part without timezone conversion)
   const today = getDateString(new Date());
-  const [startDate, setStartDate] = useState(today);
-  const [endDate, setEndDate] = useState(today);
+  const [date, setDate] = useState(today);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   
@@ -106,10 +105,9 @@ export default function AppointmentsPage() {
       // Only apply date filter when NOT searching
       // When searching by name/phone, fetch all appointments to search across all dates
       if (debouncedSearchTerm.trim() === '') {
-        if (startDate) filters.startDate = startDate;
-        if (endDate) filters.endDate = endDate;
+        if (date) filters.date = date;
       }
-      // If searching, don't send date filters - fetch all appointments
+      // If searching, don't send date filter - fetch all appointments
 
       const [appointmentsData, statsData] = await Promise.all([
         appointmentsApi.getAppointments(filters),
@@ -335,7 +333,7 @@ export default function AppointmentsPage() {
   useEffect(() => {
     fetchAppointments();
     setCurrentPage(1); // Reset to first page when filters change
-  }, [filterStatus, filterPaymentStatus, startDate, endDate, debouncedSearchTerm]);
+  }, [filterStatus, filterPaymentStatus, date, debouncedSearchTerm]);
 
   // Filter appointments by search term, status, payment status, consultation type, and date range
   const filteredAppointments = appointments.filter(appointment => {
@@ -368,12 +366,12 @@ export default function AppointmentsPage() {
     const matchesConsultationType = filterConsultationType === 'ALL' || 
       appointment.consultationType === filterConsultationType;
 
-    // Date range filter - only apply when NOT searching by name/phone
+    // Date filter - only apply when NOT searching by name/phone
     // When searching, show results from all dates
-    let matchesDateRange = true;
+    let matchesDate = true;
     if (debouncedSearchTerm.trim() === '') {
       // Only apply date filter when not searching
-      if (startDate || endDate) {
+      if (date) {
         // Extract date part (YYYY-MM-DD) from appointment date WITHOUT timezone conversion
         // This ensures we compare dates exactly as stored, regardless of timezone
         let appointmentDateStr: string;
@@ -386,21 +384,14 @@ export default function AppointmentsPage() {
         }
         
         // Compare date strings directly (YYYY-MM-DD format) - no timezone involved
-        if (startDate) {
-          if (appointmentDateStr < startDate) {
-            matchesDateRange = false;
-          }
-        }
-        if (endDate) {
-          if (appointmentDateStr > endDate) {
-            matchesDateRange = false;
-          }
+        if (appointmentDateStr !== date) {
+          matchesDate = false;
         }
       }
     }
-    // If searching, matchesDateRange stays true (show all dates)
+    // If searching, matchesDate stays true (show all dates)
 
-    return matchesSearch && matchesStatus && matchesPaymentStatus && matchesConsultationType && matchesDateRange;
+    return matchesSearch && matchesStatus && matchesPaymentStatus && matchesConsultationType && matchesDate;
   });
 
   // Sort appointments from latest to oldest (by date and time)
@@ -1038,21 +1029,17 @@ export default function AppointmentsPage() {
               <span className="text-sm text-gray-700 font-medium">
                 Showing <span className="text-gray-900 font-semibold">{startIndex + 1}-{Math.min(endIndex, sortedAppointments.length)}</span> of <span className="text-gray-900 font-semibold">{sortedAppointments.length}</span> appointments
               </span>
-              {startDate && endDate && debouncedSearchTerm.trim() === '' && (
+              {date && debouncedSearchTerm.trim() === '' && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-lg border border-blue-200">
                   <Calendar className="w-4 h-4 text-blue-600" />
                   <span className="text-sm text-blue-700 font-medium">
-                    {startDate === endDate ? (
-                      startDate === today ? 'Today' : 
+                    {date === today ? 'Today' : 
                       (() => {
                         const tomorrow = new Date();
                         tomorrow.setDate(tomorrow.getDate() + 1);
                         const tomorrowStr = getDateString(tomorrow);
-                        return startDate === tomorrowStr ? 'Tomorrow' : formatDate(startDate);
-                      })()
-                    ) : (
-                      <>{formatDate(startDate)} - {formatDate(endDate)}</>
-                    )}
+                        return date === tomorrowStr ? 'Tomorrow' : formatDate(date);
+                      })()}
                   </span>
                 </div>
               )}
@@ -1091,12 +1078,11 @@ export default function AppointmentsPage() {
                 <button
                   onClick={() => {
                     const todayStr = getDateString(new Date());
-                    setStartDate(todayStr);
-                    setEndDate(todayStr);
+                    setDate(todayStr);
                     setCurrentPage(1);
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    startDate === today && endDate === today
+                    date === today
                       ? 'bg-blue-600 text-white shadow-md'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
                   }`}
@@ -1110,8 +1096,7 @@ export default function AppointmentsPage() {
                     tomorrow.setDate(tomorrow.getDate() + 1);
                     // Extract date part without timezone conversion
                     const tomorrowStr = getDateString(tomorrow);
-                    setStartDate(tomorrowStr);
-                    setEndDate(tomorrowStr);
+                    setDate(tomorrowStr);
                     setCurrentPage(1);
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
@@ -1119,7 +1104,7 @@ export default function AppointmentsPage() {
                       const tomorrow = new Date();
                       tomorrow.setDate(tomorrow.getDate() + 1);
                       const tomorrowStr = getDateString(tomorrow);
-                      return startDate === tomorrowStr && endDate === tomorrowStr;
+                      return date === tomorrowStr;
                     })()
                       ? 'bg-blue-600 text-white shadow-md'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
