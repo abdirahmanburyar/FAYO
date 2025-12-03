@@ -254,9 +254,20 @@ services:
       HOST: 0.0.0.0
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://72.62.51.50:3001}
       ADMIN_PANEL_URL: ${ADMIN_PANEL_URL:-http://localhost:3000}
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      # Waafipay Configuration
+      WAAFIPAY_ENV: ${WAAFIPAY_ENV:-sandbox}
+      WAAFIPAY_API_URL: ${WAAFIPAY_API_URL:-https://api.waafipay.com/asm}
+      WAAFIPAY_MERCHANT_UID: ${WAAFIPAY_MERCHANT_UID:-}
+      WAAFIPAY_API_USER_ID: ${WAAFIPAY_API_USER_ID:-}
+      WAAFIPAY_API_KEY: ${WAAFIPAY_API_KEY:-}
+      WAAFIPAY_ACCOUNT_NUMBER: ${WAAFIPAY_ACCOUNT_NUMBER:-}
+      WAAFIPAY_PHONE_NUMBER: ${WAAFIPAY_PHONE_NUMBER:-}
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_started
     networks:
       - fayo-network
     restart: unless-stopped

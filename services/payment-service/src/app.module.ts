@@ -4,6 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_FILTER } from '@nestjs/core';
 import { DatabaseModule } from './common/database/database.module';
 import { PaymentsModule } from './payments/payments.module';
+import { WaafipayModule } from './waafipay/waafipay.module';
 import { HealthController } from './health/health.controller';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 
@@ -19,6 +20,7 @@ import { AllExceptionsFilter } from './common/filters/http-exception.filter';
     }]),
     DatabaseModule,
     PaymentsModule,
+    WaafipayModule,
   ],
   controllers: [HealthController],
   providers: [
