@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
-  User, 
+  User as UserIcon, 
   Mail, 
   Phone, 
   MapPin, 
@@ -12,7 +12,7 @@ import {
   Save,
   AlertCircle
 } from 'lucide-react';
-import { usersApi, User, UpdateUserDto } from '@/services/usersApi';
+import { usersApi, type User, type UpdateUserDto } from '@/services/usersApi';
 
 interface EditUserModalProps {
   isOpen: boolean;
@@ -124,7 +124,7 @@ export default function EditUserModal({ isOpen, onClose, onSuccess, user }: Edit
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
             <div className="space-y-6">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                <User className="w-5 h-5 mr-2" />
+                <UserIcon className="w-5 h-5 mr-2" />
                 User Information
               </h3>
 
