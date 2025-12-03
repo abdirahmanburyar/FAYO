@@ -18,7 +18,6 @@ import {
   Phone,
   Calendar,
   AlertCircle,
-  Video,
 } from 'lucide-react';
 import { usersApi, User } from '@/services/usersApi';
 // Call service has been removed - imports removed
@@ -37,14 +36,6 @@ export default function UsersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [callingUserId, setCallingUserId] = useState<string | null>(null);
-  const [callError, setCallError] = useState<string | null>(null);
-
-  const handleStartCall = async (user: User) => {
-    // Call service has been removed
-    setCallError('Video calling functionality has been removed. The call service is no longer available.');
-      setCallingUserId(null);
-  };
 
   // Fetch users from API
   const fetchUsers = async () => {
@@ -419,16 +410,6 @@ export default function UsersPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
-                      <button
-                        className="text-purple-600 hover:text-purple-900 p-1 flex items-center"
-                        onClick={() => handleStartCall(user)}
-                        disabled={callingUserId === user.id}
-                      >
-                        <Video className="w-4 h-4 mr-1" />
-                        <span className="hidden sm:inline">
-                          {callingUserId === user.id ? 'Calling...' : 'Call'}
-                        </span>
-                      </button>
                       <button className="text-blue-600 hover:text-blue-900 p-1">
                         <Eye className="w-4 h-4" />
                       </button>
@@ -504,16 +485,6 @@ export default function UsersPage() {
             >
               Next
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* Call error */}
-      {callError && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-4">
-          <div className="flex items-center">
-            <AlertCircle className="w-4 h-4 text-red-500 mr-2" />
-            <p className="text-sm text-red-700">{callError}</p>
           </div>
         </div>
       )}
