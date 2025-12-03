@@ -52,8 +52,16 @@ export default function AppointmentsPage() {
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterPaymentStatus, setFilterPaymentStatus] = useState<string>('ALL');
   const [filterConsultationType, setFilterConsultationType] = useState<string>('ALL');
-  // Default to today's date
-  const today = new Date().toISOString().split('T')[0];
+  // Helper function to get date string (YYYY-MM-DD) without timezone conversion
+  const getDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Default to today's date (extract date part without timezone conversion)
+  const today = getDateString(new Date());
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
   const [currentPage, setCurrentPage] = useState(1);
@@ -366,18 +374,25 @@ export default function AppointmentsPage() {
     if (debouncedSearchTerm.trim() === '') {
       // Only apply date filter when not searching
       if (startDate || endDate) {
-        const appointmentDate = new Date(appointment.appointmentDate);
+        // Extract date part (YYYY-MM-DD) from appointment date WITHOUT timezone conversion
+        // This ensures we compare dates exactly as stored, regardless of timezone
+        let appointmentDateStr: string;
+        if (typeof appointment.appointmentDate === 'string') {
+          // If it's a string, extract date part before 'T' or space
+          appointmentDateStr = appointment.appointmentDate.split('T')[0].split(' ')[0];
+        } else {
+          // If it's a Date object, convert to ISO and extract date part
+          appointmentDateStr = appointment.appointmentDate.toISOString().split('T')[0];
+        }
+        
+        // Compare date strings directly (YYYY-MM-DD format) - no timezone involved
         if (startDate) {
-          const start = new Date(startDate);
-          start.setHours(0, 0, 0, 0);
-          if (appointmentDate < start) {
+          if (appointmentDateStr < startDate) {
             matchesDateRange = false;
           }
         }
         if (endDate) {
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
-          if (appointmentDate > end) {
+          if (appointmentDateStr > endDate) {
             matchesDateRange = false;
           }
         }
@@ -1032,7 +1047,7 @@ export default function AppointmentsPage() {
                       (() => {
                         const tomorrow = new Date();
                         tomorrow.setDate(tomorrow.getDate() + 1);
-                        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+                        const tomorrowStr = getDateString(tomorrow);
                         return startDate === tomorrowStr ? 'Tomorrow' : formatDate(startDate);
                       })()
                     ) : (
@@ -1075,9 +1090,9 @@ export default function AppointmentsPage() {
               <div className="flex items-center gap-2 border-l border-gray-200 pl-3">
                 <button
                   onClick={() => {
-                    const today = new Date().toISOString().split('T')[0];
-                    setStartDate(today);
-                    setEndDate(today);
+                    const todayStr = getDateString(new Date());
+                    setStartDate(todayStr);
+                    setEndDate(todayStr);
                     setCurrentPage(1);
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
@@ -1085,6 +1100,7 @@ export default function AppointmentsPage() {
                       ? 'bg-blue-600 text-white shadow-md'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
                   }`}
+                  title={`Show appointments for ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`}
                 >
                   Today
                 </button>
@@ -1092,7 +1108,8 @@ export default function AppointmentsPage() {
                   onClick={() => {
                     const tomorrow = new Date();
                     tomorrow.setDate(tomorrow.getDate() + 1);
-                    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+                    // Extract date part without timezone conversion
+                    const tomorrowStr = getDateString(tomorrow);
                     setStartDate(tomorrowStr);
                     setEndDate(tomorrowStr);
                     setCurrentPage(1);
@@ -1101,14 +1118,30 @@ export default function AppointmentsPage() {
                     (() => {
                       const tomorrow = new Date();
                       tomorrow.setDate(tomorrow.getDate() + 1);
-                      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+                      const tomorrowStr = getDateString(tomorrow);
                       return startDate === tomorrowStr && endDate === tomorrowStr;
                     })()
                       ? 'bg-blue-600 text-white shadow-md'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
                   }`}
+                  title={`Show appointments for ${(() => {
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    return tomorrow.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                  })()} (${(() => {
+                    const tomorrow = new Date();
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    return getDateString(tomorrow);
+                  })()})`}
                 >
                   Tomorrow
+                  <span className="ml-1 text-[10px] opacity-75">
+                    ({(() => {
+                      const tomorrow = new Date();
+                      tomorrow.setDate(tomorrow.getDate() + 1);
+                      return tomorrow.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    })()})
+                  </span>
                 </button>
               </div>
             </div>
