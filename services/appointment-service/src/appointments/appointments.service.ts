@@ -118,17 +118,22 @@ export class AppointmentsService {
         }
 
         // 3. Validate hospital association or existence
+        // IMPORTANT: Consultation fee MUST come from hospital-doctor association when hospital is selected,
+        // NOT from the doctor's own consultationFee. This ensures hospital pricing policies are followed.
         let consultationFee: number = 0;
         
         if (createAppointmentDto.hospitalId) {
           if (createAppointmentDto.doctorId) {
-            // Validate doctor is associated with hospital
+            // Doctor is selected - MUST use hospital-doctor association fee, never doctor's own fee
             try {
               const hospitalAssociation = await this.hospitalServiceClient.getHospitalDoctorAssociation(
                 createAppointmentDto.hospitalId,
                 createAppointmentDto.doctorId,
               );
-              consultationFee = hospitalAssociation.consultationFee || 0;
+              
+              // Always use the hospital-doctor association fee (even if null/undefined, it becomes 0)
+              // This ensures we follow hospital pricing, not the doctor's individual fee
+              consultationFee = hospitalAssociation.consultationFee ?? 0;
               
               if (hospitalAssociation.status !== 'ACTIVE') {
                 throw new BadRequestException(
@@ -149,17 +154,17 @@ export class AppointmentsService {
               );
             }
           } else {
-            // Validate hospital exists (no doctor selected)
+            // No doctor selected - hospital will assign doctor later
+            // Fee is 0 until doctor is assigned, then it will use the hospital-doctor association fee
             try {
               await this.hospitalServiceClient.getHospitalById(createAppointmentDto.hospitalId);
-              // Fee is pending or 0 for unassigned
-              consultationFee = 0; 
+              consultationFee = 0; // Wait for doctor assignment, then fee will be set from hospital-doctor association
             } catch (error) {
               throw new NotFoundException(`Hospital with ID ${createAppointmentDto.hospitalId} not found`);
             }
           }
         } else {
-          // Self-employed doctor (must have doctorId)
+          // Self-employed doctor (no hospital) - use doctor's self-employed fee
           // This is guaranteed by the initial check
           consultationFee = doctor.selfEmployedConsultationFee || 0;
           if (consultationFee === 0) {

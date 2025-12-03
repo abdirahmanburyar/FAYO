@@ -259,8 +259,12 @@ export default function CreateAppointmentPage() {
             const shiftOngoing = checkIfShiftOngoing(association.startTime, association.endTime);
             setIsShiftOngoing(shiftOngoing);
             
-            // Use hospital consultation fee (follow hospital policy)
-            setConsultationFee(association.consultationFee || 0);
+            // IMPORTANT: Always use hospital-doctor association fee, never doctor's own fee
+            // This ensures hospital pricing policies are followed
+            setConsultationFee(association.consultationFee ?? 0);
+          } else {
+            // Hospital selected but association not found - fee is 0
+            setConsultationFee(0);
           }
         } else {
           // Doctor has hospitals but none selected - still self-employed for this appointment
@@ -419,20 +423,42 @@ export default function CreateAppointmentPage() {
               const shiftOngoing = checkIfShiftOngoing(association.startTime, association.endTime);
               setIsShiftOngoing(shiftOngoing);
               
-              // Use hospital consultation fee (follow hospital policy)
-              setConsultationFee(association.consultationFee || 0);
+              // IMPORTANT: Always use hospital-doctor association fee, never doctor's own fee
+              // This ensures hospital pricing policies are followed
+              setConsultationFee(association.consultationFee ?? 0);
+            } else {
+              // Association not found - fee is 0 until association is established
+              setConsultationFee(0);
             }
+          } else {
+            // Error fetching associations - fee is 0
+            setConsultationFee(0);
           }
         } catch (error) {
           console.error('Error loading hospital details:', error);
+          setConsultationFee(0);
+        }
+      } else if (formData.hospitalId && !formData.doctorId) {
+        // Hospital selected but no doctor - fee is 0 until doctor is assigned
+        try {
+          const hospital = await hospitalApi.getHospitalById(formData.hospitalId);
+          setSelectedHospital(hospital);
+          setSelectedHospitalDoctor(null);
+          setIsShiftOngoing(false);
+          setConsultationFee(0); // Wait for doctor assignment, then fee will be set from hospital-doctor association
+        } catch (error) {
+          console.error('Error loading hospital details:', error);
+          setConsultationFee(0);
         }
       } else {
         setSelectedHospital(null);
         setSelectedHospitalDoctor(null);
         setIsShiftOngoing(false);
-        // If self-employed or no hospital selected, use doctor's fee
+        // If self-employed or no hospital selected, use doctor's self-employed fee
         if (selectedDoctor && (isSelfEmployed || !formData.hospitalId)) {
           setConsultationFee(selectedDoctor.selfEmployedConsultationFee || 0);
+        } else {
+          setConsultationFee(0);
         }
       }
     };
@@ -1203,4 +1229,5 @@ export default function CreateAppointmentPage() {
     </div>
   );
 }
+
 
