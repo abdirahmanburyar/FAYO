@@ -137,32 +137,217 @@ export class UsersService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
-    // Hash password if provided
-    let hashedPassword: string | undefined;
-    if (updateUserDto.password) {
-      const saltRounds = 10;
-      hashedPassword = await bcrypt.hash(updateUserDto.password, saltRounds);
-      console.log('✅ [USER] Password hashed for update');
+    try {
+      console.log('🔍 [USER] Starting user update...');
+      console.log('   👤 User ID:', id);
+      console.log('   📦 Update Data:', { ...updateUserDto, password: updateUserDto.password ? '[PROVIDED]' : undefined });
+
+      // Check if user exists
+      const existingUser = await this.prisma.user.findFirst({
+        where: { id },
+      });
+
+      if (!existingUser) {
+        console.log('❌ [USER] User not found:', id);
+        throw new NotFoundException('User not found');
+      }
+
+      console.log('✅ [USER] User found:', {
+        id: existingUser.id,
+        username: existingUser.username,
+        email: existingUser.email,
+        phone: existingUser.phone
+      });
+
+      // Protect admin user with username "0001" from critical changes
+      if (existingUser.username === '0001') {
+        // Allow updates but prevent role changes and username changes
+        if (updateUserDto.role && updateUserDto.role !== existingUser.role) {
+          throw new BadRequestException('Cannot change the role of the protected admin user (username: 0001)');
+        }
+        if (updateUserDto.username && updateUserDto.username !== '0001') {
+          throw new BadRequestException('Cannot change the username of the protected admin user (username: 0001)');
+        }
+        console.log('⚠️ [USER] Protected admin user detected, applying restrictions');
+      }
+
+      // Check for conflicts if email is being updated
+      if (updateUserDto.email && updateUserDto.email !== existingUser.email) {
+        const emailExists = await this.prisma.user.findFirst({
+          where: {
+            email: updateUserDto.email,
+            id: { not: id },
+            isActive: true,
+          },
+        });
+
+        if (emailExists) {
+          console.error('❌ [USER] Email conflict:', updateUserDto.email);
+          throw new ConflictException('A user with this email already exists');
+        }
+      }
+
+      // Check for conflicts if phone is being updated
+      if (updateUserDto.phone && updateUserDto.phone !== existingUser.phone) {
+        const phoneExists = await this.prisma.user.findFirst({
+          where: {
+            phone: updateUserDto.phone,
+            id: { not: id },
+            isActive: true,
+          },
+        });
+
+        if (phoneExists) {
+          console.error('❌ [USER] Phone conflict:', updateUserDto.phone);
+          throw new ConflictException('A user with this phone number already exists');
+        }
+      }
+
+      // Check for conflicts if username is being updated
+      if (updateUserDto.username && updateUserDto.username !== existingUser.username) {
+        const usernameExists = await this.prisma.user.findFirst({
+          where: {
+            username: updateUserDto.username,
+            id: { not: id },
+            isActive: true,
+          },
+        });
+
+        if (usernameExists) {
+          console.error('❌ [USER] Username conflict:', updateUserDto.username);
+          throw new ConflictException('A user with this username already exists');
+        }
+      }
+
+      // Hash password if provided
+      let hashedPassword: string | undefined;
+      if (updateUserDto.password) {
+        const saltRounds = 10;
+        hashedPassword = await bcrypt.hash(updateUserDto.password, saltRounds);
+        console.log('✅ [USER] Password hashed for update');
+      }
+
+      // Prepare update data
+      const updateData: any = {};
+      
+      // Only include fields that are provided
+      if (updateUserDto.firstName !== undefined) updateData.firstName = updateUserDto.firstName;
+      if (updateUserDto.lastName !== undefined) updateData.lastName = updateUserDto.lastName;
+      if (updateUserDto.email !== undefined) updateData.email = updateUserDto.email;
+      if (updateUserDto.phone !== undefined) updateData.phone = updateUserDto.phone;
+      if (updateUserDto.username !== undefined) updateData.username = updateUserDto.username;
+      if (updateUserDto.role !== undefined) updateData.role = updateUserDto.role;
+      if (updateUserDto.userType !== undefined) updateData.userType = updateUserDto.userType;
+      if (updateUserDto.isActive !== undefined) updateData.isActive = updateUserDto.isActive;
+      if (updateUserDto.gender !== undefined) updateData.gender = updateUserDto.gender;
+      if (updateUserDto.address !== undefined) updateData.address = updateUserDto.address;
+      
+      // Handle dateOfBirth
+      if (updateUserDto.dateOfBirth !== undefined) {
+        updateData.dateOfBirth = updateUserDto.dateOfBirth 
+          ? new Date(updateUserDto.dateOfBirth) 
+          : null;
+      }
+      
+      // Handle password (only if provided)
+      if (hashedPassword) {
+        updateData.password = hashedPassword;
+      }
+
+      // Always update the updatedAt timestamp
+      updateData.updatedAt = new Date();
+
+      console.log('🔄 [USER] Updating user in database...');
+      const updatedUser = await this.prisma.user.update({
+        where: { id },
+        data: updateData,
+      });
+
+      console.log('✅ [USER] User updated successfully:', {
+        id: updatedUser.id,
+        username: updatedUser.username,
+        email: updatedUser.email,
+        role: updatedUser.role
+      });
+
+      return updatedUser;
+    } catch (error) {
+      console.error('❌ [USER] Error updating user:', error);
+      
+      // Re-throw known exceptions
+      if (error instanceof NotFoundException || 
+          error instanceof ConflictException || 
+          error instanceof BadRequestException) {
+        throw error;
+      }
+      
+      // Handle Prisma unique constraint errors
+      if (error?.code === 'P2002') {
+        const target = error.meta?.target;
+        if (Array.isArray(target)) {
+          if (target.includes('email')) {
+            throw new ConflictException('A user with this email already exists');
+          }
+          if (target.includes('phone')) {
+            throw new ConflictException('A user with this phone number already exists');
+          }
+          if (target.includes('username')) {
+            throw new ConflictException('A user with this username already exists');
+          }
+        }
+        throw new ConflictException('A user with this information already exists');
+      }
+      
+      throw error;
     }
-
-    // Convert dateOfBirth string to Date object if provided
-    const data = {
-      ...updateUserDto,
-      password: hashedPassword || updateUserDto.password, // Use hashed password if provided
-      dateOfBirth: updateUserDto.dateOfBirth ? new Date(updateUserDto.dateOfBirth) : undefined,
-    };
-
-    return this.prisma.user.update({
-      where: { id },
-      data,
-    });
   }
 
   async remove(id: string): Promise<User> {
-    return this.prisma.user.update({
-      where: { id },
-      data: { isActive: false },
-    });
+    try {
+      console.log('🔍 [USER] Starting user deletion (soft delete)...');
+      console.log('   👤 User ID:', id);
+
+      // Check if user exists
+      const existingUser = await this.prisma.user.findFirst({
+        where: { id },
+      });
+
+      if (!existingUser) {
+        console.log('❌ [USER] User not found:', id);
+        throw new NotFoundException('User not found');
+      }
+
+      // Protect admin user with username "0001" from deletion
+      if (existingUser.username === '0001') {
+        console.error('❌ [USER] Attempted to delete protected admin user:', existingUser.username);
+        throw new BadRequestException('Cannot delete the protected admin user (username: 0001). This is a system account.');
+      }
+
+      console.log('✅ [USER] User found, proceeding with soft delete...');
+      const deletedUser = await this.prisma.user.update({
+        where: { id },
+        data: { 
+          isActive: false,
+          updatedAt: new Date(),
+        },
+      });
+
+      console.log('✅ [USER] User soft deleted successfully:', {
+        id: deletedUser.id,
+        username: deletedUser.username
+      });
+
+      return deletedUser;
+    } catch (error) {
+      console.error('❌ [USER] Error deleting user:', error);
+      
+      // Re-throw known exceptions
+      if (error instanceof NotFoundException || error instanceof BadRequestException) {
+        throw error;
+      }
+      
+      throw error;
+    }
   }
 
   async findDoctorsBySpecialty(specialty: string): Promise<User[]> {

@@ -22,6 +22,7 @@ import {
 import { usersApi, User } from '@/services/usersApi';
 // Call service has been removed - imports removed
 import CreateUserModal from '@/components/CreateUserModal';
+import EditUserModal from '@/components/EditUserModal';
 import { SkeletonStats, SkeletonTable } from '@/components/skeletons';
 import { SearchableSelect, SelectOption } from '@/components/ui';
 
@@ -36,6 +37,9 @@ export default function UsersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   // Fetch users from API
   const fetchUsers = async () => {
@@ -55,6 +59,37 @@ export default function UsersPage() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  // Handle edit user
+  const handleEdit = (user: User) => {
+    setSelectedUser(user);
+    setShowEditModal(true);
+  };
+
+  // Handle delete user
+  const handleDelete = async (user: User) => {
+    // Protect admin user with username "0001"
+    if (user.username === '0001') {
+      alert('Cannot delete the admin user with username "0001". This is a protected account.');
+      return;
+    }
+
+    // Confirm deletion
+    if (!confirm(`Are you sure you want to delete user ${user.firstName} ${user.lastName}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setDeletingUserId(user.id);
+      await usersApi.deleteUser(user.id);
+      await fetchUsers(); // Refresh the users list
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete user');
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
@@ -410,13 +445,24 @@ export default function UsersPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end space-x-2">
-                      <button className="text-blue-600 hover:text-blue-900 p-1">
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button className="text-green-600 hover:text-green-900 p-1">
+                      <button 
+                        className="text-green-600 hover:text-green-900 p-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => handleEdit(user)}
+                        disabled={deletingUserId === user.id}
+                        title="Edit user"
+                      >
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button className="text-red-600 hover:text-red-900 p-1">
+                      <button 
+                        className={`p-1 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          user.username === '0001' 
+                            ? 'text-gray-400 cursor-not-allowed' 
+                            : 'text-red-600 hover:text-red-900'
+                        }`}
+                        onClick={() => handleDelete(user)}
+                        disabled={deletingUserId === user.id || user.username === '0001'}
+                        title={user.username === '0001' ? 'Cannot delete protected admin user' : 'Delete user'}
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -497,6 +543,21 @@ export default function UsersPage() {
           fetchUsers(); // Refresh the users list
           setShowCreateModal(false);
         }}
+      />
+
+      {/* Edit User Modal */}
+      <EditUserModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setSelectedUser(null);
+        }}
+        onSuccess={() => {
+          fetchUsers(); // Refresh the users list
+          setShowEditModal(false);
+          setSelectedUser(null);
+        }}
+        user={selectedUser}
       />
     </div>
   );
