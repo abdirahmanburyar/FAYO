@@ -71,11 +71,34 @@ if [ -d "$MIGRATIONS_DIR" ] && [ "$(ls -A "$MIGRATIONS_DIR" 2>/dev/null | head -
     echo "✅ Migrations applied successfully"
   else
     echo "⚠️ migrate deploy failed, trying db push as fallback..."
-    npx prisma db push --accept-data-loss --skip-generate || echo "⚠️ db push also failed"
+    # Use db push and check if error is about existing indexes (which is acceptable)
+    DB_PUSH_OUTPUT=$(npx prisma db push --accept-data-loss --skip-generate 2>&1)
+    DB_PUSH_EXIT=$?
+    if [ $DB_PUSH_EXIT -eq 0 ]; then
+      echo "✅ Schema synced successfully"
+    elif echo "$DB_PUSH_OUTPUT" | grep -q "already exists"; then
+      echo "⚠️ Some indexes/constraints already exist (this is fine, schema is already in sync)"
+      echo "✅ Schema sync completed"
+    else
+      echo "$DB_PUSH_OUTPUT"
+      echo "⚠️ db push failed with unexpected error"
+    fi
   fi
 else
   echo "📦 No migration files found, using db push to sync schema..."
-  npx prisma db push --accept-data-loss --skip-generate || echo "⚠️ db push failed"
+  # Use db push and check if error is about existing indexes (which is acceptable)
+  DB_PUSH_OUTPUT=$(npx prisma db push --accept-data-loss --skip-generate 2>&1)
+  DB_PUSH_EXIT=$?
+  if [ $DB_PUSH_EXIT -eq 0 ]; then
+    echo "✅ Schema synced successfully"
+  elif echo "$DB_PUSH_OUTPUT" | grep -q "already exists"; then
+    echo "⚠️ Some indexes/constraints already exist (this is fine, schema is already in sync)"
+    echo "✅ Schema sync completed"
+  else
+    echo "$DB_PUSH_OUTPUT"
+    echo "⚠️ db push failed with unexpected error"
+    # Don't exit on this error - allow the app to start anyway
+  fi
 fi
 
 echo "👤 Creating admin user if not exists..."

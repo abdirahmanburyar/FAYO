@@ -1,0 +1,63 @@
+# Database Backup Cron Job Examples
+# ==================================
+#
+# To add a cron job, use: crontab -e
+# To view your cron jobs: crontab -l
+# To remove a cron job: crontab -e (then delete the line)
+#
+# Cron format: minute hour day month weekday command
+# ===================================================
+
+# Example 1: Daily at 2:00 AM (Recommended)
+0 2 * * * /usr/bin/python3 /path/to/FAYO/scripts/database_backup.py >> /path/to/FAYO/scripts/backups/backup_cron.log 2>&1
+
+# Example 2: Daily at 3:00 AM
+0 3 * * * /usr/bin/python3 /path/to/FAYO/scripts/database_backup.py >> /path/to/FAYO/scripts/backups/backup_cron.log 2>&1
+
+# Example 3: Every 6 hours
+0 */6 * * * /usr/bin/python3 /path/to/FAYO/scripts/database_backup.py >> /path/to/FAYO/scripts/backups/backup_cron.log 2>&1
+
+# Example 4: Every 12 hours (at 2:00 AM and 2:00 PM)
+0 2,14 * * * /usr/bin/python3 /path/to/FAYO/scripts/database_backup.py >> /path/to/FAYO/scripts/backups/backup_cron.log 2>&1
+
+# Example 5: Every day at midnight
+0 0 * * * /usr/bin/python3 /path/to/FAYO/scripts/database_backup.py >> /path/to/FAYO/scripts/backups/backup_cron.log 2>&1
+
+# Example 6: Every Monday at 2:00 AM (weekly backup)
+0 2 * * 1 /usr/bin/python3 /path/to/FAYO/scripts/database_backup.py >> /path/to/FAYO/scripts/backups/backup_cron.log 2>&1
+
+# Example 7: Using environment variables (if needed)
+0 2 * * * cd /path/to/FAYO/scripts && /usr/bin/python3 database_backup.py >> backups/backup_cron.log 2>&1
+
+# Example 8: With Docker path (if Docker is not in PATH)
+0 2 * * * PATH=/usr/local/bin:/usr/bin:/bin /usr/bin/python3 /path/to/FAYO/scripts/database_backup.py >> /path/to/FAYO/scripts/backups/backup_cron.log 2>&1
+
+# ===================================================
+# IMPORTANT NOTES:
+# ===================================================
+# 1. Replace /path/to/FAYO with your actual project path
+# 2. Replace /usr/bin/python3 with your actual Python 3 path (use: which python3)
+# 3. The script checks if 3 days have passed, so running daily is safe
+# 4. The >> redirects output to log file, 2>&1 includes error messages
+# 5. Make sure the backup script is executable: chmod +x database_backup.py
+# 6. Test the cron job manually first: python3 /path/to/FAYO/scripts/database_backup.py
+#
+# ===================================================
+# Testing Your Cron Job
+# ===================================================
+# 1. Test the script manually:
+#    python3 /path/to/FAYO/scripts/database_backup.py
+#
+# 2. Check cron logs (location varies by system):
+#    - Ubuntu/Debian: /var/log/syslog
+#    - CentOS/RHEL: /var/log/cron
+#    - macOS: Console.app or /var/log/system.log
+#
+# 3. Check your backup log:
+#    tail -f /path/to/FAYO/scripts/backups/backup_cron.log
+#
+# 4. Verify cron is running:
+#    systemctl status cron  (Linux)
+#    service cron status    (older Linux)
+#
+

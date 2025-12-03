@@ -48,6 +48,7 @@ export default function AppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterPaymentStatus, setFilterPaymentStatus] = useState<string>('ALL');
   const [filterConsultationType, setFilterConsultationType] = useState<string>('ALL');
@@ -93,8 +94,14 @@ export default function AppointmentsPage() {
       const filters: any = {};
       if (filterStatus !== 'ALL') filters.status = filterStatus;
       if (filterPaymentStatus !== 'ALL') filters.paymentStatus = filterPaymentStatus;
-      if (startDate) filters.startDate = startDate;
-      if (endDate) filters.endDate = endDate;
+      
+      // Only apply date filter when NOT searching
+      // When searching by name/phone, fetch all appointments to search across all dates
+      if (debouncedSearchTerm.trim() === '') {
+        if (startDate) filters.startDate = startDate;
+        if (endDate) filters.endDate = endDate;
+      }
+      // If searching, don't send date filters - fetch all appointments
 
       const [appointmentsData, statsData] = await Promise.all([
         appointmentsApi.getAppointments(filters),
@@ -308,22 +315,31 @@ export default function AppointmentsPage() {
     }
   };
 
+  // Debounce search term to avoid excessive API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   useEffect(() => {
     fetchAppointments();
     setCurrentPage(1); // Reset to first page when filters change
-  }, [filterStatus, filterPaymentStatus, startDate, endDate]);
+  }, [filterStatus, filterPaymentStatus, startDate, endDate, debouncedSearchTerm]);
 
   // Filter appointments by search term, status, payment status, consultation type, and date range
   const filteredAppointments = appointments.filter(appointment => {
-    // Search filter
-    const searchLower = searchTerm.toLowerCase();
+    // Search filter (use debounced search term for filtering)
+    const searchLower = debouncedSearchTerm.toLowerCase();
     const details = appointmentDetails.get(appointment.id);
     const patientName = details?.patient 
       ? `${details.patient.firstName || ''} ${details.patient.lastName || ''}`.toLowerCase().trim()
       : '';
     const patientPhone = details?.patient?.phone?.toLowerCase() || '';
     
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = debouncedSearchTerm === '' || 
       appointment.patientId.toLowerCase().includes(searchLower) ||
       (appointment.doctorId && appointment.doctorId.toLowerCase().includes(searchLower)) ||
       appointment.reason?.toLowerCase().includes(searchLower) ||
@@ -344,25 +360,30 @@ export default function AppointmentsPage() {
     const matchesConsultationType = filterConsultationType === 'ALL' || 
       appointment.consultationType === filterConsultationType;
 
-    // Date range filter
+    // Date range filter - only apply when NOT searching by name/phone
+    // When searching, show results from all dates
     let matchesDateRange = true;
-    if (startDate || endDate) {
-      const appointmentDate = new Date(appointment.appointmentDate);
-      if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        if (appointmentDate < start) {
-          matchesDateRange = false;
+    if (debouncedSearchTerm.trim() === '') {
+      // Only apply date filter when not searching
+      if (startDate || endDate) {
+        const appointmentDate = new Date(appointment.appointmentDate);
+        if (startDate) {
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          if (appointmentDate < start) {
+            matchesDateRange = false;
+          }
         }
-      }
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        if (appointmentDate > end) {
-          matchesDateRange = false;
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          if (appointmentDate > end) {
+            matchesDateRange = false;
+          }
         }
       }
     }
+    // If searching, matchesDateRange stays true (show all dates)
 
     return matchesSearch && matchesStatus && matchesPaymentStatus && matchesConsultationType && matchesDateRange;
   });
@@ -933,7 +954,7 @@ export default function AppointmentsPage() {
               <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search appointments..."
+                placeholder="Search by patient name or phone (searches all dates)..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -988,30 +1009,6 @@ export default function AppointmentsPage() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Date Range</label>
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                  />
-                </div>
-                <span className="self-center text-gray-400">-</span>
-                <div className="flex-1 relative">
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                  />
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -1026,15 +1023,29 @@ export default function AppointmentsPage() {
               <span className="text-sm text-gray-700 font-medium">
                 Showing <span className="text-gray-900 font-semibold">{startIndex + 1}-{Math.min(endIndex, sortedAppointments.length)}</span> of <span className="text-gray-900 font-semibold">{sortedAppointments.length}</span> appointments
               </span>
-              {(startDate || endDate) && (
+              {startDate && endDate && debouncedSearchTerm.trim() === '' && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-lg border border-blue-200">
                   <Calendar className="w-4 h-4 text-blue-600" />
                   <span className="text-sm text-blue-700 font-medium">
                     {startDate === endDate ? (
-                      formatDate(startDate)
+                      startDate === today ? 'Today' : 
+                      (() => {
+                        const tomorrow = new Date();
+                        tomorrow.setDate(tomorrow.getDate() + 1);
+                        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+                        return startDate === tomorrowStr ? 'Tomorrow' : formatDate(startDate);
+                      })()
                     ) : (
                       <>{formatDate(startDate)} - {formatDate(endDate)}</>
                     )}
+                  </span>
+                </div>
+              )}
+              {debouncedSearchTerm.trim() !== '' && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-lg border border-green-200">
+                  <Search className="w-4 h-4 text-green-600" />
+                  <span className="text-sm text-green-700 font-medium">
+                    Searching all dates
                   </span>
                 </div>
               )}
@@ -1098,20 +1109,6 @@ export default function AppointmentsPage() {
                   }`}
                 >
                   Tomorrow
-                </button>
-                <button
-                  onClick={() => {
-                    setStartDate('');
-                    setEndDate('');
-                    setCurrentPage(1);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    !startDate && !endDate
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-                  }`}
-                >
-                  All Dates
                 </button>
               </div>
             </div>
