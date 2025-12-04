@@ -240,6 +240,32 @@ services:
       retries: 3
       start_period: 40s
 
+  ads-service:
+    build:
+      context: ./services/ads-service
+      dockerfile: Dockerfile
+    container_name: ads-service
+    ports:
+      - '3007:3007'
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/ads_service?schema=ads}
+      HOST: 0.0.0.0
+      PORT: 3007
+      SERVICE_NAME: ads-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fayo-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3007/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   payment-service:
     build:
       context: ./services/payment-service

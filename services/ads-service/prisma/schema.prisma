@@ -1,0 +1,48 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+  binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["ads"]
+}
+
+enum AdStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+  EXPIRED
+}
+
+enum AdType {
+  BANNER
+  CAROUSEL
+  INTERSTITIAL
+}
+
+model Ad {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  imageUrl    String
+  linkUrl     String?
+  type        AdType   @default(BANNER)
+  status      AdStatus @default(PENDING)
+  startDate   DateTime
+  endDate     DateTime
+  priority    Int      @default(0) // Higher priority ads shown first
+  clickCount  Int      @default(0)
+  viewCount   Int      @default(0)
+  createdBy   String?  // User ID who created the ad
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("ads")
+  @@schema("ads")
+  @@index([status, startDate, endDate])
+  @@index([priority, status])
+}
+

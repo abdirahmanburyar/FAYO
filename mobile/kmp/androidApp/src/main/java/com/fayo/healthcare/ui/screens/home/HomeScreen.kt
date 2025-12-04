@@ -1,6 +1,7 @@
 package com.fayo.healthcare.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +39,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.foundation.Image
 import androidx.compose.ui.graphics.painter.Painter
 import com.fayo.healthcare.R
+import com.fayo.healthcare.ui.screens.home.AdsViewModel
+import com.fayo.healthcare.data.models.AdDto
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import android.net.Uri
 
 data class MenuItem(
     val title: String,
@@ -58,6 +67,27 @@ fun HomeScreen(
     val callInvitation = uiState.callInvitation
     val activeSessions = uiState.activeSessions
     
+    // Ads ViewModel
+    val adsViewModel: AdsViewModel = org.koin.androidx.compose.koinViewModel()
+    val adsState by adsViewModel.uiState.collectAsState()
+    
+    // Load user profile for drawer
+    var userProfile by remember { mutableStateOf<com.fayo.healthcare.data.models.UserProfileDto?>(null) }
+    val apiClient: com.fayo.healthcare.data.api.ApiClient = org.koin.compose.koinInject()
+    val scope = rememberCoroutineScope()
+    
+    LaunchedEffect(Unit) {
+        scope.launch {
+            apiClient.getUserProfile()
+                .onSuccess { profile ->
+                    userProfile = profile
+                }
+                .onFailure {
+                    // Keep profile as null, will show default
+                }
+        }
+    }
+    
     // Show call invitation dialog when invitation is received
     callInvitation?.let { invitation ->
         if (invitation.invitation.credentials != null) {
@@ -76,7 +106,6 @@ fun HomeScreen(
         }
     }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
     
     val menuItems = listOf(
         MenuItem("Home", Icons.Default.Home) { scope.launch { drawerState.close() } },
@@ -138,12 +167,10 @@ fun HomeScreen(
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "Welcome",
-                            color = Color.White.copy(alpha = 0.8f),
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            text = "FAYO Healthcare",
+                            text = userProfile?.fullName 
+                                ?: "${userProfile?.firstName ?: ""} ${userProfile?.lastName ?: ""}".trim().takeIf { it.isNotBlank() }
+                                ?: userProfile?.phone
+                                ?: "User",
                             color = Color.White,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
@@ -247,7 +274,7 @@ fun HomeScreen(
                             }
                         }
 
-                        // Special Offers Section (Inside Blue Header)
+                        // Ads Carousel Section (Inside Blue Header)
                         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                             Text(
                                 text = "Special Offers",
@@ -257,12 +284,47 @@ fun HomeScreen(
                                 modifier = Modifier.padding(horizontal = 20.dp)
                             )
                             
-                            androidx.compose.foundation.lazy.LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                contentPadding = PaddingValues(horizontal = 20.dp)
-                            ) {
-                                items(3) { index ->
-                                    AdBannerCard(index)
+                            val context = LocalContext.current
+                            
+                            if (adsState.isLoading && adsState.ads.isEmpty()) {
+                                // Loading skeleton
+                                androidx.compose.foundation.lazy.LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    contentPadding = PaddingValues(horizontal = 20.dp)
+                                ) {
+                                    items(3) { index ->
+                                        AdBannerCardSkeleton()
+                                    }
+                                }
+                            } else if (adsState.ads.isEmpty()) {
+                                // No ads available - show placeholder or hide section
+                                Spacer(modifier = Modifier.height(8.dp))
+                            } else {
+                                // Real ads carousel
+                                androidx.compose.foundation.lazy.LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    contentPadding = PaddingValues(horizontal = 20.dp)
+                                ) {
+                                    items(adsState.ads.size) { index ->
+                                        val ad = adsState.ads[index]
+                                        AdCard(
+                                            ad = ad,
+                                            onAdClick = {
+                                                adsViewModel.trackAdClick(ad.id)
+                                                ad.linkUrl?.let { url ->
+                                                    try {
+                                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                                        context.startActivity(intent)
+                                                    } catch (e: Exception) {
+                                                        println("❌ Error opening ad link: ${e.message}")
+                                                    }
+                                                }
+                                            },
+                                            onAdViewed = {
+                                                adsViewModel.trackAdView(ad.id)
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -468,6 +530,104 @@ fun AdBannerCard(index: Int) {
                     .alpha(0.1f)
                     .background(Color.White, shape = androidx.compose.foundation.shape.CircleShape)
             )
+        }
+    }
+}
+
+@Composable
+fun AdCard(
+    ad: AdDto,
+    onAdClick: () -> Unit,
+    onAdViewed: () -> Unit
+) {
+    val context = LocalContext.current
+    
+    // Track view when card is first displayed
+    LaunchedEffect(ad.id) {
+        onAdViewed()
+    }
+    
+    Card(
+        modifier = Modifier
+            .width(280.dp)
+            .height(150.dp)
+            .clickable { onAdClick() },
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Ad Image
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(ad.imageUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = ad.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            
+            // Gradient overlay for text readability
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.6f)
+                            ),
+                            startY = 0f,
+                            endY = Float.POSITIVE_INFINITY
+                        )
+                    )
+            )
+            
+            // Content overlay
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = ad.title,
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 24.sp
+                )
+                ad.description?.takeIf { it.isNotBlank() }?.let { description ->
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = description,
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 2
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AdBannerCardSkeleton() {
+    Card(
+        modifier = Modifier
+            .width(280.dp)
+            .height(150.dp),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Gray200)
+        ) {
+            // Skeleton shimmer effect would go here
+            // For now, just show a gray box
         }
     }
 }

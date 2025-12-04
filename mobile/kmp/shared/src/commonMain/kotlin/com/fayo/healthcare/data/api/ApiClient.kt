@@ -34,6 +34,7 @@ class ApiClient(
     private val appointmentBaseUrl: String,
     private val doctorBaseUrl: String,
     private val paymentBaseUrl: String,
+    private val adsBaseUrl: String,
     private val tokenStorage: TokenStorage
 ) {
     private val client = createHttpClient()
@@ -906,6 +907,207 @@ class ApiClient(
             println("❌ [API] Error getting USSD info: ${e.message}")
             e.printStackTrace()
             Result.failure(e)
+        }
+    }
+
+    // User Profile APIs
+    suspend fun getUserProfile(): Result<UserProfileDto> {
+        return try {
+            val url = "$userBaseUrl/users/profile/me"
+            println("📡 [API] GET $url")
+            
+            val response = client.get(url) {
+                addAuthHeader()
+            }
+            
+            val statusCode = response.status.value
+            println("📥 [API] Response status: $statusCode")
+            
+            if (statusCode in 200..299) {
+                val profile = response.body<UserProfileDto>()
+                println("✅ [API] Got user profile: ${profile.id}")
+                Result.success(profile)
+            } else {
+                val errorText = response.bodyAsText()
+                println("❌ [API] Error response: $errorText")
+                Result.failure(Exception("HTTP $statusCode: $errorText"))
+            }
+        } catch (e: Exception) {
+            println("❌ [API] Error getting user profile: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateUserProfile(request: UpdateProfileRequest): Result<UserProfileDto> {
+        return try {
+            val url = "$userBaseUrl/users/profile/me"
+            println("📡 [API] PATCH $url")
+            println("📤 [API] Request: ${json.encodeToString(request)}")
+            
+            val response = client.patch(url) {
+                contentType(ContentType.Application.Json)
+                addAuthHeader()
+                setBody(request)
+            }
+            
+            val statusCode = response.status.value
+            println("📥 [API] Response status: $statusCode")
+            
+            if (statusCode in 200..299) {
+                val profile = response.body<UserProfileDto>()
+                println("✅ [API] Profile updated: ${profile.id}")
+                Result.success(profile)
+            } else {
+                val errorText = response.bodyAsText()
+                println("❌ [API] Error response: $errorText")
+                Result.failure(Exception("HTTP $statusCode: $errorText"))
+            }
+        } catch (e: Exception) {
+            println("❌ [API] Error updating user profile: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    // Ads APIs
+    suspend fun getActiveAds(): Result<List<AdDto>> {
+        return try {
+            val url = "$adsBaseUrl/ads/active"
+            println("📡 [API] GET $url")
+            
+            val response = client.get(url) {
+                addAuthHeader()
+            }
+            
+            val statusCode = response.status.value
+            println("📥 [API] Response status: $statusCode")
+            
+            if (statusCode in 200..299) {
+                val ads = response.body<List<AdDto>>()
+                println("✅ [API] Got ${ads.size} active ads")
+                Result.success(ads)
+            } else {
+                val errorText = response.bodyAsText()
+                println("❌ [API] Error response: $errorText")
+                Result.failure(Exception("HTTP $statusCode: $errorText"))
+            }
+        } catch (e: Exception) {
+            println("❌ [API] Error getting active ads: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    suspend fun incrementAdView(adId: String): Result<Unit> {
+        return try {
+            val url = "$adsBaseUrl/ads/$adId/view"
+            println("📡 [API] POST $url")
+            
+            val response = client.post(url) {
+                addAuthHeader()
+            }
+            
+            val statusCode = response.status.value
+            println("📥 [API] Response status: $statusCode")
+            
+            if (statusCode in 200..299) {
+                println("✅ [API] Ad view incremented")
+                Result.success(Unit)
+            } else {
+                val errorText = response.bodyAsText()
+                println("❌ [API] Error response: $errorText")
+                Result.failure(Exception("HTTP $statusCode: $errorText"))
+            }
+        } catch (e: Exception) {
+            println("❌ [API] Error incrementing ad view: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    suspend fun incrementAdClick(adId: String): Result<Unit> {
+        return try {
+            val url = "$adsBaseUrl/ads/$adId/click"
+            println("📡 [API] POST $url")
+            
+            val response = client.post(url) {
+                addAuthHeader()
+            }
+            
+            val statusCode = response.status.value
+            println("📥 [API] Response status: $statusCode")
+            
+            if (statusCode in 200..299) {
+                println("✅ [API] Ad click incremented")
+                Result.success(Unit)
+            } else {
+                val errorText = response.bodyAsText()
+                println("❌ [API] Error response: $errorText")
+                Result.failure(Exception("HTTP $statusCode: $errorText"))
+            }
+        } catch (e: Exception) {
+            println("❌ [API] Error incrementing ad click: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    // Real-time Ads Updates via WebSocket
+    fun observeAdsUpdates(): Flow<AdUpdateEvent> = flow {
+        // adsBaseUrl is http://host:3007/api/v1, WebSocket is at /ws/ads (no /api/v1 prefix)
+        val baseUrl = adsBaseUrl.replace("/api/v1", "")
+        val wsUrl = baseUrl.replace("http", "ws").replace("https", "wss") + "/ws/ads"
+        println("🔌 [AdsWebSocket] Connecting to: $wsUrl")
+        
+        while (true) {
+            try {
+                client.webSocket(wsUrl) {
+                    println("✅ [AdsWebSocket] Connected successfully")
+                    
+                    // Send join message
+                    try {
+                        send(Frame.Text("""{"type": "join_ads_updates"}"""))
+                        println("📤 [AdsWebSocket] Sent join message")
+                    } catch (e: Exception) {
+                        println("❌ [AdsWebSocket] Error sending join message: ${e.message}")
+                    }
+                    
+                    // Keep-alive ping loop
+                    launch {
+                        while (true) {
+                            delay(30000) // 30 seconds
+                            try {
+                                send(Frame.Text("""{"type": "ping"}"""))
+                                println("📤 [AdsWebSocket] Sent ping")
+                            } catch (e: Exception) {
+                                println("❌ [AdsWebSocket] Error sending ping: ${e.message}")
+                                break
+                            }
+                        }
+                    }
+                    
+                    for (frame in incoming) {
+                        if (frame is Frame.Text) {
+                            val text = frame.readText()
+                            println("📥 [AdsWebSocket] Received: $text")
+                            try {
+                                val event = json.decodeFromString<AdUpdateEvent>(text)
+                                println("✅ [AdsWebSocket] Parsed event type: ${event.type}")
+                                emit(event)
+                            } catch (e: Exception) {
+                                println("❌ [AdsWebSocket] Error parsing message: ${e.message}")
+                                e.printStackTrace()
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                println("❌ [AdsWebSocket] Connection error: ${e.message}")
+                e.printStackTrace()
+                delay(5000) // Wait 5 seconds before reconnecting
+                println("🔄 [AdsWebSocket] Attempting to reconnect...")
+            }
         }
     }
 }

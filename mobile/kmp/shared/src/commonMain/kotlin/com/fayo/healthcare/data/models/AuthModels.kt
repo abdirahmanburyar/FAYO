@@ -46,3 +46,34 @@ data class UserDto(
     val userType: String? = null
 )
 
+@Serializable
+data class UserProfileDto(
+    val id: String,
+    val username: String? = null,
+    val phone: String,
+    val firstName: String? = null,
+    val lastName: String? = null,
+    val email: String? = null,
+    val role: String,
+    val userType: String? = null,
+    val dateOfBirth: String? = null,
+    val gender: String? = null, // MALE, FEMALE, OTHER
+    val address: String? = null,
+    val fullName: String? = null,
+    @SerialName("createdAt")
+    val createdAt: String? = null,
+    @SerialName("updatedAt")
+    val updatedAt: String? = null
+)
+
+@Serializable
+data class UpdateProfileRequest(
+    val firstName: String? = null,
+    val lastName: String? = null,
+    val phone: String? = null,
+    val email: String? = null,
+    val address: String? = null,
+    val dateOfBirth: String? = null,
+    val gender: String? = null // MALE, FEMALE, OTHER
+)
+
