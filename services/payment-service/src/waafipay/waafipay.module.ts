@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, Logger, OnModuleInit } from '@nestjs/common';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { WaafipayService } from './waafipay.service';
 import { WaafipayController } from './waafipay.controller';
 import { WaafipayGateway } from './waafipay.gateway';
@@ -9,7 +10,12 @@ import { DatabaseModule } from '../common/database/database.module';
 import { RabbitMQModule } from '../common/rabbitmq/rabbitmq.module';
 
 @Module({
-  imports: [PaymentsModule, DatabaseModule, RabbitMQModule],
+  imports: [
+    PaymentsModule,
+    DatabaseModule,
+    RabbitMQModule,
+    ThrottlerModule, // Required for ThrottlerGuard in controller
+  ],
   controllers: [WaafipayController],
   providers: [
     WaafipayService,
@@ -19,5 +25,11 @@ import { RabbitMQModule } from '../common/rabbitmq/rabbitmq.module';
   ],
   exports: [WaafipayService, QrCodeService],
 })
-export class WaafipayModule {}
+export class WaafipayModule implements OnModuleInit {
+  private readonly logger = new Logger(WaafipayModule.name);
+
+  onModuleInit() {
+    this.logger.log('✅ WaafipayModule initialized');
+  }
+}
 
