@@ -13,7 +13,10 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
   private isShuttingDown = false;
 
   async onModuleInit() {
-    await this.connect();
+    // Connect asynchronously without blocking module initialization
+    this.connect().catch((error) => {
+      this.logger.warn('⚠️ RabbitMQ connection failed during module init, will retry:', error.message);
+    });
   }
 
   async onModuleDestroy() {

@@ -18,8 +18,9 @@ import { WaafipayCallbackDto } from './dto/waafipay-callback.dto';
 import { RabbitMQService } from '../common/rabbitmq/rabbitmq.service';
 import { WaafipayGateway } from './waafipay.gateway';
 import { PrismaService } from '../common/database/prisma.service';
+import { PaymentMethod } from '../payments/dto/create-payment.dto';
 
-@Controller('waafipay')
+@Controller('payments/waafipay')
 @UseGuards(ThrottlerGuard)
 export class WaafipayController {
   constructor(
@@ -90,7 +91,7 @@ export class WaafipayController {
       appointmentId: dto.appointmentId,
       amount: dto.amount,
       currency: dto.currency || 'USD',
-      paymentMethod: 'MOBILE_MONEY',
+      paymentMethod: PaymentMethod.MOBILE_MONEY,
       transactionId: waafipayResponse.transactionId,
       notes: `Waafipay payment - ${waafipayResponse.referenceId}`,
       metadata: {
