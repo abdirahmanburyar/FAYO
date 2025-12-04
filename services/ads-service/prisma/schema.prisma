@@ -15,12 +15,16 @@ enum AdStatus {
   INACTIVE
   PENDING
   EXPIRED
+
+  @@schema("ads")
 }
 
 enum AdType {
   BANNER
   CAROUSEL
   INTERSTITIAL
+
+  @@schema("ads")
 }
 
 model Ad {
