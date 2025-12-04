@@ -121,7 +121,7 @@ Body: {
 
 ### Get Payment Status
 ```
-GET /api/v1/waafipay/status/{transactionId}
+GET /api/v1/waafipay/status/{paymentId}
 ```
 
 ## Testing

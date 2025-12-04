@@ -20,7 +20,7 @@ import { WaafipayGateway } from './waafipay.gateway';
 import { PrismaService } from '../common/database/prisma.service';
 import { PaymentMethod } from '../payments/dto/create-payment.dto';
 
-@Controller('payments/waafipay')
+@Controller('waafipay')
 @UseGuards(ThrottlerGuard)
 export class WaafipayController {
   constructor(
@@ -65,7 +65,7 @@ export class WaafipayController {
   @HttpCode(HttpStatus.OK)
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   async initiatePayment(@Body() dto: InitiatePaymentDto) {
-    // Validate QR code content
+    // Validate account/phone if provided (otherwise defaults to 529988 in service)
     const accountNumber = dto.accountNumber;
     const phoneNumber = dto.phoneNumber;
     
@@ -82,6 +82,8 @@ export class WaafipayController {
         throw new Error(`Invalid phone number: ${validation.error}`);
       }
     }
+    
+    // If neither provided, service will use default account 529988
 
     // Initiate payment with Waafipay
     const waafipayResponse = await this.waafipayService.initiatePayment(dto);
@@ -234,6 +236,21 @@ export class WaafipayController {
     }
 
     return { message: 'Webhook processed', received: true };
+  }
+
+  /**
+   * Get USSD code information for Waafipay
+   */
+  @Get('ussd-info')
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  async getUssdInfo() {
+    // Return USSD code and account information
+    return {
+      accountNumber: '529988',
+      ussdCode: '*252#',
+      instructions: 'Dial *252# and follow the prompts to send money to account 529988',
+      message: 'Use USSD code *252# to complete your payment',
+    };
   }
 
   /**

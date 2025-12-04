@@ -2,6 +2,7 @@ import { IsString, IsInt, IsEnum, IsOptional, IsNotEmpty, Min, Matches } from 'c
 
 export enum WaafipayPaymentMethod {
   MWALLET_ACCOUNT = 'MWALLET_ACCOUNT',
+  MWALLET_MSISDN = 'MWALLET_MSISDN',
   CARD = 'CARD',
   BANK_ACCOUNT = 'BANK_ACCOUNT',
 }
@@ -19,7 +20,7 @@ export class InitiatePaymentDto {
   @IsOptional()
   currency?: string; // Default: USD
 
-  // Either accountNumber OR phoneNumber (from QR code)
+  // Optional: accountNumber or phoneNumber (defaults to company account 529988 if not provided)
   @IsString()
   @IsOptional()
   @Matches(/^\d{6}$/, { message: 'Account number must be exactly 6 digits' })

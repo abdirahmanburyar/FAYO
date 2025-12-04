@@ -60,3 +60,18 @@ data class PaymentStatusData(
     val status: String
 )
 
+@Serializable
+enum class PaymentMethodType {
+    WAAFIPAY,
+    TPLUSH,
+    EDAHAB
+}
+
+@Serializable
+data class UssdInfoResponse(
+    val accountNumber: String,
+    val ussdCode: String,
+    val instructions: String,
+    val message: String
+)
+

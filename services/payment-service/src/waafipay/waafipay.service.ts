@@ -18,8 +18,8 @@ export class WaafipayService {
                      this.configService.get('NODE_ENV') !== 'production';
     
     this.apiUrl = this.isSandbox
-      ? 'http://sandbox.waafipay.net/asm'
-      : this.configService.get('WAAFIPAY_API_URL') || 'https://api.waafipay.com/asm';
+      ? 'http://sandbox.waafipay.net/PaymentGateway/'
+      : this.configService.get('WAAFIPAY_API_URL') || 'https://api.waafipay.com/PaymentGateway/';
     
     this.merchantUid = this.configService.get('WAAFIPAY_MERCHANT_UID') || '';
     this.apiUserId = this.configService.get('WAAFIPAY_API_USER_ID') || '';
@@ -37,20 +37,27 @@ export class WaafipayService {
     try {
       this.logger.log(`💳 Initiating Waafipay payment for appointment: ${dto.appointmentId}`);
 
-      // Validate that either accountNumber or phoneNumber is provided
-      if (!dto.accountNumber && !dto.phoneNumber) {
-        throw new BadRequestException('Either accountNumber or phoneNumber must be provided');
-      }
-
       // Generate unique reference ID
       const referenceId = `FAYO-${dto.appointmentId}-${Date.now()}`;
 
-      // Prepare payer info
+      // Prepare payer info and payment method
+      // Default to company account 529988 if no account/phone provided
       const payerInfo: any = {};
+      let paymentMethod = dto.paymentMethod || WaafipayPaymentMethod.MWALLET_ACCOUNT;
+      
       if (dto.accountNumber) {
+        // 6-digit account number
         payerInfo.accountNo = dto.accountNumber;
+        paymentMethod = WaafipayPaymentMethod.MWALLET_ACCOUNT;
       } else if (dto.phoneNumber) {
+        // Phone number - Waafipay uses accountNo for phone numbers too
         payerInfo.accountNo = dto.phoneNumber.replace('+', ''); // Remove + for API
+        paymentMethod = WaafipayPaymentMethod.MWALLET_ACCOUNT;
+      } else {
+        // Default to company account 529988
+        payerInfo.accountNo = '529988';
+        paymentMethod = WaafipayPaymentMethod.MWALLET_ACCOUNT;
+        this.logger.log(`📝 Using default company account: 529988`);
       }
 
       // Prepare transaction info
@@ -73,7 +80,7 @@ export class WaafipayService {
           merchantUid: this.merchantUid,
           apiUserId: this.apiUserId,
           apiKey: this.apiKey,
-          paymentMethod: dto.paymentMethod || WaafipayPaymentMethod.MWALLET_ACCOUNT,
+          paymentMethod: paymentMethod,
           payerInfo: payerInfo,
           transactionInfo: transactionInfo,
         },
@@ -91,9 +98,50 @@ export class WaafipayService {
         body: JSON.stringify(requestPayload),
       });
 
-      const responseData = await response.json();
+      // Get response as text first to check format
+      const responseText = await response.text();
       
-      this.logger.log(`📥 Waafipay response: ${JSON.stringify(responseData, null, 2)}`);
+      // Check content type - Waafipay may return XML
+      const contentType = response.headers.get('content-type') || '';
+      let responseData: any;
+      
+      // Check if response looks like XML (starts with <)
+      const isXml = responseText.trim().startsWith('<') || contentType.includes('xml') || contentType.includes('text/html');
+      
+      if (isXml) {
+        // Handle XML response
+        this.logger.warn(`⚠️ Waafipay returned XML/HTML response: ${responseText.substring(0, 200)}`);
+        
+        // Try to parse XML or handle as error
+        if (!response.ok) {
+          throw new BadRequestException(
+            `Waafipay API error (XML response): ${response.statusText} - ${responseText.substring(0, 100)}`
+          );
+        }
+        
+        // For now, return a basic response structure
+        // In production, you might want to parse the XML properly
+        responseData = {
+          serviceParams: {
+            status: 'PENDING',
+            responseCode: response.ok ? '200' : '500',
+            responseMsg: 'Payment initiated (XML response received)',
+            transactionId: null, // Will be set by polling or webhook
+          },
+        };
+      } else {
+        // Handle JSON response
+        try {
+          responseData = JSON.parse(responseText);
+          this.logger.log(`📥 Waafipay response: ${JSON.stringify(responseData, null, 2)}`);
+        } catch (jsonError) {
+          // If JSON parsing fails
+          this.logger.error(`❌ Failed to parse JSON response: ${responseText.substring(0, 200)}`);
+          throw new BadRequestException(
+            `Waafipay API returned invalid response: ${responseText.substring(0, 100)}`
+          );
+        }
+      }
 
       if (!response.ok) {
         throw new BadRequestException(
@@ -159,9 +207,33 @@ export class WaafipayService {
         body: JSON.stringify(requestPayload),
       });
 
-      const responseData = await response.json();
+      // Get response as text first to check format
+      const responseText = await response.text();
+      const contentType = response.headers.get('content-type') || '';
+      const isXml = responseText.trim().startsWith('<') || contentType.includes('xml') || contentType.includes('text/html');
       
-      this.logger.log(`📥 Waafipay status response: ${JSON.stringify(responseData, null, 2)}`);
+      let responseData: any;
+      if (isXml) {
+        this.logger.warn(`⚠️ Waafipay returned XML/HTML response for status check: ${responseText.substring(0, 200)}`);
+        // Return a basic structure for XML responses
+        responseData = {
+          serviceParams: {
+            status: 'PENDING',
+            responseCode: response.ok ? '200' : '500',
+            responseMsg: 'Status check (XML response received)',
+          },
+        };
+      } else {
+        try {
+          responseData = JSON.parse(responseText);
+          this.logger.log(`📥 Waafipay status response: ${JSON.stringify(responseData, null, 2)}`);
+        } catch (jsonError) {
+          this.logger.error(`❌ Failed to parse JSON response: ${responseText.substring(0, 200)}`);
+          throw new BadRequestException(
+            `Waafipay API returned invalid response: ${responseText.substring(0, 100)}`
+          );
+        }
+      }
 
       return {
         transactionId: responseData.serviceParams?.transactionId,

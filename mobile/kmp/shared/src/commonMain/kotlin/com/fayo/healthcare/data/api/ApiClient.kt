@@ -880,6 +880,34 @@ class ApiClient(
             Result.failure(e)
         }
     }
+
+    suspend fun getUssdInfo(): Result<UssdInfoResponse> {
+        return try {
+            val url = "$paymentBaseUrl/waafipay/ussd-info"
+            println("📡 [API] GET $url")
+            
+            val response = client.get(url) {
+                addAuthHeader()
+            }
+            
+            val statusCode = response.status.value
+            println("📥 [API] Response status: $statusCode")
+            
+            if (statusCode in 200..299) {
+                val ussdInfo = response.body<UssdInfoResponse>()
+                println("✅ [API] Got USSD info: ${ussdInfo.ussdCode}")
+                Result.success(ussdInfo)
+            } else {
+                val errorText = response.bodyAsText()
+                println("❌ [API] Error response: $errorText")
+                Result.failure(Exception("HTTP $statusCode: $errorText"))
+            }
+        } catch (e: Exception) {
+            println("❌ [API] Error getting USSD info: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
 }
 
 interface TokenStorage {

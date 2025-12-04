@@ -36,7 +36,6 @@ sealed class Screen(val route: String) {
     object Appointments : Screen("appointments")
     object Profile : Screen("profile")
     object Payment : Screen("payment")
-    object QrScanner : Screen("qr_scanner")
     data class Call(val credentials: CallCredentialsDto) : Screen("call")
 }
 
@@ -263,9 +262,6 @@ fun FayoNavigation(navController: NavHostController = androidx.navigation.compos
             }
             
             if (appointment != null) {
-                // Get scanned QR code from saved state (if coming back from scanner)
-                val scannedQrCode = backStackEntry.savedStateHandle.get<String>("scannedQrCode")
-                
                 com.fayo.healthcare.ui.screens.payment.PaymentScreen(
                     appointment = appointment,
                     onNavigateBack = {
@@ -274,32 +270,12 @@ fun FayoNavigation(navController: NavHostController = androidx.navigation.compos
                     onPaymentSuccess = {
                         // Navigate back to appointments and refresh
                         navController.popBackStack()
-                    },
-                    onNavigateToQrScanner = {
-                        // Pass appointment ID to QR scanner
-                        navController.navigate("${Screen.QrScanner.route}/${appointment.id}")
-                    },
-                    scannedQrCodeFromNav = scannedQrCode
+                    }
                 )
             } else {
                 // Error state
                 androidx.compose.material3.Text("Error: Failed to load appointment")
             }
-        }
-        
-        composable("${Screen.QrScanner.route}/{appointmentId}") { backStackEntry ->
-            val appointmentId = backStackEntry.arguments?.getString("appointmentId") ?: ""
-            com.fayo.healthcare.ui.screens.payment.QrCodeScannerScreen(
-                appointmentId = appointmentId,
-                onScanComplete = { qrCode ->
-                    // Save QR code to previous screen's saved state and navigate back
-                    navController.previousBackStackEntry?.savedStateHandle?.set("scannedQrCode", qrCode)
-                    navController.popBackStack()
-                },
-                onNavigateBack = {
-                    navController.popBackStack()
-                }
-            )
         }
         
         composable(Screen.Profile.route) {

@@ -2,6 +2,8 @@ package com.fayo.healthcare.ui.screens.payment
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +25,8 @@ import com.fayo.healthcare.data.api.ApiClient
 import com.fayo.healthcare.data.models.AppointmentDto
 import com.fayo.healthcare.data.models.InitiatePaymentRequest
 import com.fayo.healthcare.data.models.PaymentStatusResponse
+import com.fayo.healthcare.data.models.PaymentMethodType
+import com.fayo.healthcare.data.models.UssdInfoResponse
 import com.fayo.healthcare.ui.theme.*
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
@@ -35,16 +39,16 @@ fun PaymentScreen(
     appointment: AppointmentDto,
     onNavigateBack: () -> Unit,
     onPaymentSuccess: () -> Unit,
-    onNavigateToQrScanner: () -> Unit = {},
-    scannedQrCodeFromNav: String? = null, // QR code passed from navigation
     apiClient: ApiClient = koinInject()
 ) {
-    var scannedQrCode by remember(scannedQrCodeFromNav) { mutableStateOf<String?>(scannedQrCodeFromNav) }
+    var selectedPaymentMethod by remember { mutableStateOf<PaymentMethodType?>(null) }
     var paymentStatus by remember { mutableStateOf<String?>(null) }
     var paymentId by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var isProcessing by remember { mutableStateOf(false) }
+    var ussdInfo by remember { mutableStateOf<UssdInfoResponse?>(null) }
+    var showUssdInfo by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     // Format amount
@@ -52,47 +56,57 @@ fun PaymentScreen(
         NumberFormat.getCurrencyInstance(Locale.US).format(appointment.consultationFee / 100.0)
     }
 
-    // Handle QR code scan
-    LaunchedEffect(scannedQrCode) {
-        scannedQrCode?.let { qrCode ->
-            // Validate QR code format (6 digits or phone number)
-            val isValidAccount = qrCode.matches(Regex("^\\d{6}$"))
-            val isValidPhone = qrCode.matches(Regex("^\\+252\\d{9}$"))
-            
-            if (!isValidAccount && !isValidPhone) {
-                error = "Invalid QR code format. Expected 6-digit account number or phone number (+252XXXXXXXXX)"
-                scannedQrCode = null
-                return@LaunchedEffect
-            }
-
-            // Initiate payment
-            isLoading = true
-            error = null
-            isProcessing = true
-
+    // Load USSD info when Waafipay is selected
+    LaunchedEffect(selectedPaymentMethod) {
+        if (selectedPaymentMethod == PaymentMethodType.WAAFIPAY && ussdInfo == null) {
             scope.launch {
-                val request = InitiatePaymentRequest(
-                    appointmentId = appointment.id,
-                    amount = appointment.consultationFee,
-                    currency = "USD",
-                    accountNumber = if (isValidAccount) qrCode else null,
-                    phoneNumber = if (isValidPhone) qrCode else null,
-                    description = "Payment for appointment ${appointment.appointmentNumber}"
-                )
-
-                apiClient.initiatePayment(request)
-                    .onSuccess { response ->
-                        paymentId = response.paymentId
-                        paymentStatus = response.status
-                        isLoading = false
-                        // Payment initiated, now polling will check status
+                apiClient.getUssdInfo()
+                    .onSuccess { info ->
+                        ussdInfo = info
+                        showUssdInfo = true
                     }
                     .onFailure { e ->
-                        error = e.message ?: "Failed to initiate payment"
-                        isLoading = false
-                        isProcessing = false
+                        error = "Failed to load payment information: ${e.message}"
                     }
             }
+        }
+    }
+
+    // Initiate payment when user confirms
+    fun initiatePayment() {
+        if (selectedPaymentMethod == null) {
+            error = "Please select a payment method"
+            return
+        }
+
+        isLoading = true
+        error = null
+        isProcessing = true
+
+        scope.launch {
+            // For now, only Waafipay is implemented
+            // Account 529988 will be used by default (no need to send it)
+            val request = InitiatePaymentRequest(
+                appointmentId = appointment.id,
+                amount = appointment.consultationFee,
+                currency = "USD",
+                accountNumber = null, // Backend will use default 529988
+                phoneNumber = null,
+                description = "Payment for appointment ${appointment.appointmentNumber}"
+            )
+
+            apiClient.initiatePayment(request)
+                .onSuccess { response ->
+                    paymentId = response.paymentId
+                    paymentStatus = response.status
+                    isLoading = false
+                    // Payment initiated, now polling will check status
+                }
+                .onFailure { e ->
+                    error = e.message ?: "Failed to initiate payment"
+                    isLoading = false
+                    isProcessing = false
+                }
         }
     }
 
@@ -220,7 +234,8 @@ fun PaymentScreen(
                 }
                 paymentStatus == "PENDING" || isProcessing -> {
                     Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(48.dp),
@@ -240,6 +255,43 @@ fun PaymentScreen(
                             color = Gray600,
                             textAlign = TextAlign.Center
                         )
+                        // Show USSD info if available
+                        ussdInfo?.let { info ->
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = InfoBlue.copy(alpha = 0.1f)
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        "USSD Code: ${info.ussdCode}",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = InfoBlue
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        "Account: ${info.accountNumber}",
+                                        fontSize = 16.sp,
+                                        color = Gray700
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        info.instructions,
+                                        fontSize = 14.sp,
+                                        color = Gray600,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
                 paymentStatus == "PAID" || paymentStatus == "COMPLETED" -> {
@@ -289,24 +341,126 @@ fun PaymentScreen(
                         }
                     }
                 }
-                else -> {
-                    // Show scan button
-                    Button(
-                        onClick = { onNavigateToQrScanner() },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = SkyBlue600
-                        ),
-                        shape = RoundedCornerShape(12.dp)
+                showUssdInfo && selectedPaymentMethod == PaymentMethodType.WAAFIPAY -> {
+                    // Show USSD info and payment button
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(Icons.Default.QrCodeScanner, contentDescription = null)
-                        Spacer(modifier = Modifier.width(12.dp))
+                        ussdInfo?.let { info ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = InfoBlue.copy(alpha = 0.1f)
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        Icons.Default.Phone,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(48.dp),
+                                        tint = InfoBlue
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        "USSD Code",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Gray900
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        info.ussdCode,
+                                        fontSize = 32.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = InfoBlue,
+                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        "Account Number: ${info.accountNumber}",
+                                        fontSize = 16.sp,
+                                        color = Gray700
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        info.instructions,
+                                        fontSize = 14.sp,
+                                        color = Gray600,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = { initiatePayment() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = SkyBlue600
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                "Confirm Payment",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+                else -> {
+                    // Show payment method selection
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Text(
-                            "Scan QR Code to Pay",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
+                            "Select Payment Method",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Gray900
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        // Waafipay option (available by default)
+                        PaymentMethodCard(
+                            title = "Waafipay",
+                            description = "Pay using Waafipay mobile money",
+                            icon = Icons.Default.AccountBalanceWallet,
+                            isSelected = selectedPaymentMethod == PaymentMethodType.WAAFIPAY,
+                            onClick = { selectedPaymentMethod = PaymentMethodType.WAAFIPAY }
+                        )
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        // Tplush option (coming soon)
+                        PaymentMethodCard(
+                            title = "Tplush",
+                            description = "Coming soon",
+                            icon = Icons.Default.Payment,
+                            isSelected = false,
+                            onClick = { },
+                            enabled = false
+                        )
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        // eDahab option (coming soon)
+                        PaymentMethodCard(
+                            title = "eDahab",
+                            description = "Coming soon",
+                            icon = Icons.Default.CreditCard,
+                            isSelected = false,
+                            onClick = { },
+                            enabled = false
                         )
                     }
                 }
@@ -315,3 +469,74 @@ fun PaymentScreen(
     }
 }
 
+@Composable
+fun PaymentMethodCard(
+    title: String,
+    description: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    enabled: Boolean = true
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled) { onClick() }
+            .then(
+                if (isSelected) {
+                    Modifier.border(2.dp, SkyBlue600, RoundedCornerShape(12.dp))
+                } else {
+                    Modifier
+                }
+            ),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) SkyBlue50 else Color.White
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 4.dp else 2.dp
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = if (enabled) SkyBlue600 else Gray400
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(
+                        title,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (enabled) Gray900 else Gray400
+                    )
+                    Text(
+                        description,
+                        fontSize = 14.sp,
+                        color = if (enabled) Gray600 else Gray400
+                    )
+                }
+            }
+            if (isSelected) {
+                Icon(
+                    Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = SkyBlue600,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+    }
+}
