@@ -1,5 +1,5 @@
-# Use Node.js 18 Alpine as base image
-FROM node:18-alpine AS base
+# Use Node.js 22.17.1 Alpine as base image
+FROM node:22.17.1-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps

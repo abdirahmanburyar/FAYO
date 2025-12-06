@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:22.17.1-alpine
 
 WORKDIR /app
 
@@ -23,12 +23,10 @@ RUN npx prisma generate
 # Build the application
 RUN npm run build
 
-# Create startup script that runs migrations then starts the app
+# Create startup script
 RUN cat > /app/start.sh << 'SCRIPT_END' && chmod +x /app/start.sh
 #!/bin/sh
 set -e
-echo "🗄️ Running Prisma migrations..."
-npx prisma migrate deploy || echo "⚠️ Migration failed or already applied"
 echo "🚀 Starting application..."
 exec npm run start:prod
 SCRIPT_END

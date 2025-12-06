@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:22.17.1-alpine AS builder
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ RUN npx prisma generate
 # Build the application
 RUN npm run build
 
-FROM node:20-alpine
+FROM node:22.17.1-alpine
 
 WORKDIR /app
 
@@ -32,7 +32,7 @@ RUN apk add --no-cache openssl libc6-compat
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies (including prisma for migrations)
+# Install production dependencies (including prisma for ORM)
 RUN npm install --only=production --legacy-peer-deps && \
     npm install prisma --save-prod && \
     npm cache clean --force
@@ -42,18 +42,14 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
-# Ensure migrations directory exists
-RUN mkdir -p /app/prisma/migrations
-
-# Create startup script that runs migrations then starts the app
-RUN cat > /app/start.sh << 'SCRIPT_END' && chmod +x /app/start.sh
+# Create startup script
+# Using Docker's native heredoc syntax (requires Docker 20.10+)
+RUN <<EOF cat > /app/start.sh && chmod +x /app/start.sh
 #!/bin/sh
 set -e
-echo "🗄️ Running Prisma migrations..."
-npx prisma migrate deploy || echo "⚠️ Migration failed or already applied"
 echo "🚀 Starting application..."
 exec node dist/main.js
-SCRIPT_END
+EOF
 
 EXPOSE 3006
 

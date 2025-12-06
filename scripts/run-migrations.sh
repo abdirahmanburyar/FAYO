@@ -1,94 +1,94 @@
 #!/bin/bash
 
-# Script to run Prisma migrations for all services
+# Script to start all services (Prisma is used only as ORM, not for migrations)
 # Usage: bash scripts/run-migrations.sh
 
 set -e
 
 echo "=========================================="
-echo "🔄 Running Prisma Migrations for All Services"
+echo "🚀 Starting All Services"
 echo "=========================================="
 
 cd /root/fayo || cd "$(dirname "$0")/.."
 
-# Function to run migrations for a service
-run_migrations() {
+# Start infrastructure services first
+echo ""
+echo "🚀 Starting infrastructure services (postgres, redis, rabbitmq)..."
+docker compose -f docker-compose.prod.yml up -d postgres redis rabbitmq
+
+# Wait for PostgreSQL to be ready
+echo ""
+echo "⏳ Waiting for PostgreSQL to be ready..."
+timeout=60
+counter=0
+until docker compose -f docker-compose.prod.yml exec -T postgres pg_isready -U postgres > /dev/null 2>&1; do
+    counter=$((counter + 1))
+    if [ $counter -ge $timeout ]; then
+        echo "❌ PostgreSQL failed to start within $timeout seconds"
+        exit 1
+    fi
+    echo "   Waiting for PostgreSQL... ($counter/$timeout)"
+    sleep 2
+done
+echo "✅ PostgreSQL is ready"
+
+# Start all application services
+echo ""
+echo "🚀 Starting application services..."
+docker compose -f docker-compose.prod.yml up -d
+
+# Wait for services to be running
+echo ""
+echo "⏳ Waiting for services to start..."
+sleep 10
+
+# Function to check if a container is running
+is_container_running() {
     local SERVICE=$1
-    local SERVICE_NAME=$2
-    
-    echo ""
-    echo "📦 $SERVICE_NAME: Starting migration process..."
-    
-    # Generate Prisma Client
-    echo "  → Generating Prisma Client..."
-    if docker compose -f docker-compose.prod.yml exec -T $SERVICE sh -c "cd /app && npx prisma generate"; then
-        echo "  ✅ Prisma Client generated successfully"
-    else
-        echo "  ❌ Failed to generate Prisma Client for $SERVICE_NAME"
-        return 1
+    # Use set +e temporarily to avoid exiting on grep failure
+    set +e
+    docker compose -f docker-compose.prod.yml ps $SERVICE 2>/dev/null | grep -q "Up"
+    local result=$?
+    if [ $result -ne 0 ]; then
+        docker ps 2>/dev/null | grep -q "$SERVICE"
+        result=$?
     fi
-    
-    # Run migrations
-    echo "  → Running database migrations..."
-    if docker compose -f docker-compose.prod.yml exec -T $SERVICE sh -c "cd /app && npx prisma migrate deploy"; then
-        echo "  ✅ Migrations completed successfully for $SERVICE_NAME"
-        return 0
-    else
-        echo "  ❌ Migration failed for $SERVICE_NAME"
-        echo "  Showing logs for $SERVICE_NAME:"
-        docker logs $SERVICE --tail 50 || true
-        return 1
-    fi
+    set -e
+    return $result
 }
 
-# Track migration failures
-MIGRATION_FAILED=0
+# Function to wait for a service to be running
+wait_for_service() {
+    local SERVICE=$1
+    local SERVICE_NAME=$2
+    local timeout=60
+    local counter=0
+    
+    echo "  ⏳ Waiting for $SERVICE_NAME to be running..."
+    while ! is_container_running $SERVICE; do
+        counter=$((counter + 1))
+        if [ $counter -ge $timeout ]; then
+            echo "  ⚠️  $SERVICE_NAME did not start within $timeout seconds, but continuing..."
+            return 1
+        fi
+        sleep 2
+    done
+    echo "  ✅ $SERVICE_NAME is running"
+    sleep 3  # Give service a moment to fully initialize
+    return 0
+}
 
-# Run migrations for each service
+# Check service status
 echo ""
-echo "1️⃣  User Service Migrations"
-if ! run_migrations "user-service" "user-service"; then
-    MIGRATION_FAILED=1
-fi
-
-echo ""
-echo "2️⃣  Hospital Service Migrations"
-if ! run_migrations "hospital-service" "hospital-service"; then
-    MIGRATION_FAILED=1
-fi
-
-echo ""
-echo "3️⃣  Doctor Service Migrations"
-if ! run_migrations "doctor-service" "doctor-service"; then
-    MIGRATION_FAILED=1
-fi
-
-echo ""
-echo "4️⃣  Specialty Service Migrations"
-if ! run_migrations "specialty-service" "specialty-service"; then
-    MIGRATION_FAILED=1
-fi
-
-echo ""
-echo "5️⃣  Appointment Service Migrations"
-if ! run_migrations "appointment-service" "appointment-service"; then
-    MIGRATION_FAILED=1
-fi
-
-echo ""
-echo "6️⃣  Payment Service Migrations"
-if ! run_migrations "payment-service" "payment-service"; then
-    # Payment service might not use Prisma, so this is not critical
-    echo "  ℹ️  Payment service may not use Prisma (non-critical)"
-fi
+echo "📊 Service Status:"
+docker compose -f docker-compose.prod.yml ps
 
 echo ""
 echo "=========================================="
-if [ $MIGRATION_FAILED -eq 1 ]; then
-    echo "❌ Some migrations failed! Check logs above."
-    exit 1
-else
-    echo "✅ All migrations completed successfully!"
-fi
+echo "✅ All services started!"
 echo "=========================================="
+echo ""
+echo "ℹ️  Note: Prisma is used only as an ORM in this deployment."
+echo "   Database schema should be managed separately (e.g., via dump.sql)."
+echo ""
 

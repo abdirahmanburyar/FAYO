@@ -37,7 +37,7 @@ RUN adduser -S nestjs -u 1001
 # Copy package files
 COPY package*.json ./
 
-# Install only production dependencies (including prisma for migrations)
+# Install only production dependencies (including prisma for ORM)
 RUN (npm ci --omit=dev || npm install --omit=dev --legacy-peer-deps || npm install --omit=dev --force) && \
     npm install prisma --save-prod && \
     npm cache clean --force
@@ -46,8 +46,6 @@ RUN (npm ci --omit=dev || npm install --omit=dev --legacy-peer-deps || npm insta
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-# Ensure migrations directory exists (even if empty, it's needed for prisma migrate deploy)
-RUN mkdir -p /app/prisma/migrations
 
 # Copy startup script
 COPY --chown=nestjs:nodejs start.sh /app/start.sh

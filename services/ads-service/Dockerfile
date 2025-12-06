@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:22.17.1-alpine AS builder
 
 WORKDIR /app
 
@@ -22,7 +22,7 @@ RUN npx prisma generate
 # Build the application
 RUN npm run build
 
-FROM node:20-alpine
+FROM node:22.17.1-alpine
 
 WORKDIR /app
 
@@ -32,7 +32,7 @@ RUN apk add --no-cache openssl libc6-compat
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies (including prisma for migrations)
+# Install production dependencies (including prisma for ORM)
 RUN npm install --only=production --legacy-peer-deps && \
     npm install prisma --save-prod && \
     npm cache clean --force
@@ -42,10 +42,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
-# Ensure migrations directory exists
-RUN mkdir -p /app/prisma/migrations
-
-# Create startup script that runs migrations then starts the app
+# Create startup script that starts the app
 # Using Docker's native heredoc syntax (requires Docker 20.10+)
 RUN <<EOF cat > /app/start.sh && chmod +x /app/start.sh
 #!/bin/sh
@@ -122,41 +119,6 @@ const prisma = new PrismaClient();
   }
 })();
 " || echo "⚠️ Schema creation check failed"
-
-echo "🗄️ Running Prisma migrations..."
-MIGRATIONS_DIR="/app/prisma/migrations"
-if [ -d "\$MIGRATIONS_DIR" ] && [ "\$(ls -A "\$MIGRATIONS_DIR" 2>/dev/null | head -1)" ]; then
-  echo "📦 Migration files found, using migrate deploy..."
-  if npx prisma migrate deploy 2>&1; then
-    echo "✅ Migrations applied successfully"
-  else
-    echo "⚠️ migrate deploy failed, trying db push as fallback..."
-    DB_PUSH_OUTPUT=\$(npx prisma db push --accept-data-loss --skip-generate 2>&1)
-    DB_PUSH_EXIT=\$?
-    if [ \$DB_PUSH_EXIT -eq 0 ]; then
-      echo "✅ Schema synced successfully"
-    elif echo "\$DB_PUSH_OUTPUT" | grep -q "already exists"; then
-      echo "⚠️ Some indexes/constraints already exist (this is fine, schema is already in sync)"
-      echo "✅ Schema sync completed"
-    else
-      echo "\$DB_PUSH_OUTPUT"
-      echo "⚠️ db push failed with unexpected error"
-    fi
-  fi
-else
-  echo "📦 No migration files found, using db push to sync schema..."
-  DB_PUSH_OUTPUT=\$(npx prisma db push --accept-data-loss --skip-generate 2>&1)
-  DB_PUSH_EXIT=\$?
-  if [ \$DB_PUSH_EXIT -eq 0 ]; then
-    echo "✅ Schema synced successfully"
-  elif echo "\$DB_PUSH_OUTPUT" | grep -q "already exists"; then
-    echo "⚠️ Some indexes/constraints already exist (this is fine, schema is already in sync)"
-    echo "✅ Schema sync completed"
-  else
-    echo "\$DB_PUSH_OUTPUT"
-    echo "⚠️ db push failed with unexpected error"
-  fi
-fi
 
 echo "🚀 Starting application..."
 exec node dist/main.js
