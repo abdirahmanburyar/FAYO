@@ -33,26 +33,15 @@ RUN apk add --no-cache openssl libc6-compat
 COPY package*.json ./
 
 # Install production dependencies (including prisma for ORM)
-RUN npm install --only=production --legacy-peer-deps && \
-    npm install prisma --save-prod && \
-    npm cache clean --force
+RUN npm install --omit=dev --legacy-peer-deps && \
+    npm install prisma --save-prod --legacy-peer-deps
 
 # Copy built application
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
-# Create startup script
-# Using Docker's native heredoc syntax (requires Docker 20.10+)
-RUN <<EOF cat > /app/start.sh && chmod +x /app/start.sh
-#!/bin/sh
-set -e
-echo "🚀 Starting application..."
-exec node dist/main.js
-EOF
-
 EXPOSE 3006
 
-# Start the application
-CMD ["/app/start.sh"]
+CMD ["node", "dist/main.js"]
 

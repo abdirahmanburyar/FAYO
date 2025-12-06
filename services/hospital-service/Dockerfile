@@ -1,4 +1,4 @@
-FROM node:22.17.1-alpine
+FROM node:22.17.1-alpine AS builder
 
 WORKDIR /app
 
@@ -9,28 +9,34 @@ RUN apk add --no-cache openssl libc6-compat
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install all dependencies (including dev for build)
-RUN npm ci || npm install --legacy-peer-deps || npm install --force
+# Install dependencies
+RUN npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
 
-# Generate Prisma client
-RUN npx prisma generate
+# Generate Prisma client and build
+RUN npx prisma generate && npm run build
 
-# Build the application
-RUN npm run build
+# Production stage
+FROM node:22.17.1-alpine
 
-# Create startup script
-RUN cat > /app/start.sh << 'SCRIPT_END' && chmod +x /app/start.sh
-#!/bin/sh
-set -e
-echo "🚀 Starting application..."
-exec npm run start:prod
-SCRIPT_END
+WORKDIR /app
 
-# Expose port
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl libc6-compat
+
+# Copy package files
+COPY package*.json ./
+
+# Install production dependencies
+RUN npm install --omit=dev --legacy-peer-deps
+
+# Copy built app and Prisma
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+
 EXPOSE 3002
 
-# Start the application
-CMD ["/app/start.sh"]
+CMD ["node", "dist/main.js"]

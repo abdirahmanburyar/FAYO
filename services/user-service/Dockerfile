@@ -38,9 +38,8 @@ RUN adduser -S nestjs -u 1001
 COPY package*.json ./
 
 # Install only production dependencies (including prisma for ORM)
-RUN (npm ci --omit=dev || npm install --omit=dev --legacy-peer-deps || npm install --omit=dev --force) && \
-    npm install prisma --save-prod && \
-    npm cache clean --force
+RUN npm install --omit=dev --legacy-peer-deps && \
+    npm install prisma --save-prod --legacy-peer-deps
 
 # Copy built application
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
@@ -58,8 +57,8 @@ USER nestjs
 EXPOSE 3001
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://72.62.51.50:3001/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3001/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Start the application
 ENTRYPOINT ["dumb-init", "--"]

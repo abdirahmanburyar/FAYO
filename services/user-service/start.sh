@@ -15,22 +15,7 @@ until node -e "const { PrismaClient } = require('@prisma/client'); const prisma 
   sleep 1
 done
 
-echo "🗄️ Ensuring database schema exists..."
-# Create the users schema if it doesn't exist
-node -e "
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
-(async () => {
-  try {
-    await prisma.\$executeRaw\`CREATE SCHEMA IF NOT EXISTS users;\`;
-    console.log('✅ Schema users created or already exists');
-  } catch (error) {
-    console.error('⚠️ Error creating schema:', error.message);
-  } finally {
-    await prisma.\$disconnect();
-  }
-})();
-" || echo "⚠️ Schema creation check failed"
+# Schema is created by deployment script
 
 echo "👤 Creating admin user if not exists..."
 node -e '

@@ -32,60 +32,16 @@ RUN apk add --no-cache openssl libc6-compat
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies (including prisma for ORM)
-RUN npm install --only=production --legacy-peer-deps && \
-    npm install prisma --save-prod && \
-    npm cache clean --force
+# Install production dependencies and Prisma
+RUN npm install --omit=dev --legacy-peer-deps && \
+    npm install prisma@^5.20.0 --save-prod --legacy-peer-deps
 
-# Copy built application
+# Copy built application and Prisma client
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
-# Create startup script that starts the app
-# Using Docker's native heredoc syntax (requires Docker 20.10+)
-RUN <<EOF cat > /app/start.sh && chmod +x /app/start.sh
-#!/bin/sh
-set -e
-
-echo "⏳ Waiting for database to be ready..."
-timeout=30
-counter=0
-# First check connection to default postgres database
-until node -e 'const { PrismaClient } = require("@prisma/client"); const dbUrl = process.env.DATABASE_URL || "postgresql://postgres:postgres@postgres:5432/ads_service?schema=ads"; const postgresUrl = dbUrl.replace("/ads_service", "/postgres").split("?")[0]; const prisma = new PrismaClient({ datasources: { db: { url: postgresUrl } } }); prisma.$connect().then(() => { console.log("✅ Database connected"); process.exit(0); }).catch(() => { process.exit(1); });' 2>/dev/null; do
-  counter=\$((counter + 1))
-  if [ \$counter -ge \$timeout ]; then
-    echo "❌ Database connection timeout after \${timeout} seconds"
-    exit 1
-  fi
-  echo "   Waiting for database... (\$counter/\$timeout)"
-  sleep 1
-done
-
-echo "🗄️ Creating ads_service database if it doesn't exist..."
-node -e 'const { PrismaClient } = require("@prisma/client"); const dbUrl = process.env.DATABASE_URL || "postgresql://postgres:postgres@postgres:5432/ads_service?schema=ads"; const postgresUrl = dbUrl.replace("/ads_service", "/postgres").split("?")[0]; const adminPrisma = new PrismaClient({ datasources: { db: { url: postgresUrl } } }); (async () => { try { await adminPrisma.$executeRawUnsafe(`CREATE DATABASE ads_service;`); console.log("✅ Database ads_service created"); } catch (error) { if (error.message && (error.message.includes("already exists") || error.message.includes("duplicate") || error.code === "42P04")) { console.log("✅ Database ads_service already exists"); } else { console.error("⚠️ Error creating database:", error.message); } } finally { await adminPrisma.$disconnect(); } })();' || echo "⚠️ Database creation check failed"
-
-echo "⏳ Waiting for ads_service database to be ready..."
-counter=0
-until node -e 'const { PrismaClient } = require("@prisma/client"); const prisma = new PrismaClient(); prisma.$connect().then(() => { console.log("✅ ads_service database connected"); process.exit(0); }).catch(() => { process.exit(1); });' 2>/dev/null; do
-  counter=\$((counter + 1))
-  if [ \$counter -ge \$timeout ]; then
-    echo "❌ ads_service database connection timeout after \${timeout} seconds"
-    exit 1
-  fi
-  echo "   Waiting for ads_service database... (\$counter/\$timeout)"
-  sleep 1
-done
-
-echo "🗄️ Ensuring database schema exists..."
-node -e 'const { PrismaClient } = require("@prisma/client"); const prisma = new PrismaClient(); (async () => { try { await prisma.$executeRaw`CREATE SCHEMA IF NOT EXISTS ads;`; console.log("✅ Schema ads created or already exists"); } catch (error) { console.error("⚠️ Error creating schema:", error.message); } finally { await prisma.$disconnect(); } })();' || echo "⚠️ Schema creation check failed"
-
-echo "🚀 Starting application..."
-exec node dist/main.js
-EOF
-
 EXPOSE 3007
 
-# Start the application
-CMD ["/app/start.sh"]
+CMD ["node", "dist/main.js"]
 

@@ -82,9 +82,16 @@ jobs:
             COMPOSE_CMD="docker-compose"
           fi
           
-          echo "Building Docker images..."
+          echo "Building Docker images (all services including admin-panel)..."
           $COMPOSE_CMD -f docker-compose.prod.yml pull || true
           $COMPOSE_CMD -f docker-compose.prod.yml build
+          
+          # Verify admin-panel image was built
+          if docker images --format "{{.Repository}}" | grep -q "fayo-admin-panel\|admin-panel"; then
+            echo "✅ admin-panel image built successfully"
+          else
+            echo "⚠️  Warning: admin-panel image not found, but continuing..."
+          fi
           
           echo "Starting infrastructure services first..."
           $COMPOSE_CMD -f docker-compose.prod.yml up -d postgres redis rabbitmq
@@ -150,7 +157,7 @@ jobs:
           echo "   Database schema should be managed separately (e.g., via dump.sql)."
           echo ""
           
-          echo "Starting all services..."
+          echo "Starting all services (including admin-panel)..."
           $COMPOSE_CMD -f docker-compose.prod.yml up -d --remove-orphans
           
           echo "Waiting for services to start..."
@@ -160,6 +167,17 @@ jobs:
           echo ""
           echo "Service status:"
           $COMPOSE_CMD -f docker-compose.prod.yml ps
+          
+          # Verify admin-panel is running
+          echo ""
+          echo "Verifying admin-panel status..."
+          if docker ps --format "{{.Names}}" | grep -q "admin-panel"; then
+            echo "✅ admin-panel container is running"
+            docker logs admin-panel --tail 20 || true
+          else
+            echo "⚠️  admin-panel container not found, checking logs..."
+            docker logs admin-panel --tail 50 || true
+          fi
           
           # Show logs for any unhealthy services
           echo ""
@@ -200,11 +218,17 @@ jobs:
         continue-on-error: true
         run: |
           sshpass -p '${{ secrets.VPS_PASSWORD }}' ssh -o StrictHostKeyChecking=no root@${{ secrets.VPS_HOST }} << 'EOF'
-          echo "Checking specialty-service logs..."
-          docker logs specialty-service --tail 100 || true
+          echo "Checking service logs..."
+          docker logs specialty-service --tail 50 || true
+          echo ""
+          docker logs admin-panel --tail 50 || true
+          echo ""
+          docker logs payment-service --tail 50 || true
+          echo ""
+          docker logs appointment-service --tail 50 || true
           echo ""
           echo "Checking all service status..."
-          docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Health}}" | grep -E "NAMES|specialty|payment|appointment" || true
+          docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Health}}" | grep -E "NAMES|specialty|payment|appointment|admin-panel" || true
           EOF
 
       - name: Verify deployment

@@ -37,16 +37,14 @@ RUN apt-get update && \
 
 # Copy package files
 COPY package*.json ./
-COPY prisma ./prisma/
 
 # Install production dependencies only
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
-# Generate Prisma Client
-RUN npx prisma generate
-
-# Copy built application from builder
+# Copy built application and Prisma from builder
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Expose port
 EXPOSE 3004
