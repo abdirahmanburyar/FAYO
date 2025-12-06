@@ -10,8 +10,13 @@ RUN apk add --no-cache openssl libc6-compat
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install all dependencies (including dev for build)
-RUN npm ci --no-audit --no-fund || npm install --legacy-peer-deps --no-audit --no-fund || npm install --force --no-audit --no-fund
+# Install all dependencies (including dev for build) with retry logic
+RUN for i in 1 2 3; do \
+      (npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || \
+       npm install --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || \
+       npm install --force --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000) && break || \
+      (echo "Attempt $i failed, retrying in $((i*10)) seconds..." && sleep $((i*10))); \
+    done
 
 # Copy source code
 COPY . .
@@ -37,9 +42,12 @@ RUN adduser -S nestjs -u 1001
 # Copy package files
 COPY package*.json ./
 
-# Install only production dependencies (including prisma for ORM)
-RUN npm install --omit=dev --legacy-peer-deps --no-audit --no-fund && \
-    npm install prisma --save-prod --legacy-peer-deps --no-audit --no-fund
+# Install only production dependencies (including prisma for ORM) with retry logic
+RUN for i in 1 2 3; do \
+      npm install --omit=dev --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 && \
+      npm install prisma --save-prod --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 && break || \
+      (echo "Attempt $i failed, retrying in $((i*10)) seconds..." && sleep $((i*10))); \
+    done
 
 # Copy built application
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist

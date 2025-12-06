@@ -9,9 +9,12 @@ RUN apk add --no-cache openssl libc6-compat
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies
+# Install dependencies with retry logic for network failures
 # Use npm install instead of npm ci to handle package-lock.json mismatches
-RUN npm install --legacy-peer-deps --no-audit --no-fund
+RUN for i in 1 2 3; do \
+      npm install --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 && break || \
+      (echo "Attempt $i failed, retrying in $((i*10)) seconds..." && sleep $((i*10))); \
+    done
 
 # Copy source code
 COPY . .
@@ -32,9 +35,12 @@ RUN apk add --no-cache openssl libc6-compat
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies (including prisma for ORM)
-RUN npm install --omit=dev --legacy-peer-deps --no-audit --no-fund && \
-    npm install prisma --save-prod --legacy-peer-deps --no-audit --no-fund
+# Install production dependencies (including prisma for ORM) with retry logic
+RUN for i in 1 2 3; do \
+      npm install --omit=dev --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 && \
+      npm install prisma --save-prod --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 && break || \
+      (echo "Attempt $i failed, retrying in $((i*10)) seconds..." && sleep $((i*10))); \
+    done
 
 # Copy built application
 COPY --from=builder /app/dist ./dist

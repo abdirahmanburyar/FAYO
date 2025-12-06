@@ -9,6 +9,40 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: fayo
+      # PostgreSQL performance optimizations
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=1GB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - wal_buffers=16MB
+      - -c
+      - default_statistics_target=100
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - work_mem=4MB
+      - -c
+      - min_wal_size=1GB
+      - -c
+      - max_wal_size=4GB
+      - -c
+      - max_connections=100
+      - -c
+      - max_worker_processes=4
+      - -c
+      - max_parallel_workers_per_gather=2
+      - -c
+      - max_parallel_workers=4
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -16,11 +50,15 @@ services:
     networks:
       - fayo-network
     restart: unless-stopped
+    mem_limit: 2g
+    mem_reservation: 1g
+    cpu_quota: 100000
+    cpu_period: 100000
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
+      interval: 30s
       timeout: 5s
-      retries: 10
+      retries: 3
       start_period: 60s
 
   redis:
@@ -31,7 +69,16 @@ services:
     networks:
       - fayo-network
     restart: unless-stopped
-    command: redis-server --appendonly yes
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpu_quota: 50000
+    cpu_period: 100000
     volumes:
       - redisdata:/data
 
@@ -41,12 +88,18 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+      # RabbitMQ memory optimization
+      RABBITMQ_VM_MEMORY_HIGH_WATERMARK: 0.4
     ports:
       - '5672:5672'
       - '15672:15672'
     networks:
       - fayo-network
     restart: unless-stopped
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpu_quota: 50000
+    cpu_period: 100000
     volumes:
       - rabbitmqdata:/var/lib/rabbitmq
 
@@ -58,6 +111,10 @@ services:
     container_name: user-service
     ports:
       - '3001:3001'
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpu_quota: 50000
+    cpu_period: 100000
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/user_service?schema=users}
       REDIS_HOST: redis
@@ -88,11 +145,11 @@ services:
       - fayo-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://72.62.51.50:3001/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 60s
+      timeout: 5s
       retries: 3
-      start_period: 40s
+      start_period: 60s
 
   hospital-service:
     build:
@@ -101,6 +158,10 @@ services:
     container_name: hospital-service
     ports:
       - '3002:3002'
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpu_quota: 50000
+    cpu_period: 100000
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/hospital_service?schema=hospitals}
@@ -125,10 +186,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
-      interval: 30s
-      timeout: 10s
+      interval: 60s
+      timeout: 5s
       retries: 3
-      start_period: 40s
+      start_period: 60s
     volumes:
       - admin_uploads:/app/uploads
 
@@ -139,6 +200,10 @@ services:
     container_name: doctor-service
     ports:
       - '3003:3003'
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpu_quota: 50000
+    cpu_period: 100000
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/doctor_service?schema=public}
@@ -163,10 +228,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3003/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
-      interval: 30s
-      timeout: 10s
+      interval: 60s
+      timeout: 5s
       retries: 3
-      start_period: 40s
+      start_period: 60s
     volumes:
       - admin_uploads:/app/uploads
 
@@ -177,6 +242,10 @@ services:
     container_name: specialty-service
     ports:
       - '3004:3004'
+    mem_limit: 256m
+    mem_reservation: 128m
+    cpu_quota: 30000
+    cpu_period: 100000
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/specialty_service?schema=public}
@@ -191,10 +260,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3004/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
-      interval: 30s
-      timeout: 10s
+      interval: 60s
+      timeout: 5s
       retries: 3
-      start_period: 40s
+      start_period: 60s
 
   appointment-service:
     build:
@@ -203,6 +272,10 @@ services:
     container_name: appointment-service
     ports:
       - '3005:3005'
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpu_quota: 50000
+    cpu_period: 100000
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/appointment_service?schema=appointments}
@@ -235,10 +308,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3005/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
-      interval: 30s
-      timeout: 10s
+      interval: 60s
+      timeout: 5s
       retries: 3
-      start_period: 40s
+      start_period: 60s
 
   ads-service:
     build:
@@ -247,6 +320,10 @@ services:
     container_name: ads-service
     ports:
       - '3007:3007'
+    mem_limit: 256m
+    mem_reservation: 128m
+    cpu_quota: 30000
+    cpu_period: 100000
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/ads_service?schema=ads}
@@ -261,10 +338,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3007/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
-      interval: 30s
-      timeout: 10s
+      interval: 60s
+      timeout: 5s
       retries: 3
-      start_period: 40s
+      start_period: 60s
 
   payment-service:
     build:
@@ -273,6 +350,10 @@ services:
     container_name: payment-service
     ports:
       - '3006:3006'
+    mem_limit: 256m
+    mem_reservation: 128m
+    cpu_quota: 30000
+    cpu_period: 100000
     environment:
       NODE_ENV: production
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/payment_service?schema=payments}
@@ -299,10 +380,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3006/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
-      interval: 30s
-      timeout: 10s
+      interval: 60s
+      timeout: 5s
       retries: 3
-      start_period: 40s
+      start_period: 60s
 
   admin-panel:
     build:
@@ -311,6 +392,10 @@ services:
     container_name: admin-panel
     ports:
       - '3000:3000'
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpu_quota: 50000
+    cpu_period: 100000
     environment:
       NODE_ENV: production
       # Server-side URLs (for API routes) - use Docker service names
@@ -343,10 +428,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
+      interval: 60s
+      timeout: 5s
       retries: 3
-      start_period: 40s
+      start_period: 90s
 
 networks:
   fayo-network:
