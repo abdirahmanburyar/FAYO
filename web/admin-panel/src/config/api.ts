@@ -60,6 +60,9 @@ export const API_CONFIG = {
   get SPECIALTY_SERVICE_URL() {
     return getServiceUrl('specialty-service', '3004');
   },
+  get ADS_SERVICE_URL() {
+    return getServiceUrl('ads-service', '3007');
+  },
   ENDPOINTS: {
     ADMIN_LOGIN: '/api/v1/auth/admin-login',
     USERS: '/api/v1/users',
@@ -67,6 +70,7 @@ export const API_CONFIG = {
     DOCTORS: '/api/v1/doctors',
     SPECIALTIES: '/api/v1/specialties',
     APPOINTMENTS: '/api/v1/appointments',
+    ADS: '/api/v1/ads',
     REPORTS: '/api/v1/reports',
   },
 };

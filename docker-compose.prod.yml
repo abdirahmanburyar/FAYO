@@ -259,6 +259,14 @@ services:
     networks:
       - fayo-network
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3007/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
       interval: 30s
@@ -320,6 +328,7 @@ services:
       SPECIALTY_SERVICE_URL: ${SPECIALTY_SERVICE_URL:-http://specialty-service:3004}
       APPOINTMENT_SERVICE_URL: ${APPOINTMENT_SERVICE_URL:-http://appointment-service:3005}
       PAYMENT_SERVICE_URL: ${PAYMENT_SERVICE_URL:-http://payment-service:3006}
+      ADS_SERVICE_URL: ${ADS_SERVICE_URL:-http://ads-service:3007}
       # Client-side URLs (for browser) - use external IP or domain
       NEXT_PUBLIC_USER_SERVICE_URL: ${NEXT_PUBLIC_USER_SERVICE_URL:-http://72.62.51.50:3001}
       NEXT_PUBLIC_HOSPITAL_SERVICE_URL: ${NEXT_PUBLIC_HOSPITAL_SERVICE_URL:-http://72.62.51.50:3002}
@@ -327,6 +336,7 @@ services:
       NEXT_PUBLIC_SPECIALTY_SERVICE_URL: ${NEXT_PUBLIC_SPECIALTY_SERVICE_URL:-http://72.62.51.50:3004}
       NEXT_PUBLIC_APPOINTMENT_SERVICE_URL: ${NEXT_PUBLIC_APPOINTMENT_SERVICE_URL:-http://72.62.51.50:3005}
       NEXT_PUBLIC_PAYMENT_SERVICE_URL: ${NEXT_PUBLIC_PAYMENT_SERVICE_URL:-http://72.62.51.50:3006}
+      NEXT_PUBLIC_ADS_SERVICE_URL: ${NEXT_PUBLIC_ADS_SERVICE_URL:-http://72.62.51.50:3007}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://72.62.51.50:3001/api/v1}
     depends_on:
       - user-service
@@ -335,6 +345,7 @@ services:
       - specialty-service
       - appointment-service
       - payment-service
+      - ads-service
     networks:
       - fayo-network
     restart: unless-stopped

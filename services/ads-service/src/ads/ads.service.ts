@@ -30,7 +30,7 @@ export class AdsService {
     return ad;
   }
 
-  async findAll(activeOnly: boolean = false) {
+  async findAll(activeOnly: boolean = false, page: number = 1, limit: number = 50) {
     const where: any = {};
     
     if (activeOnly) {
@@ -40,28 +40,73 @@ export class AdsService {
       where.endDate = { gte: now };
     }
 
-    return this.prisma.ad.findMany({
-      where,
-      orderBy: [
-        { priority: 'desc' },
-        { createdAt: 'desc' },
-      ],
-    });
+    // Ensure reasonable limits to prevent overload
+    const take = Math.min(Math.max(1, limit), 100); // Max 100 items per page
+    const skip = Math.max(0, (page - 1) * take);
+
+    const [data, total] = await Promise.all([
+      this.prisma.ad.findMany({
+        where,
+        orderBy: [
+          { priority: 'desc' },
+          { createdAt: 'desc' },
+        ],
+        take,
+        skip,
+      }),
+      this.prisma.ad.count({ where }),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit: take,
+        total,
+        totalPages: Math.ceil(total / take),
+      },
+    };
   }
 
-  async findActive() {
+  async findActive(page: number = 1, limit: number = 50) {
     const now = new Date();
-    return this.prisma.ad.findMany({
-      where: {
-        status: AdStatus.ACTIVE,
-        startDate: { lte: now },
-        endDate: { gte: now },
+    
+    // Ensure reasonable limits to prevent overload
+    const take = Math.min(Math.max(1, limit), 100); // Max 100 items per page
+    const skip = Math.max(0, (page - 1) * take);
+
+    const [data, total] = await Promise.all([
+      this.prisma.ad.findMany({
+        where: {
+          status: AdStatus.ACTIVE,
+          startDate: { lte: now },
+          endDate: { gte: now },
+        },
+        orderBy: [
+          { priority: 'desc' },
+          { createdAt: 'desc' },
+        ],
+        take,
+        skip,
+      }),
+      this.prisma.ad.count({
+        where: {
+          status: AdStatus.ACTIVE,
+          startDate: { lte: now },
+          endDate: { gte: now },
+        },
+      }),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit: take,
+        total,
+        totalPages: Math.ceil(total / take),
       },
-      orderBy: [
-        { priority: 'desc' },
-        { createdAt: 'desc' },
-      ],
-    });
+    };
   }
 
   async findOne(id: string) {
@@ -115,26 +160,54 @@ export class AdsService {
   }
 
   async incrementViewCount(id: string) {
-    return this.prisma.ad.update({
-      where: { id },
-      data: {
-        viewCount: { increment: 1 },
-      },
-    });
+    // Use raw query for better performance on high-frequency updates
+    // This avoids loading the full record and is more efficient
+    try {
+      await this.prisma.$executeRaw`
+        UPDATE ads.ads 
+        SET "viewCount" = "viewCount" + 1, "updatedAt" = NOW()
+        WHERE id = ${id}
+      `;
+      
+      // Return minimal response without additional query
+      return { id, success: true };
+    } catch (error) {
+      this.logger.error(`Failed to increment view count for ad ${id}:`, error);
+      throw error;
+    }
   }
 
   async incrementClickCount(id: string) {
-    const ad = await this.prisma.ad.update({
-      where: { id },
-      data: {
-        clickCount: { increment: 1 },
-      },
-    });
+    // Use raw query for better performance on high-frequency updates
+    try {
+      await this.prisma.$executeRaw`
+        UPDATE ads.ads 
+        SET "clickCount" = "clickCount" + 1, "updatedAt" = NOW()
+        WHERE id = ${id}
+      `;
+      
+      // Fetch only necessary fields for event emission (more efficient)
+      const ad = await this.prisma.ad.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          title: true,
+          clickCount: true,
+          viewCount: true,
+          status: true,
+        },
+      });
 
-    // Emit event for realtime update
-    this.eventEmitter.emit('ad.clicked', ad);
-    
-    return ad;
+      if (ad) {
+        // Emit event for realtime update with minimal data
+        this.eventEmitter.emit('ad.clicked', ad);
+      }
+      
+      return ad || { id, success: true };
+    } catch (error) {
+      this.logger.error(`Failed to increment click count for ad ${id}:`, error);
+      throw error;
+    }
   }
 }
 

@@ -12,7 +12,8 @@ import {
   Stethoscope,
   Building2,
   Palette,
-  BookOpen
+  BookOpen,
+  Megaphone
 } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -38,6 +39,7 @@ const menuItems = [
   { name: 'Users', href: '/admin/users', icon: Users },
   { name: 'Doctors', href: '/admin/doctors', icon: Stethoscope },
   { name: 'Appointments', href: '/admin/appointments', icon: Calendar },
+  { name: 'Advertisements', href: '/admin/ads', icon: Megaphone },
   { name: 'Reports', href: '/admin/reports', icon: FileText },
   { name: 'Components', href: '/admin/components', icon: Palette },
   { name: 'Settings', href: '/admin/settings', icon: Settings },

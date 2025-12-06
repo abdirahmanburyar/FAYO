@@ -19,6 +19,10 @@ import { Ad } from '@prisma/client';
     origin: '*',
     methods: ['GET', 'POST'],
   },
+  maxHttpBufferSize: 1e6, // 1MB max message size
+  pingTimeout: 60000, // 60 seconds
+  pingInterval: 25000, // 25 seconds
+  transports: ['websocket', 'polling'],
 })
 export class AdsGateway
   implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit, OnModuleInit
@@ -36,9 +40,27 @@ export class AdsGateway
     this.logger.log('Ads Gateway module initialized');
   }
 
+  private readonly maxConnections = 1000; // Limit concurrent connections
+  private connectionCount = 0;
+
   handleConnection(client: Socket) {
     try {
-      this.logger.log(`🔌 Client connected: ${client.id}`);
+      // Check connection limit
+      if (this.connectionCount >= this.maxConnections) {
+        this.logger.warn(`Connection limit reached (${this.maxConnections}), rejecting client: ${client.id}`);
+        client.emit('error', {
+          type: 'error',
+          message: 'Server at capacity, please try again later',
+        });
+        client.disconnect(true);
+        return;
+      }
+
+      this.connectionCount++;
+      // Only log in development to reduce overhead in production
+      if (process.env.NODE_ENV !== 'production') {
+        this.logger.log(`🔌 Client connected: ${client.id} (Total: ${this.connectionCount})`);
+      }
       
       // Send connection confirmation
       client.emit('connected', {
@@ -48,14 +70,20 @@ export class AdsGateway
       });
     } catch (error) {
       this.logger.error('❌ Error handling WebSocket connection:', error);
+      this.connectionCount = Math.max(0, this.connectionCount - 1);
     }
   }
 
   handleDisconnect(client: Socket) {
     try {
-      this.logger.log(`🔌 Client disconnected: ${client.id}`);
+      this.connectionCount = Math.max(0, this.connectionCount - 1);
+      // Only log in development to reduce overhead in production
+      if (process.env.NODE_ENV !== 'production') {
+        this.logger.log(`🔌 Client disconnected: ${client.id} (Total: ${this.connectionCount})`);
+      }
     } catch (error) {
       this.logger.error('❌ Error handling WebSocket disconnection:', error);
+      this.connectionCount = Math.max(0, this.connectionCount - 1);
     }
   }
 
@@ -75,13 +103,19 @@ export class AdsGateway
       message: 'Joined ads updates room',
       timestamp: new Date().toISOString(),
     });
-    this.logger.log(`Client ${client.id} joined ads_updates room`);
+    // Only log in development to reduce overhead
+    if (process.env.NODE_ENV !== 'production') {
+      this.logger.log(`Client ${client.id} joined ads_updates room`);
+    }
   }
 
   // Listen to ad.created event
   @OnEvent('ad.created')
   handleAdCreated(ad: Ad) {
-    this.logger.log(`📢 Broadcasting ad.created event for ad: ${ad.id}`);
+    // Only log in development to reduce overhead
+    if (process.env.NODE_ENV !== 'production') {
+      this.logger.log(`📢 Broadcasting ad.created event for ad: ${ad.id}`);
+    }
     this.server.to('ads_updates').emit('ad.created', {
       type: 'ad.created',
       ad,
@@ -92,7 +126,10 @@ export class AdsGateway
   // Listen to ad.updated event
   @OnEvent('ad.updated')
   handleAdUpdated(ad: Ad) {
-    this.logger.log(`📢 Broadcasting ad.updated event for ad: ${ad.id}`);
+    // Only log in development to reduce overhead
+    if (process.env.NODE_ENV !== 'production') {
+      this.logger.log(`📢 Broadcasting ad.updated event for ad: ${ad.id}`);
+    }
     this.server.to('ads_updates').emit('ad.updated', {
       type: 'ad.updated',
       ad,
@@ -103,7 +140,10 @@ export class AdsGateway
   // Listen to ad.deleted event
   @OnEvent('ad.deleted')
   handleAdDeleted(data: { id: string }) {
-    this.logger.log(`📢 Broadcasting ad.deleted event for ad: ${data.id}`);
+    // Only log in development to reduce overhead
+    if (process.env.NODE_ENV !== 'production') {
+      this.logger.log(`📢 Broadcasting ad.deleted event for ad: ${data.id}`);
+    }
     this.server.to('ads_updates').emit('ad.deleted', {
       type: 'ad.deleted',
       adId: data.id,
@@ -114,7 +154,10 @@ export class AdsGateway
   // Listen to ad.clicked event
   @OnEvent('ad.clicked')
   handleAdClicked(ad: Ad) {
-    this.logger.log(`📢 Broadcasting ad.clicked event for ad: ${ad.id}`);
+    // Only log in development to reduce overhead
+    if (process.env.NODE_ENV !== 'production') {
+      this.logger.log(`📢 Broadcasting ad.clicked event for ad: ${ad.id}`);
+    }
     this.server.to('ads_updates').emit('ad.clicked', {
       type: 'ad.clicked',
       ad,

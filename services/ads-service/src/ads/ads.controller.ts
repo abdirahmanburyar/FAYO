@@ -26,14 +26,22 @@ export class AdsController {
 
   @Get()
   @Throttle({ default: { limit: 100, ttl: 60000 } })
-  findAll(@Query('activeOnly') activeOnly?: string) {
-    return this.adsService.findAll(activeOnly === 'true');
+  findAll(
+    @Query('activeOnly') activeOnly?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 50;
+    return this.adsService.findAll(activeOnly === 'true', pageNum, limitNum);
   }
 
   @Get('active')
   @Throttle({ default: { limit: 100, ttl: 60000 } })
-  findActive() {
-    return this.adsService.findActive();
+  findActive(@Query('page') page?: string, @Query('limit') limit?: string) {
+    const pageNum = page ? parseInt(page, 10) : 1;
+    const limitNum = limit ? parseInt(limit, 10) : 50;
+    return this.adsService.findActive(pageNum, limitNum);
   }
 
   @Get(':id')
