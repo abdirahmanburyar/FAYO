@@ -16,18 +16,18 @@
   - Doctor specialty management
 
 #### 2. Infrastructure (Docker Compose)
-- **Services**: PostgreSQL, Redis, RabbitMQ, Kafka, Zookeeper
+- **Services**: PostgreSQL, Redis, RabbitMQ
 - **Network**: Custom bridge network for service communication
 - **Status**: All services configured and working
 
 ### 🚧 In Progress / To Complete
 
 #### 3. Appointment Service (`services/appointment-service/`)
-- **Purpose**: Manage appointments, publish events to Kafka
+- **Purpose**: Manage appointments, publish events to RabbitMQ
 - **Status**: Basic structure created, needs completion
 - **Required Features**:
   - Appointment CRUD operations
-  - Kafka event publishing
+  - RabbitMQ event publishing
   - Integration with User Service
   - Triage integration
 
@@ -37,7 +37,7 @@
 - **Required Features**:
   - Text analysis for symptom detection
   - Specialty prediction algorithm
-  - Kafka event publishing
+  - RabbitMQ event publishing
   - Integration with AI/ML models
 
 #### 5. Gateway/BFF (`services/gateway/`)
@@ -90,7 +90,6 @@ npm run start:dev
 - **User Service**: http://72.62.51.50:3001
 - **PostgreSQL**: localhost:5432 (postgres/postgres)
 - **Redis**: localhost:6379
-- **Kafka**: localhost:9092
 
 ## API Endpoints (User Service)
 
@@ -131,7 +130,7 @@ npm run start:dev
 ## Architecture Notes
 
 - **Database**: Each service has its own database schema
-- **Communication**: HTTP for sync, Kafka for async events, RabbitMQ for queues
+- **Communication**: HTTP for sync, RabbitMQ for async events and queues
 - **Authentication**: JWT for all clients
 - **Caching**: Redis for session and OTP storage
 - **Monitoring**: Health checks implemented

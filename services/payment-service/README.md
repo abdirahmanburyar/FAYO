@@ -16,7 +16,7 @@ The payment service manages payment processing, tracking, and refunds for appoin
 - ✅ Refund payments
 - ✅ Payment history tracking
 - ✅ Integration with appointment service
-- ✅ Kafka event publishing
+- ✅ RabbitMQ event publishing
 
 ## Setup
 
@@ -24,7 +24,7 @@ The payment service manages payment processing, tracking, and refunds for appoin
 
 - Node.js 18+
 - PostgreSQL database
-- Kafka (optional, for event streaming)
+- RabbitMQ (for event streaming)
 
 ### Installation
 
@@ -43,7 +43,7 @@ The payment service manages payment processing, tracking, and refunds for appoin
    ```env
    DATABASE_URL=postgresql://user:password@localhost:5432/fayo_healthcare?schema=payments
    PORT=3006
-   KAFKA_BROKER=localhost:9092
+   RABBITMQ_URL=amqp://guest:guest@localhost:5672
    ```
 
 3. **Set up database**
@@ -154,9 +154,9 @@ The admin panel has a "Pay" button that opens a payment modal where admins can:
 
 The payment is automatically linked to the appointment and updates the appointment's payment status.
 
-## Kafka Events
+## RabbitMQ Events
 
-The service publishes the following Kafka events:
+The service publishes the following RabbitMQ events:
 
 - `payment.completed` - When a payment is successfully processed
 - `payment.failed` - When a payment fails

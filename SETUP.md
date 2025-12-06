@@ -38,12 +38,6 @@ This guide will help you set up and run the complete FAYO Healthcare microservic
 │   (Port 5432)   │    │   (Port 6379)   │    │  (Port 5672)    │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                                  │
-         ┌───────────────────────┼───────────────────────┐
-         │                       │                       │
-┌─────────────────┐    ┌─────────────────┐
-│     Kafka       │    │   Zookeeper     │
-│   (Port 9092)   │    │  (Port 2181)    │
-└─────────────────┘    └─────────────────┘
 ```
 
 ## 🚀 Quick Start
@@ -146,7 +140,7 @@ PORT=3001
 #### Appointment Service
 ```env
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/fayo?schema=public"
-KAFKA_BROKER=localhost:9092
+RABBITMQ_URL=amqp://guest:guest@localhost:5672
 PORT=3002
 ```
 
@@ -168,8 +162,8 @@ docker exec -it fayoai-app-postgres-1 psql -U postgres -d fayo -c "SELECT versio
 # Check Redis
 docker exec -it fayoai-app-redis-1 redis-cli ping
 
-# Check Kafka
-docker exec -it fayoai-app-kafka-1 kafka-topics.sh --bootstrap-server localhost:9092 --list
+# Check RabbitMQ
+docker exec -it fayoai-app-rabbitmq-1 rabbitmqctl status
 ```
 
 ### 2. Test User Service
@@ -245,7 +239,7 @@ docker-compose logs -f
 
 # View specific service logs
 docker-compose logs -f postgres
-docker-compose logs -f kafka
+docker-compose logs -f rabbitmq
 ```
 
 ### Database Access
@@ -261,9 +255,9 @@ docker exec -it fayoai-app-redis-1 redis-cli
 
 ### Common Issues
 
-1. **Port conflicts**: Ensure ports 3000-3004, 5432, 6379, 9092 are available
+1. **Port conflicts**: Ensure ports 3000-3007, 5432, 6379, 5672 are available
 2. **Database connection**: Check PostgreSQL is running and accessible
-3. **Kafka issues**: Ensure Zookeeper is running before Kafka
+3. **RabbitMQ issues**: Check RabbitMQ is running and accessible on port 5672
 
 ### Reset Everything
 ```bash

@@ -7,8 +7,7 @@ A comprehensive microservices-based healthcare management system built with Nest
 ### Infrastructure Services (Docker Compose)
 - **PostgreSQL** - Primary database
 - **Redis** - Caching and session storage
-- **RabbitMQ** - Message queuing
-- **Kafka + Zookeeper** - Event streaming
+- **RabbitMQ** - Message queuing and event streaming
 
 ### Application Services (Dockerfiles)
 Each service has its own Dockerfile and can be built/run independently:
