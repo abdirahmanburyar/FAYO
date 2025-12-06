@@ -10,7 +10,8 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install dependencies
-RUN npm ci
+# Use npm install instead of npm ci to handle package-lock.json mismatches
+RUN npm install --legacy-peer-deps
 
 # Copy source code
 COPY . .
@@ -32,7 +33,7 @@ RUN apk add --no-cache openssl libc6-compat
 COPY package*.json ./
 
 # Install production dependencies (including prisma for migrations)
-RUN npm ci --only=production && \
+RUN npm install --only=production --legacy-peer-deps && \
     npm install prisma --save-prod && \
     npm cache clean --force
 
@@ -45,7 +46,8 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 RUN mkdir -p /app/prisma/migrations
 
 # Create startup script that runs migrations then starts the app
-RUN cat > /app/start.sh << 'SCRIPT_END' && chmod +x /app/start.sh
+# Using Docker's native heredoc syntax (requires Docker 20.10+)
+RUN <<EOF cat > /app/start.sh && chmod +x /app/start.sh
 #!/bin/sh
 set -e
 
@@ -158,7 +160,7 @@ fi
 
 echo "🚀 Starting application..."
 exec node dist/main.js
-SCRIPT_END
+EOF
 
 EXPOSE 3007
 
