@@ -11,7 +11,7 @@ COPY prisma ./prisma/
 
 # Install dependencies
 # Use npm install instead of npm ci to handle package-lock.json mismatches
-RUN npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps --no-audit --no-fund
 
 # Copy source code
 COPY . .
@@ -33,8 +33,8 @@ RUN apk add --no-cache openssl libc6-compat
 COPY package*.json ./
 
 # Install production dependencies and Prisma
-RUN npm install --omit=dev --legacy-peer-deps && \
-    npm install prisma@^5.20.0 --save-prod --legacy-peer-deps
+RUN npm install --omit=dev --legacy-peer-deps --no-audit --no-fund && \
+    npm install prisma@^5.20.0 --save-prod --legacy-peer-deps --no-audit --no-fund
 
 # Copy built application and Prisma client
 COPY --from=builder /app/dist ./dist

@@ -11,7 +11,7 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install all dependencies (including dev for build)
-RUN npm ci || npm install --legacy-peer-deps || npm install --force
+RUN npm ci --no-audit --no-fund || npm install --legacy-peer-deps --no-audit --no-fund || npm install --force --no-audit --no-fund
 
 # Copy source code
 COPY . .
@@ -38,8 +38,8 @@ RUN adduser -S nestjs -u 1001
 COPY package*.json ./
 
 # Install only production dependencies (including prisma for ORM)
-RUN npm install --omit=dev --legacy-peer-deps && \
-    npm install prisma --save-prod --legacy-peer-deps
+RUN npm install --omit=dev --legacy-peer-deps --no-audit --no-fund && \
+    npm install prisma --save-prod --legacy-peer-deps --no-audit --no-fund
 
 # Copy built application
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist

@@ -13,7 +13,7 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install dependencies
-RUN npm ci
+RUN npm ci --no-audit --no-fund
 
 # Copy source code
 COPY . .
@@ -39,7 +39,7 @@ RUN apt-get update && \
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm install --omit=dev
+RUN npm install --omit=dev --no-audit --no-fund
 
 # Copy built application and Prisma from builder
 COPY --from=builder /app/dist ./dist

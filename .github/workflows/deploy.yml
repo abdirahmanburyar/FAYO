@@ -82,6 +82,10 @@ jobs:
             COMPOSE_CMD="docker-compose"
           fi
           
+          echo "Cleaning up orphaned containers and old images..."
+          $COMPOSE_CMD -f docker-compose.prod.yml down --remove-orphans || true
+          docker container prune -f || true
+          
           echo "Building Docker images (all services including admin-panel)..."
           $COMPOSE_CMD -f docker-compose.prod.yml pull || true
           $COMPOSE_CMD -f docker-compose.prod.yml build
@@ -158,10 +162,22 @@ jobs:
           echo ""
           
           echo "Starting all services (including admin-panel)..."
-          $COMPOSE_CMD -f docker-compose.prod.yml up -d --remove-orphans
+          $COMPOSE_CMD -f docker-compose.prod.yml up -d --remove-orphans --force-recreate
           
           echo "Waiting for services to start..."
-          sleep 20
+          sleep 30
+          
+          # Check for restarting services
+          echo ""
+          echo "Checking for restarting services..."
+          RESTARTING=$(docker ps --filter "status=restarting" --format "{{.Names}}" || true)
+          if [ ! -z "$RESTARTING" ]; then
+            echo "⚠️  Services that are restarting: $RESTARTING"
+            for service in $RESTARTING; do
+              echo "Logs for $service:"
+              docker logs $service --tail 100 || true
+            done
+          fi
           
           # Check service status
           echo ""
@@ -171,13 +187,46 @@ jobs:
           # Verify admin-panel is running
           echo ""
           echo "Verifying admin-panel status..."
-          if docker ps --format "{{.Names}}" | grep -q "admin-panel"; then
+          if docker ps --format "{{.Names}}" | grep -q "^admin-panel$"; then
             echo "✅ admin-panel container is running"
             docker logs admin-panel --tail 20 || true
           else
-            echo "⚠️  admin-panel container not found, checking logs..."
-            docker logs admin-panel --tail 50 || true
+            echo "⚠️  admin-panel container not found!"
+            echo "Attempting to start admin-panel..."
+            $COMPOSE_CMD -f docker-compose.prod.yml up -d --force-recreate admin-panel || true
+            sleep 15
+            if docker ps --format "{{.Names}}" | grep -q "^admin-panel$"; then
+              echo "✅ admin-panel started successfully"
+              docker logs admin-panel --tail 30 || true
+            else
+              echo "❌ admin-panel failed to start, showing build logs..."
+              $COMPOSE_CMD -f docker-compose.prod.yml logs admin-panel --tail 50 || true
+            fi
           fi
+          
+          # List all expected services and their status
+          echo ""
+          echo "Expected services status:"
+          EXPECTED_SERVICES="postgres redis rabbitmq user-service hospital-service doctor-service specialty-service appointment-service ads-service payment-service admin-panel"
+          for service in $EXPECTED_SERVICES; do
+            if docker ps --format "{{.Names}}" | grep -q "^${service}$"; then
+              STATUS=$(docker ps --filter "name=^${service}$" --format "{{.Status}}" || echo "not found")
+              echo "  ✅ $service: $STATUS"
+            else
+              echo "  ❌ $service: NOT RUNNING"
+            fi
+          done
+          
+          # List all expected services
+          echo ""
+          echo "Expected services:"
+          echo "  - postgres, redis, rabbitmq (infrastructure)"
+          echo "  - user-service, hospital-service, doctor-service"
+          echo "  - specialty-service, appointment-service"
+          echo "  - ads-service, payment-service, admin-panel"
+          echo ""
+          echo "Checking which services are actually running..."
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | head -20
           
           # Show logs for any unhealthy services
           echo ""
