@@ -5,15 +5,11 @@ export type AdType = 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL';
 
 export interface Ad {
   id: string;
-  title: string;
-  description?: string;
-  imageUrl: string;
-  linkUrl?: string;
-  type: AdType;
-  status: AdStatus;
+  image: string; // File path to uploaded image
   startDate: string; // ISO date string
-  endDate: string; // ISO date string
-  priority: number;
+  endDate: string; // ISO date string (calculated from startDate + days)
+  days: number; // Number of days the ad should be active
+  status: AdStatus;
   clickCount: number;
   viewCount: number;
   createdBy?: string;
@@ -22,28 +18,16 @@ export interface Ad {
 }
 
 export interface CreateAdDto {
-  title: string;
-  description?: string;
-  imageUrl: string;
-  linkUrl?: string;
-  type?: AdType;
-  status?: AdStatus;
+  image: File; // Image file to upload
   startDate: string; // ISO date string
-  endDate: string; // ISO date string
-  priority?: number;
+  days: number; // Number of days the ad should be active
   createdBy?: string;
 }
 
 export interface UpdateAdDto {
-  title?: string;
-  description?: string;
-  imageUrl?: string;
-  linkUrl?: string;
-  type?: AdType;
-  status?: AdStatus;
+  image?: File; // Optional image file to upload
   startDate?: string;
-  endDate?: string;
-  priority?: number;
+  days?: number;
 }
 
 export interface AdsListResponse {
@@ -143,10 +127,24 @@ class AdsApiService {
 
   async createAd(ad: CreateAdDto): Promise<Ad> {
     try {
+      const formData = new FormData();
+      formData.append('image', ad.image);
+      formData.append('startDate', ad.startDate);
+      formData.append('days', ad.days.toString());
+      if (ad.createdBy) {
+        formData.append('createdBy', ad.createdBy);
+      }
+
+      const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${this.getBaseUrl()}/api/v1/ads`, {
         method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(ad),
+        headers,
+        body: formData,
       });
 
       if (!response.ok) {
@@ -163,10 +161,27 @@ class AdsApiService {
 
   async updateAd(id: string, ad: UpdateAdDto): Promise<Ad> {
     try {
+      const formData = new FormData();
+      if (ad.image) {
+        formData.append('image', ad.image);
+      }
+      if (ad.startDate) {
+        formData.append('startDate', ad.startDate);
+      }
+      if (ad.days !== undefined) {
+        formData.append('days', ad.days.toString());
+      }
+
+      const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${this.getBaseUrl()}/api/v1/ads/${id}`, {
         method: 'PATCH',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify(ad),
+        headers,
+        body: formData,
       });
 
       if (!response.ok) {

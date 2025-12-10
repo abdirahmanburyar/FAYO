@@ -1,41 +1,15 @@
-import { IsString, IsOptional, IsEnum, IsDateString, IsInt, Min, IsUrl } from 'class-validator';
-import { AdType, AdStatus } from '@prisma/client';
+import { IsString, IsOptional, IsDateString, IsInt, Min } from 'class-validator';
 
 export class CreateAdDto {
   @IsString()
-  title: string;
-
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @IsString()
-  @IsUrl()
-  imageUrl: string;
-
-  @IsOptional()
-  @IsString()
-  @IsUrl()
-  linkUrl?: string;
-
-  @IsOptional()
-  @IsEnum(AdType)
-  type?: AdType;
-
-  @IsOptional()
-  @IsEnum(AdStatus)
-  status?: AdStatus;
+  image: string; // File path after upload
 
   @IsDateString()
   startDate: string;
 
-  @IsDateString()
-  endDate: string;
-
-  @IsOptional()
   @IsInt()
-  @Min(0)
-  priority?: number;
+  @Min(1)
+  days: number; // Number of days the ad should be active
 
   @IsOptional()
   @IsString()

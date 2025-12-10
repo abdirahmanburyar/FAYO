@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { API_CONFIG } from '@/config/api';
 
+// Input sanitization helper
+function sanitizeInput(input: string): string {
+  return input.trim().replace(/[<>]/g, '');
+}
+
+// Validate input length
+function validateInputLength(input: string, maxLength: number = 100): boolean {
+  return input.length > 0 && input.length <= maxLength;
+}
+
 // Add OPTIONS handler for CORS preflight
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Origin': process.env.NEXT_PUBLIC_ALLOWED_ORIGIN || '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     },
@@ -15,9 +25,20 @@ export async function OPTIONS() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password } = await request.json();
+    // Parse and validate request body
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      return NextResponse.json(
+        { message: 'Invalid request format' },
+        { status: 400 }
+      );
+    }
 
-    // Validate input
+    const { username, password } = body;
+
+    // Validate input exists
     if (!username || !password) {
       return NextResponse.json(
         { message: 'Username and password are required' },
@@ -25,19 +46,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate username format (numbers only)
-    if (!/^\d+$/.test(username)) {
+    // Sanitize and validate inputs
+    const sanitizedUsername = sanitizeInput(String(username));
+    const sanitizedPassword = sanitizeInput(String(password));
+
+    if (!validateInputLength(sanitizedUsername, 50) || !validateInputLength(sanitizedPassword, 200)) {
       return NextResponse.json(
-        { message: 'Username must contain only numbers' },
+        { message: 'Invalid input length' },
+        { status: 400 }
+      );
+    }
+
+    // Validate username format (numbers only)
+    if (!/^\d+$/.test(sanitizedUsername)) {
+      return NextResponse.json(
+        { message: 'Invalid username format' },
         { status: 400 }
       );
     }
 
     // Call user-service admin login endpoint
     const loginUrl = `${API_CONFIG.USER_SERVICE_URL}${API_CONFIG.ENDPOINTS.ADMIN_LOGIN}`;
-    console.log('Admin login - calling:', loginUrl);
-    console.log('USER_SERVICE_URL env:', process.env.USER_SERVICE_URL);
-    console.log('API_CONFIG.USER_SERVICE_URL:', API_CONFIG.USER_SERVICE_URL);
+    // Don't log sensitive information
     
     let response;
     try {
@@ -47,22 +77,20 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          username,
-          password,
+          username: sanitizedUsername,
+          password: sanitizedPassword,
         }),
         // Add timeout
         signal: AbortSignal.timeout(10000), // 10 second timeout
       });
     } catch (fetchError: any) {
-      console.error('Fetch error:', fetchError);
-      const errorMessage = fetchError.name === 'AbortError' 
-        ? 'Request timeout - user-service may be unreachable'
-        : fetchError.message || 'Failed to connect to user-service';
+      // Don't expose internal errors in production
+      const isTimeout = fetchError.name === 'AbortError';
       return NextResponse.json(
         { 
-          message: errorMessage,
-          details: `Unable to reach ${loginUrl}. Check if user-service is running and accessible.`,
-          error: fetchError.message 
+          message: isTimeout 
+            ? 'Service temporarily unavailable. Please try again later.'
+            : 'Authentication service unavailable'
         },
         { status: 503 }
       );
@@ -70,20 +98,14 @@ export async function POST(request: NextRequest) {
 
     // Check response before parsing JSON
     if (!response.ok) {
-      let errorMessage = 'Admin login failed';
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorMessage;
-      } catch {
-        // If response is not JSON, try to get text
-        const errorText = await response.text().catch(() => response.statusText);
-        errorMessage = errorText || `HTTP ${response.status}`;
-      }
+      // Generic error message to prevent information leakage
+      const errorMessage = response.status === 401 
+        ? 'Invalid credentials'
+        : 'Authentication failed';
       
-      console.error('Admin login failed:', response.status, errorMessage);
       return NextResponse.json(
         { message: errorMessage },
-        { status: response.status }
+        { status: 401 }
       );
     }
 
@@ -92,28 +114,45 @@ export async function POST(request: NextRequest) {
     try {
       data = await response.json();
     } catch (error) {
-      console.error('Error parsing login response:', error);
       return NextResponse.json(
-        { message: 'Invalid response from login service' },
+        { message: 'Authentication service error' },
         { status: 500 }
       );
     }
 
-    // Return admin token and user data
-    return NextResponse.json({
+    // Validate response data
+    if (!data.accessToken) {
+      return NextResponse.json(
+        { message: 'Invalid authentication response' },
+        { status: 500 }
+      );
+    }
+
+    // Create response with secure cookie
+    const responseData = NextResponse.json({
       accessToken: data.accessToken,
       refreshToken: data.refreshToken,
       user: data.user,
     });
 
+    // Set secure HTTP-only cookie for token (additional security layer)
+    if (data.accessToken) {
+      responseData.cookies.set('adminToken', data.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+        path: '/',
+      });
+    }
+
+    return responseData;
+
   } catch (error: any) {
-    console.error('Admin login error:', error);
-    console.error('Error stack:', error.stack);
+    // Don't expose error details in production
     return NextResponse.json(
       { 
-        message: 'Internal server error',
-        error: error.message || 'Unknown error',
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        message: 'An error occurred during authentication'
       },
       { status: 500 }
     );

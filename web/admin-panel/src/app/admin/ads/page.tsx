@@ -22,7 +22,7 @@ import {
   Link as LinkIcon,
   RefreshCw,
 } from 'lucide-react';
-import { adsApi, Ad, AdStatus, AdType } from '@/services/adsApi';
+import { adsApi, Ad, AdStatus } from '@/services/adsApi';
 import { getAdsWebSocketService, AdsWebSocketEvent } from '@/services/adsWebSocket';
 import { SkeletonStats, SkeletonTable } from '@/components/skeletons';
 import { SearchableSelect, SelectOption } from '@/components/ui';
@@ -34,7 +34,6 @@ export default function AdsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
-  const [filterType, setFilterType] = useState<string>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [pagination, setPagination] = useState({
@@ -121,7 +120,7 @@ export default function AdsPage() {
   }, [currentPage, itemsPerPage]);
 
   const handleDelete = async (ad: Ad) => {
-    if (!confirm(`Are you sure you want to delete ad "${ad.title}"? This action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to delete this ad? This action cannot be undone.`)) {
       return;
     }
 
@@ -139,13 +138,13 @@ export default function AdsPage() {
 
   const filteredAds = ads.filter((ad) => {
     const matchesSearch =
-      ad.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ad.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      searchTerm === '' ||
+      ad.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ad.startDate.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus = filterStatus === 'ALL' || ad.status === filterStatus;
-    const matchesType = filterType === 'ALL' || ad.type === filterType;
 
-    return matchesSearch && matchesStatus && matchesType;
+    return matchesSearch && matchesStatus;
   });
 
   const getStatusBadgeColor = (status: AdStatus) => {
@@ -163,19 +162,6 @@ export default function AdsPage() {
     }
   };
 
-  const getTypeBadgeColor = (type: AdType) => {
-    switch (type) {
-      case 'BANNER':
-        return 'bg-blue-100 text-blue-800';
-      case 'CAROUSEL':
-        return 'bg-purple-100 text-purple-800';
-      case 'INTERSTITIAL':
-        return 'bg-indigo-100 text-indigo-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   const statusOptions: SelectOption[] = [
     { value: 'ALL', label: 'All Status' },
     { value: 'ACTIVE', label: 'Active' },
@@ -184,12 +170,6 @@ export default function AdsPage() {
     { value: 'EXPIRED', label: 'Expired' },
   ];
 
-  const typeOptions: SelectOption[] = [
-    { value: 'ALL', label: 'All Types' },
-    { value: 'BANNER', label: 'Banner' },
-    { value: 'CAROUSEL', label: 'Carousel' },
-    { value: 'INTERSTITIAL', label: 'Interstitial' },
-  ];
 
   // Calculate stats
   const stats = {
@@ -338,7 +318,7 @@ export default function AdsPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search ads by title or description..."
+              placeholder="Search by ID or date..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -350,14 +330,6 @@ export default function AdsPage() {
               value={filterStatus}
               onChange={(value) => setFilterStatus(value)}
               placeholder="Filter by status"
-            />
-          </div>
-          <div className="lg:w-48">
-            <SearchableSelect
-              options={typeOptions}
-              value={filterType}
-              onChange={(value) => setFilterType(value)}
-              placeholder="Filter by type"
             />
           </div>
           <motion.button
@@ -379,10 +351,7 @@ export default function AdsPage() {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ad
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Type
+                  Image
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -391,10 +360,10 @@ export default function AdsPage() {
                   Period
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Performance
+                  Duration
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Priority
+                  Performance
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -404,7 +373,7 @@ export default function AdsPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredAds.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={5} className="px-6 py-12 text-center">
                     <Megaphone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500">No ads found</p>
                   </td>
@@ -418,34 +387,21 @@ export default function AdsPage() {
                     className="hover:bg-gray-50 transition-colors"
                   >
                     <td className="px-6 py-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
-                          {ad.imageUrl ? (
-                            <img
-                              src={ad.imageUrl}
-                              alt={ad.title}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <ImageIcon className="w-8 h-8 text-gray-400" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{ad.title}</p>
-                          {ad.description && (
-                            <p className="text-sm text-gray-500 line-clamp-1">{ad.description}</p>
-                          )}
-                        </div>
+                      <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                        {ad.image ? (
+                          <img
+                            src={`${process.env.NEXT_PUBLIC_ADS_SERVICE_URL || 'http://72.62.51.50:3007'}${ad.image}`}
+                            alt="Ad image"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <ImageIcon className="w-8 h-8 text-gray-400" />
+                        )}
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getTypeBadgeColor(ad.type)}`}>
-                        {ad.type}
-                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(ad.status)}`}>
@@ -462,6 +418,9 @@ export default function AdsPage() {
                         <span>{new Date(ad.endDate).toLocaleDateString()}</span>
                       </div>
                     </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      <span className="font-medium">{ad.days} day{ad.days !== 1 ? 's' : ''}</span>
+                    </td>
                     <td className="px-6 py-4 text-sm">
                       <div className="space-y-1">
                         <div className="flex items-center space-x-2">
@@ -473,9 +432,6 @@ export default function AdsPage() {
                           <span className="text-gray-600">{ad.clickCount.toLocaleString()}</span>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-gray-900">{ad.priority}</span>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end space-x-2">

@@ -19,25 +19,13 @@ enum AdStatus {
   @@schema("ads")
 }
 
-enum AdType {
-  BANNER
-  CAROUSEL
-  INTERSTITIAL
-
-  @@schema("ads")
-}
-
 model Ad {
   id          String   @id @default(cuid())
-  title       String
-  description String?
-  imageUrl    String
-  linkUrl     String?
-  type        AdType   @default(BANNER)
-  status      AdStatus @default(PENDING)
+  image       String   // File path to uploaded image
   startDate   DateTime
-  endDate     DateTime
-  priority    Int      @default(0) // Higher priority ads shown first
+  endDate     DateTime // Calculated from startDate + days
+  days        Int      @default(1) // Number of days the ad should be active
+  status      AdStatus @default(PENDING)
   clickCount  Int      @default(0)
   viewCount   Int      @default(0)
   createdBy   String?  // User ID who created the ad
@@ -47,6 +35,5 @@ model Ad {
   @@map("ads")
   @@schema("ads")
   @@index([status, startDate, endDate])
-  @@index([priority, status])
 }
 

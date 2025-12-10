@@ -8,8 +8,18 @@ import {
   Delete,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
+  Req,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
+import { Request } from 'express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import { AdsService } from './ads.service';
 import { CreateAdDto } from './dto/create-ad.dto';
 import { UpdateAdDto } from './dto/update-ad.dto';
@@ -20,8 +30,41 @@ export class AdsController {
 
   @Post()
   @Throttle({ default: { limit: 10, ttl: 60000 } })
-  create(@Body() createAdDto: CreateAdDto) {
-    return this.adsService.create(createAdDto);
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: diskStorage({
+        destination: './uploads/ads',
+        filename: (req, file, cb) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          cb(null, `ad-${uniqueSuffix}${ext}`);
+        },
+      }),
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+      },
+    }),
+  )
+  create(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
+          new FileTypeValidator({ fileType: /(jpg|jpeg|png|gif|webp)$/ }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+    @Req() req: Request,
+  ) {
+    const imagePath = `/uploads/ads/${file.filename}`;
+    const body = req.body;
+    return this.adsService.create({
+      image: imagePath,
+      startDate: body.startDate,
+      days: parseInt(body.days, 10),
+      createdBy: body.createdBy,
+    });
   }
 
   @Get()
@@ -52,8 +95,49 @@ export class AdsController {
 
   @Patch(':id')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
-  update(@Param('id') id: string, @Body() updateAdDto: UpdateAdDto) {
-    return this.adsService.update(id, updateAdDto);
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: diskStorage({
+        destination: './uploads/ads',
+        filename: (req, file, cb) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          cb(null, `ad-${uniqueSuffix}${ext}`);
+        },
+      }),
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+      },
+    }),
+  )
+  update(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @UploadedFile(
+      new ParseFilePipe({
+        fileIsRequired: false,
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
+          new FileTypeValidator({ fileType: /(jpg|jpeg|png|gif|webp)$/ }),
+        ],
+      }),
+    )
+    file?: Express.Multer.File,
+  ) {
+    const body = req.body;
+    const updateData: UpdateAdDto = {};
+    
+    if (file) {
+      updateData.image = `/uploads/ads/${file.filename}`;
+    }
+    if (body.startDate) {
+      updateData.startDate = body.startDate;
+    }
+    if (body.days) {
+      updateData.days = parseInt(body.days, 10);
+    }
+    
+    return this.adsService.update(id, updateData);
   }
 
   @Delete(':id')
