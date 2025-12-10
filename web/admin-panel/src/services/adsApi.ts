@@ -1,7 +1,6 @@
 import { API_CONFIG } from '@/config/api';
 
 export type AdStatus = 'INACTIVE' | 'PUBLISHED';
-export type AdType = 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL';
 
 export interface Ad {
   id: string;

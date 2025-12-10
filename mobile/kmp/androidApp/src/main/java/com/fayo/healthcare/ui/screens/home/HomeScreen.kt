@@ -366,7 +366,7 @@ fun HomeScreen(
                                 color = Gray900
                             )
 
-                            // Service Cards Grid
+                            // Service Cards Grid - First Row
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -381,6 +381,23 @@ fun HomeScreen(
                                     title = "My Appointments",
                                     imagePainter = painterResource(id = R.drawable.appointment),
                                     onClick = onNavigateToAppointments,
+                                    modifier = Modifier.weight(1f).height(160.dp)
+                                )
+                            }
+                            
+                            // Service Cards Grid - Second Row (Coming Soon)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                ServiceCardComingSoon(
+                                    title = "Talooyin Caafimaad",
+                                    imagePainter = painterResource(id = R.drawable.talooyin),
+                                    modifier = Modifier.weight(1f).height(160.dp)
+                                )
+                                ServiceCardComingSoon(
+                                    title = "Latalinta Muuqaalka ah",
+                                    imagePainter = painterResource(id = R.drawable.muuqaal),
                                     modifier = Modifier.weight(1f).height(160.dp)
                                 )
                             }
@@ -699,6 +716,84 @@ fun ServiceCard(
                         )
                     )
             )
+            
+            // Content
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Bottom
+            ) {
+                Text(
+                    text = title,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ServiceCardComingSoon(
+    title: String,
+    imagePainter: Painter,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Background Image with reduced opacity
+            Image(
+                painter = imagePainter,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(0.5f)
+            )
+            
+            // Dark overlay for disabled look
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.8f)
+                            ),
+                            startY = 0.0f,
+                            endY = Float.POSITIVE_INFINITY
+                        )
+                    )
+            )
+            
+            // Coming Soon Badge
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(12.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFFFF6B35).copy(alpha = 0.9f)
+            ) {
+                Text(
+                    text = "Coming Soon",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
             
             // Content
             Column(

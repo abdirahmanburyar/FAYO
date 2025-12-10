@@ -19,7 +19,6 @@ import {
   TrendingUp,
   MousePointerClick,
   Image as ImageIcon,
-  Link as LinkIcon,
   RefreshCw,
 } from 'lucide-react';
 import { adsApi, Ad, AdStatus } from '@/services/adsApi';
@@ -348,13 +347,16 @@ export default function AdsPage() {
                   Image
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Company/Person
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Period
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Duration
+                  Range
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Performance
@@ -367,7 +369,7 @@ export default function AdsPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredAds.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
+                  <td colSpan={7} className="px-6 py-12 text-center">
                     <Megaphone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500">No ads found</p>
                   </td>
@@ -396,9 +398,6 @@ export default function AdsPage() {
                           <ImageIcon className="w-8 h-8 text-gray-400" />
                         )}
                       </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="font-medium text-gray-900">{ad.company}</p>
                     </td>
                     <td className="px-6 py-4">
                       <p className="font-medium text-gray-900">{ad.company}</p>
