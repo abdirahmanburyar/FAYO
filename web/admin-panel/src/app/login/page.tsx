@@ -48,21 +48,48 @@ export default function AdminLoginPage() {
         body: JSON.stringify(data),
       });
 
-      const result = await response.json();
+      let result;
+      try {
+        result = await response.json();
+      } catch (parseError) {
+        // If response is not JSON, get text
+        const text = await response.text();
+        console.error('Login response parse error:', parseError, 'Response text:', text);
+        setError(`Server error: ${response.status} ${response.statusText}`);
+        setIsLoading(false);
+        return;
+      }
 
       if (response.ok) {
+        // Validate response has required fields
+        if (!result.accessToken) {
+          console.error('Login response missing accessToken:', result);
+          setError('Invalid response from server. Please try again.');
+          setIsLoading(false);
+          return;
+        }
+
         // Store admin token
         localStorage.setItem('adminToken', result.accessToken);
-        localStorage.setItem('adminRefreshToken', result.refreshToken);
-        localStorage.setItem('adminUser', JSON.stringify(result.user));
+        if (result.refreshToken) {
+          localStorage.setItem('adminRefreshToken', result.refreshToken);
+        }
+        if (result.user) {
+          localStorage.setItem('adminUser', JSON.stringify(result.user));
+        }
         
         // Redirect to admin dashboard
         router.push('/admin/dashboard');
       } else {
-        setError(result.message || 'Login failed');
+        // Show detailed error message
+        const errorMsg = result.message || result.error || `Login failed (${response.status})`;
+        console.error('Login failed:', response.status, result);
+        setError(errorMsg);
       }
     } catch (err) {
-      setError('Network error. Please try again.');
+      console.error('Login error:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Network error. Please try again.';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

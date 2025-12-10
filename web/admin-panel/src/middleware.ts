@@ -67,12 +67,16 @@ export function middleware(request: NextRequest) {
   // Check if route is public
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
   
-  // Rate limiting for login endpoints
+  // Rate limiting for login endpoints (but allow the request to proceed)
+  // Note: Rate limiting is per-IP, so if you're blocked, wait 15 minutes or use a different network
   if (pathname.includes('/admin-login')) {
     const key = getRateLimitKey(request);
     if (!checkRateLimit(key, true)) {
       return NextResponse.json(
-        { message: 'Too many login attempts. Please try again later.' },
+        { 
+          message: 'Too many login attempts. Please try again in 15 minutes.',
+          error: 'RATE_LIMIT_EXCEEDED'
+        },
         { status: 429, headers: response.headers }
       );
     }
@@ -90,20 +94,26 @@ export function middleware(request: NextRequest) {
   }
   
   // Protect admin routes
+  // Note: We let the client-side layout handle authentication checks
+  // since tokens are stored in localStorage (client-side only)
+  // The layout will redirect to login if no token is found
+  // This middleware still provides security headers and rate limiting
   if (protectedRoutes.some(route => pathname.startsWith(route))) {
-    // Check for authentication token in cookies or headers
+    // Check for authentication token in cookies (for API requests)
+    // Client-side pages will be handled by the layout component
     const token = request.cookies.get('adminToken')?.value || 
                   request.headers.get('authorization')?.replace('Bearer ', '');
     
-    if (!token) {
-      // Redirect to login if no token
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(loginUrl);
+    // Only redirect API requests without tokens
+    // Page requests will be handled by client-side layout
+    if (!token && pathname.startsWith('/api/')) {
+      return NextResponse.json(
+        { message: 'Unauthorized' },
+        { status: 401, headers: response.headers }
+      );
     }
     
-    // Optionally validate token here (you can add JWT verification)
-    // For now, we'll let the API routes handle validation
+    // For page requests, let them through - layout will handle auth
   }
   
   return response;
