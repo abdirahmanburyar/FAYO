@@ -11,21 +11,20 @@ datasource db {
 }
 
 enum AdStatus {
-  ACTIVE
   INACTIVE
-  PENDING
-  EXPIRED
+  PUBLISHED
 
   @@schema("ads")
 }
 
 model Ad {
   id          String   @id @default(cuid())
+  company     String   // Company or person name
   image       String   // File path to uploaded image
   startDate   DateTime
-  endDate     DateTime // Calculated from startDate + days
-  days        Int      @default(1) // Number of days the ad should be active
-  status      AdStatus @default(PENDING)
+  endDate     DateTime // Calculated from startDate + range
+  range       Int      @default(1) // Number of days (endDate = startDate + range)
+  status      AdStatus @default(INACTIVE)
   clickCount  Int      @default(0)
   viewCount   Int      @default(0)
   createdBy   String?  // User ID who created the ad

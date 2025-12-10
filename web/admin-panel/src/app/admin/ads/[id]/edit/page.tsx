@@ -9,9 +9,9 @@ import {
   AlertCircle,
   Image as ImageIcon,
   Calendar,
-  Megaphone,
+  Building2,
 } from 'lucide-react';
-import { adsApi, UpdateAdDto, Ad } from '@/services/adsApi';
+import { adsApi, UpdateAdDto, Ad, AdStatus } from '@/services/adsApi';
 
 export default function EditAdPage() {
   const router = useRouter();
@@ -25,8 +25,10 @@ export default function EditAdPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
+    company: '',
     startDate: '',
-    days: 7,
+    range: 7,
+    status: 'INACTIVE' as AdStatus,
   });
 
   useEffect(() => {
@@ -37,8 +39,10 @@ export default function EditAdPage() {
         const adData = await adsApi.getAd(adId);
         setAd(adData);
         setFormData({
+          company: adData.company,
           startDate: adData.startDate.split('T')[0],
-          days: adData.days,
+          range: adData.range,
+          status: adData.status,
         });
         // Set preview to existing image
         const baseUrl = process.env.NEXT_PUBLIC_ADS_SERVICE_URL || 'http://72.62.51.50:3007';
@@ -86,8 +90,10 @@ export default function EditAdPage() {
 
     try {
       const updateData: UpdateAdDto = {
+        company: formData.company,
         startDate: formData.startDate ? new Date(formData.startDate).toISOString() : undefined,
-        days: formData.days,
+        range: formData.range,
+        status: formData.status,
       };
       
       if (imageFile) {
@@ -106,7 +112,7 @@ export default function EditAdPage() {
 
   // Calculate end date for display
   const endDate = formData.startDate
-    ? new Date(new Date(formData.startDate).getTime() + formData.days * 24 * 60 * 60 * 1000)
+    ? new Date(new Date(formData.startDate).getTime() + formData.range * 24 * 60 * 60 * 1000)
         .toISOString()
         .split('T')[0]
     : '';
@@ -165,7 +171,7 @@ export default function EditAdPage() {
         </motion.button>
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Edit Advertisement</h1>
-          <p className="text-gray-600 mt-2">Update advertisement image and schedule</p>
+          <p className="text-gray-600 mt-2">Update advertisement details</p>
         </div>
       </div>
 
@@ -183,8 +189,30 @@ export default function EditAdPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
-        {/* Image Upload */}
+        {/* Company/Person Name */}
         <div className="space-y-4">
+          <h2 className="text-xl font-semibold text-gray-900 flex items-center space-x-2">
+            <Building2 className="w-5 h-5" />
+            <span>Company/Person</span>
+          </h2>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Company or Person Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.company}
+              onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter company or person name"
+            />
+          </div>
+        </div>
+
+        {/* Image Upload */}
+        <div className="space-y-4 border-t border-gray-200 pt-6">
           <h2 className="text-xl font-semibold text-gray-900 flex items-center space-x-2">
             <ImageIcon className="w-5 h-5" />
             <span>Image</span>
@@ -234,7 +262,7 @@ export default function EditAdPage() {
           )}
         </div>
 
-        {/* Date and Duration */}
+        {/* Date and Range */}
         <div className="space-y-4 border-t border-gray-200 pt-6">
           <h2 className="text-xl font-semibold text-gray-900 flex items-center space-x-2">
             <Calendar className="w-5 h-5" />
@@ -257,18 +285,18 @@ export default function EditAdPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Duration (Days) <span className="text-red-500">*</span>
+                Range (Days) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
                 required
                 min="1"
-                value={formData.days}
-                onChange={(e) => setFormData({ ...formData, days: parseInt(e.target.value) || 1 })}
+                value={formData.range}
+                onChange={(e) => setFormData({ ...formData, range: parseInt(e.target.value) || 1 })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="7"
               />
-              <p className="text-xs text-gray-500 mt-1">Number of days the ad will be active</p>
+              <p className="text-xs text-gray-500 mt-1">Number of days (end date = start date + range)</p>
             </div>
 
             <div>
@@ -282,9 +310,29 @@ export default function EditAdPage() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Ad will be active from {formData.startDate} to {endDate} ({formData.days} days)
+                Ad will be available from {formData.startDate} to {endDate} ({formData.range} days)
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Status */}
+        <div className="space-y-4 border-t border-gray-200 pt-6">
+          <h2 className="text-xl font-semibold text-gray-900">Status</h2>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Status <span className="text-red-500">*</span>
+            </label>
+            <select
+              required
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as AdStatus })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="INACTIVE">Inactive</option>
+              <option value="PUBLISHED">Published</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">Only published ads within date range will be displayed</p>
           </div>
         </div>
 

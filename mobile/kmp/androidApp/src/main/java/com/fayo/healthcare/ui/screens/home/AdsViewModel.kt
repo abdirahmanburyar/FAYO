@@ -65,11 +65,10 @@ class AdsViewModel(
                         "ad.created" -> {
                             event.ad?.let { ad ->
                                 val currentAds = _uiState.value.ads.toMutableList()
-                                // Add new ad if it's active and not already in the list
-                                if (ad.status == com.fayo.healthcare.data.models.AdStatus.ACTIVE && 
+                                // Add new ad if it's published and not already in the list
+                                if (ad.status == com.fayo.healthcare.data.models.AdStatus.PUBLISHED && 
                                     !currentAds.any { it.id == ad.id }) {
                                     currentAds.add(ad)
-                                    currentAds.sortByDescending { it.priority }
                                     _uiState.value = _uiState.value.copy(ads = currentAds)
                                     println("✅ [AdsViewModel] Ad created: ${ad.id}")
                                 }
@@ -81,19 +80,17 @@ class AdsViewModel(
                                 val index = currentAds.indexOfFirst { it.id == updatedAd.id }
                                 if (index >= 0) {
                                     // Update existing ad
-                                    if (updatedAd.status == com.fayo.healthcare.data.models.AdStatus.ACTIVE) {
+                                    if (updatedAd.status == com.fayo.healthcare.data.models.AdStatus.PUBLISHED) {
                                         currentAds[index] = updatedAd
                                     } else {
-                                        // Remove if no longer active
+                                        // Remove if no longer published
                                         currentAds.removeAt(index)
                                     }
-                                    currentAds.sortByDescending { it.priority }
                                     _uiState.value = _uiState.value.copy(ads = currentAds)
                                     println("✅ [AdsViewModel] Ad updated: ${updatedAd.id}")
-                                } else if (updatedAd.status == com.fayo.healthcare.data.models.AdStatus.ACTIVE) {
-                                    // Add if it's now active and wasn't in the list
+                                } else if (updatedAd.status == com.fayo.healthcare.data.models.AdStatus.PUBLISHED) {
+                                    // Add if it's now published and wasn't in the list
                                     currentAds.add(updatedAd)
-                                    currentAds.sortByDescending { it.priority }
                                     _uiState.value = _uiState.value.copy(ads = currentAds)
                                     println("✅ [AdsViewModel] Ad added after update: ${updatedAd.id}")
                                 }

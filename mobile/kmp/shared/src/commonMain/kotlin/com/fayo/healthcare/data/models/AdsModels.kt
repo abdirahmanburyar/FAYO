@@ -5,35 +5,21 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 enum class AdStatus {
-    ACTIVE,
     INACTIVE,
-    PENDING,
-    EXPIRED
-}
-
-@Serializable
-enum class AdType {
-    BANNER,
-    CAROUSEL,
-    INTERSTITIAL
+    PUBLISHED
 }
 
 @Serializable
 data class AdDto(
     val id: String,
-    val title: String,
-    val description: String? = null,
-    @SerialName("imageUrl")
-    val imageUrl: String,
-    @SerialName("linkUrl")
-    val linkUrl: String? = null,
-    val type: AdType = AdType.BANNER,
-    val status: AdStatus = AdStatus.PENDING,
+    val company: String, // Company or person name
+    val image: String, // Image path
     @SerialName("startDate")
     val startDate: String,
     @SerialName("endDate")
     val endDate: String,
-    val priority: Int = 0,
+    val range: Int, // Number of days
+    val status: AdStatus = AdStatus.INACTIVE,
     @SerialName("clickCount")
     val clickCount: Int = 0,
     @SerialName("viewCount")

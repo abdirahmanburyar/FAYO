@@ -149,14 +149,10 @@ export default function AdsPage() {
 
   const getStatusBadgeColor = (status: AdStatus) => {
     switch (status) {
-      case 'ACTIVE':
+      case 'PUBLISHED':
         return 'bg-green-100 text-green-800';
-      case 'PENDING':
-        return 'bg-yellow-100 text-yellow-800';
       case 'INACTIVE':
         return 'bg-gray-100 text-gray-800';
-      case 'EXPIRED':
-        return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -164,18 +160,16 @@ export default function AdsPage() {
 
   const statusOptions: SelectOption[] = [
     { value: 'ALL', label: 'All Status' },
-    { value: 'ACTIVE', label: 'Active' },
-    { value: 'PENDING', label: 'Pending' },
+    { value: 'PUBLISHED', label: 'Published' },
     { value: 'INACTIVE', label: 'Inactive' },
-    { value: 'EXPIRED', label: 'Expired' },
   ];
 
 
   // Calculate stats
   const stats = {
     total: ads.length,
-    active: ads.filter((a) => a.status === 'ACTIVE').length,
-    pending: ads.filter((a) => a.status === 'PENDING').length,
+    published: ads.filter((a) => a.status === 'PUBLISHED').length,
+    inactive: ads.filter((a) => a.status === 'INACTIVE').length,
     totalViews: ads.reduce((sum, a) => sum + a.viewCount, 0),
     totalClicks: ads.reduce((sum, a) => sum + a.clickCount, 0),
   };
@@ -258,8 +252,8 @@ export default function AdsPage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Active</p>
-              <p className="text-2xl font-bold text-green-600 mt-1">{stats.active}</p>
+              <p className="text-sm text-gray-600">Published</p>
+              <p className="text-2xl font-bold text-green-600 mt-1">{stats.published}</p>
             </div>
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
@@ -273,10 +267,10 @@ export default function AdsPage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Pending</p>
-              <p className="text-2xl font-bold text-yellow-600 mt-1">{stats.pending}</p>
+              <p className="text-sm text-gray-600">Inactive</p>
+              <p className="text-2xl font-bold text-gray-600 mt-1">{stats.inactive}</p>
             </div>
-            <Clock className="w-8 h-8 text-yellow-600" />
+            <Clock className="w-8 h-8 text-gray-600" />
           </div>
         </motion.div>
 
@@ -373,7 +367,7 @@ export default function AdsPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredAds.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center">
+                  <td colSpan={6} className="px-6 py-12 text-center">
                     <Megaphone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500">No ads found</p>
                   </td>
@@ -404,6 +398,12 @@ export default function AdsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
+                      <p className="font-medium text-gray-900">{ad.company}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="font-medium text-gray-900">{ad.company}</p>
+                    </td>
+                    <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(ad.status)}`}>
                         {ad.status}
                       </span>
@@ -419,7 +419,7 @@ export default function AdsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      <span className="font-medium">{ad.days} day{ad.days !== 1 ? 's' : ''}</span>
+                      <span className="font-medium">{ad.range} day{ad.range !== 1 ? 's' : ''}</span>
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <div className="space-y-1">

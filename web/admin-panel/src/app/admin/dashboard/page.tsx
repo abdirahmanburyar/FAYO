@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Calendar, FileText, Activity, TrendingUp, Clock } from 'lucide-react';
+import { Users, Calendar, FileText, Activity, TrendingUp, Clock, Megaphone } from 'lucide-react';
 import { SkeletonStats, SkeletonList } from '@/components/skeletons';
+import { adsApi, Ad } from '@/services/adsApi';
 
 const stats = [
   {
@@ -73,6 +74,9 @@ const recentActivities = [
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
+  const [ads, setAds] = useState<Ad[]>([]);
+  const [adsLoading, setAdsLoading] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Simulate loading dashboard data
@@ -82,6 +86,47 @@ export default function AdminDashboard() {
 
     return () => clearTimeout(timer);
   }, []);
+
+  // Fetch published ads
+  useEffect(() => {
+    const fetchAds = async () => {
+      try {
+        setAdsLoading(true);
+        const response = await adsApi.getAds(true, 1, 20); // Get active/published ads
+        setAds(response.data.filter(ad => ad.status === 'PUBLISHED'));
+      } catch (error) {
+        console.error('Error fetching ads:', error);
+      } finally {
+        setAdsLoading(false);
+      }
+    };
+
+    fetchAds();
+  }, []);
+
+  // Auto-scroll ads
+  useEffect(() => {
+    if (ads.length <= 1 || !scrollRef.current) return;
+
+    const interval = setInterval(() => {
+      if (scrollRef.current) {
+        const scrollContainer = scrollRef.current;
+        const scrollWidth = scrollContainer.scrollWidth;
+        const clientWidth = scrollContainer.clientWidth;
+        const currentScroll = scrollContainer.scrollLeft;
+        
+        if (currentScroll + clientWidth >= scrollWidth - 10) {
+          // Reset to start
+          scrollContainer.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          // Scroll to next
+          scrollContainer.scrollBy({ left: clientWidth, behavior: 'smooth' });
+        }
+      }
+    }, 5000); // Change ad every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [ads]);
 
   if (loading) {
     return (
@@ -132,6 +177,60 @@ export default function AdminDashboard() {
           Welcome to the FAYO Healthcare Admin Panel
         </p>
       </div>
+
+      {/* Auto-Scrollable Ads Carousel */}
+      {ads.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+              <Megaphone className="w-5 h-5" />
+              <span>Active Advertisements</span>
+            </h2>
+          </div>
+          <div
+            ref={scrollRef}
+            className="flex space-x-4 overflow-x-auto scrollbar-hide scroll-smooth"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {ads.map((ad) => {
+              const baseUrl = process.env.NEXT_PUBLIC_ADS_SERVICE_URL || 'http://72.62.51.50:3007';
+              return (
+                <div
+                  key={ad.id}
+                  className="flex-shrink-0 w-full md:w-1/2 lg:w-1/3"
+                >
+                  <div className="relative h-48 rounded-lg overflow-hidden bg-gray-100">
+                    <img
+                      src={`${baseUrl}${ad.image}`}
+                      alt={ad.company}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                      <p className="text-white font-semibold">{ad.company}</p>
+                      <p className="text-white/80 text-sm">
+                        {new Date(ad.startDate).toLocaleDateString()} - {new Date(ad.endDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <style jsx>{`
+            .scrollbar-hide::-webkit-scrollbar {
+              display: none;
+            }
+          `}</style>
+        </motion.div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

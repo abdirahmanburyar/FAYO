@@ -60,9 +60,11 @@ export class AdsController {
     const imagePath = `/uploads/ads/${file.filename}`;
     const body = req.body;
     return this.adsService.create({
+      company: body.company,
       image: imagePath,
       startDate: body.startDate,
-      days: parseInt(body.days, 10),
+      range: parseInt(body.range, 10),
+      status: body.status,
       createdBy: body.createdBy,
     });
   }
@@ -130,11 +132,17 @@ export class AdsController {
     if (file) {
       updateData.image = `/uploads/ads/${file.filename}`;
     }
+    if (body.company) {
+      updateData.company = body.company;
+    }
     if (body.startDate) {
       updateData.startDate = body.startDate;
     }
-    if (body.days) {
-      updateData.days = parseInt(body.days, 10);
+    if (body.range) {
+      updateData.range = parseInt(body.range, 10);
+    }
+    if (body.status) {
+      updateData.status = body.status;
     }
     
     return this.adsService.update(id, updateData);

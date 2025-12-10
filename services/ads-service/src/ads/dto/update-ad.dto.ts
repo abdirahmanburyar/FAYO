@@ -1,8 +1,13 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateAdDto } from './create-ad.dto';
-import { IsOptional, IsInt, Min, IsString, IsDateString } from 'class-validator';
+import { IsOptional, IsInt, Min, IsString, IsDateString, IsEnum } from 'class-validator';
+import { AdStatus } from '@prisma/client';
 
 export class UpdateAdDto extends PartialType(CreateAdDto) {
+  @IsOptional()
+  @IsString()
+  company?: string;
+
   @IsOptional()
   @IsString()
   image?: string; // File path after upload
@@ -14,7 +19,11 @@ export class UpdateAdDto extends PartialType(CreateAdDto) {
   @IsOptional()
   @IsInt()
   @Min(1)
-  days?: number;
+  range?: number;
+
+  @IsOptional()
+  @IsEnum(AdStatus)
+  status?: AdStatus;
 
   @IsOptional()
   @IsInt()

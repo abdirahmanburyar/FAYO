@@ -9,9 +9,9 @@ import {
   AlertCircle,
   Image as ImageIcon,
   Calendar,
-  Megaphone,
+  Building2,
 } from 'lucide-react';
-import { adsApi, CreateAdDto } from '@/services/adsApi';
+import { adsApi, CreateAdDto, AdStatus } from '@/services/adsApi';
 
 export default function CreateAdPage() {
   const router = useRouter();
@@ -20,8 +20,10 @@ export default function CreateAdPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
+    company: '',
     startDate: new Date().toISOString().split('T')[0],
-    days: 7,
+    range: 7,
+    status: 'INACTIVE' as AdStatus,
   });
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,13 +58,20 @@ export default function CreateAdPage() {
       return;
     }
 
+    if (!formData.company.trim()) {
+      setError('Please enter company or person name');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const adData: CreateAdDto = {
+        company: formData.company.trim(),
         image: imageFile,
         startDate: new Date(formData.startDate).toISOString(),
-        days: formData.days,
+        range: formData.range,
+        status: formData.status,
         createdBy: 'ADMIN',
       };
 
@@ -78,7 +87,7 @@ export default function CreateAdPage() {
 
   // Calculate end date for display
   const endDate = formData.startDate
-    ? new Date(new Date(formData.startDate).getTime() + formData.days * 24 * 60 * 60 * 1000)
+    ? new Date(new Date(formData.startDate).getTime() + formData.range * 24 * 60 * 60 * 1000)
         .toISOString()
         .split('T')[0]
     : '';
@@ -97,7 +106,7 @@ export default function CreateAdPage() {
         </motion.button>
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Create Advertisement</h1>
-          <p className="text-gray-600 mt-2">Upload an image and set the display period</p>
+          <p className="text-gray-600 mt-2">Add a new advertisement</p>
         </div>
       </div>
 
@@ -115,8 +124,30 @@ export default function CreateAdPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
-        {/* Image Upload */}
+        {/* Company/Person Name */}
         <div className="space-y-4">
+          <h2 className="text-xl font-semibold text-gray-900 flex items-center space-x-2">
+            <Building2 className="w-5 h-5" />
+            <span>Company/Person</span>
+          </h2>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Company or Person Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.company}
+              onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter company or person name"
+            />
+          </div>
+        </div>
+
+        {/* Image Upload */}
+        <div className="space-y-4 border-t border-gray-200 pt-6">
           <h2 className="text-xl font-semibold text-gray-900 flex items-center space-x-2">
             <ImageIcon className="w-5 h-5" />
             <span>Image</span>
@@ -167,7 +198,7 @@ export default function CreateAdPage() {
           )}
         </div>
 
-        {/* Date and Duration */}
+        {/* Date and Range */}
         <div className="space-y-4 border-t border-gray-200 pt-6">
           <h2 className="text-xl font-semibold text-gray-900 flex items-center space-x-2">
             <Calendar className="w-5 h-5" />
@@ -190,18 +221,18 @@ export default function CreateAdPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Duration (Days) <span className="text-red-500">*</span>
+                Range (Days) <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
                 required
                 min="1"
-                value={formData.days}
-                onChange={(e) => setFormData({ ...formData, days: parseInt(e.target.value) || 1 })}
+                value={formData.range}
+                onChange={(e) => setFormData({ ...formData, range: parseInt(e.target.value) || 1 })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="7"
               />
-              <p className="text-xs text-gray-500 mt-1">Number of days the ad will be active</p>
+              <p className="text-xs text-gray-500 mt-1">Number of days (end date = start date + range)</p>
             </div>
 
             <div>
@@ -215,9 +246,29 @@ export default function CreateAdPage() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Ad will be active from {formData.startDate} to {endDate} ({formData.days} days)
+                Ad will be available from {formData.startDate} to {endDate} ({formData.range} days)
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Status */}
+        <div className="space-y-4 border-t border-gray-200 pt-6">
+          <h2 className="text-xl font-semibold text-gray-900">Status</h2>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Status <span className="text-red-500">*</span>
+            </label>
+            <select
+              required
+              value={formData.status}
+              onChange={(e) => setFormData({ ...formData, status: e.target.value as AdStatus })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="INACTIVE">Inactive</option>
+              <option value="PUBLISHED">Published</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">Only published ads within date range will be displayed</p>
           </div>
         </div>
 
@@ -236,7 +287,7 @@ export default function CreateAdPage() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             type="submit"
-            disabled={loading || !imageFile}
+            disabled={loading || !imageFile || !formData.company.trim()}
             className="flex items-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="w-5 h-5" />

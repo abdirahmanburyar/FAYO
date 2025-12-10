@@ -1,6 +1,10 @@
-import { IsString, IsOptional, IsDateString, IsInt, Min } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsInt, Min, IsEnum } from 'class-validator';
+import { AdStatus } from '@prisma/client';
 
 export class CreateAdDto {
+  @IsString()
+  company: string; // Company or person name
+
   @IsString()
   image: string; // File path after upload
 
@@ -9,7 +13,11 @@ export class CreateAdDto {
 
   @IsInt()
   @Min(1)
-  days: number; // Number of days the ad should be active
+  range: number; // Number of days (endDate = startDate + range)
+
+  @IsOptional()
+  @IsEnum(AdStatus)
+  status?: AdStatus;
 
   @IsOptional()
   @IsString()

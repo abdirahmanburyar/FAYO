@@ -1,14 +1,15 @@
 import { API_CONFIG } from '@/config/api';
 
-export type AdStatus = 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'EXPIRED';
+export type AdStatus = 'INACTIVE' | 'PUBLISHED';
 export type AdType = 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL';
 
 export interface Ad {
   id: string;
+  company: string; // Company or person name
   image: string; // File path to uploaded image
   startDate: string; // ISO date string
-  endDate: string; // ISO date string (calculated from startDate + days)
-  days: number; // Number of days the ad should be active
+  endDate: string; // ISO date string (calculated from startDate + range)
+  range: number; // Number of days (endDate = startDate + range)
   status: AdStatus;
   clickCount: number;
   viewCount: number;
@@ -18,16 +19,20 @@ export interface Ad {
 }
 
 export interface CreateAdDto {
+  company: string; // Company or person name
   image: File; // Image file to upload
   startDate: string; // ISO date string
-  days: number; // Number of days the ad should be active
+  range: number; // Number of days (endDate = startDate + range)
+  status?: AdStatus;
   createdBy?: string;
 }
 
 export interface UpdateAdDto {
+  company?: string;
   image?: File; // Optional image file to upload
   startDate?: string;
-  days?: number;
+  range?: number;
+  status?: AdStatus;
 }
 
 export interface AdsListResponse {
@@ -128,9 +133,13 @@ class AdsApiService {
   async createAd(ad: CreateAdDto): Promise<Ad> {
     try {
       const formData = new FormData();
+      formData.append('company', ad.company);
       formData.append('image', ad.image);
       formData.append('startDate', ad.startDate);
-      formData.append('days', ad.days.toString());
+      formData.append('range', ad.range.toString());
+      if (ad.status) {
+        formData.append('status', ad.status);
+      }
       if (ad.createdBy) {
         formData.append('createdBy', ad.createdBy);
       }
@@ -165,11 +174,17 @@ class AdsApiService {
       if (ad.image) {
         formData.append('image', ad.image);
       }
+      if (ad.company) {
+        formData.append('company', ad.company);
+      }
       if (ad.startDate) {
         formData.append('startDate', ad.startDate);
       }
-      if (ad.days !== undefined) {
-        formData.append('days', ad.days.toString());
+      if (ad.range !== undefined) {
+        formData.append('range', ad.range.toString());
+      }
+      if (ad.status) {
+        formData.append('status', ad.status);
       }
 
       const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;

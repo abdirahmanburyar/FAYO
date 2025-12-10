@@ -10,6 +10,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -25,6 +27,8 @@ import com.fayo.healthcare.ui.screens.home.HomeViewModel
 import com.fayo.healthcare.ui.screens.home.ActiveSession as HomeActiveSession
 import com.fayo.healthcare.ui.theme.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import org.koin.androidx.compose.koinViewModel
 import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material.icons.filled.Close
@@ -300,10 +304,28 @@ fun HomeScreen(
                                 // No ads available - show placeholder or hide section
                                 Spacer(modifier = Modifier.height(8.dp))
                             } else {
-                                // Real ads carousel
+                                // Auto-scrollable ads carousel
+                                var currentIndex by remember { mutableStateOf(0) }
+                                val listState = rememberLazyListState(initialFirstVisibleItemIndex = 0)
+                                
+                                // Auto-scroll every 5 seconds
+                                LaunchedEffect(adsState.ads.size) {
+                                    if (adsState.ads.size > 1) {
+                                        while (true) {
+                                            kotlinx.coroutines.delay(5000) // 5 seconds
+                                            currentIndex = (currentIndex + 1) % adsState.ads.size
+                                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                listState.animateScrollToItem(currentIndex)
+                                            }
+                                        }
+                                    }
+                                }
+                                
                                 androidx.compose.foundation.lazy.LazyRow(
+                                    state = listState,
                                     horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                    contentPadding = PaddingValues(horizontal = 20.dp)
+                                    contentPadding = PaddingValues(horizontal = 20.dp),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
                                     items(adsState.ads.size) { index ->
                                         val ad = adsState.ads[index]
@@ -311,14 +333,6 @@ fun HomeScreen(
                                             ad = ad,
                                             onAdClick = {
                                                 adsViewModel.trackAdClick(ad.id)
-                                                ad.linkUrl?.let { url ->
-                                                    try {
-                                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                                        context.startActivity(intent)
-                                                    } catch (e: Exception) {
-                                                        println("❌ Error opening ad link: ${e.message}")
-                                                    }
-                                                }
                                             },
                                             onAdViewed = {
                                                 adsViewModel.trackAdView(ad.id)
@@ -556,13 +570,16 @@ fun AdCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Ad Image
+            // Ad Image - construct full URL
+            val baseUrl = "http://72.62.51.50:3007"
+            val imageUrl = if (ad.image.startsWith("http")) ad.image else "$baseUrl${ad.image}"
+            
             AsyncImage(
                 model = ImageRequest.Builder(context)
-                    .data(ad.imageUrl)
+                    .data(imageUrl)
                     .crossfade(true)
                     .build(),
-                contentDescription = ad.title,
+                contentDescription = ad.company,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
@@ -591,22 +608,12 @@ fun AdCard(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = ad.title,
+                    text = ad.company,
                     color = Color.White,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     lineHeight = 24.sp
                 )
-                ad.description?.takeIf { it.isNotBlank() }?.let { description ->
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = description,
-                        color = Color.White.copy(alpha = 0.9f),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 2
-                    )
-                }
             }
         }
     }

@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/database/prisma.service';
 import { CreateAdDto } from './dto/create-ad.dto';
 import { UpdateAdDto } from './dto/update-ad.dto';
-import { AdStatus, AdType } from '@prisma/client';
+import { AdStatus } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
@@ -17,24 +17,17 @@ export class AdsService {
   async create(createAdDto: CreateAdDto) {
     const startDate = new Date(createAdDto.startDate);
     const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + createAdDto.days);
-    
-    // Auto-determine status based on dates
-    const now = new Date();
-    let status = AdStatus.PENDING;
-    if (startDate <= now && endDate >= now) {
-      status = AdStatus.ACTIVE;
-    } else if (endDate < now) {
-      status = AdStatus.EXPIRED;
-    }
+    // endDate = startDate + range (e.g., 11/12 + 5 = 16/12)
+    endDate.setDate(endDate.getDate() + createAdDto.range);
 
     const ad = await this.prisma.ad.create({
       data: {
+        company: createAdDto.company,
         image: createAdDto.image,
         startDate,
         endDate,
-        days: createAdDto.days,
-        status,
+        range: createAdDto.range,
+        status: createAdDto.status || AdStatus.INACTIVE,
         createdBy: createAdDto.createdBy,
       },
     });
@@ -50,11 +43,9 @@ export class AdsService {
     const where: any = {};
     const now = new Date();
     
-    // Auto-update status based on dates before querying
-    await this.updateExpiredAds(now);
-    
     if (activeOnly) {
-      where.status = AdStatus.ACTIVE;
+      // Only show PUBLISHED ads that are within date range
+      where.status = AdStatus.PUBLISHED;
       where.startDate = { lte: now };
       where.endDate = { gte: now };
     }
@@ -89,9 +80,6 @@ export class AdsService {
   async findActive(page: number = 1, limit: number = 50) {
     const now = new Date();
     
-    // Auto-update status based on dates before querying
-    await this.updateExpiredAds(now);
-    
     // Ensure reasonable limits to prevent overload
     const take = Math.min(Math.max(1, limit), 100); // Max 100 items per page
     const skip = Math.max(0, (page - 1) * take);
@@ -99,7 +87,7 @@ export class AdsService {
     const [data, total] = await Promise.all([
       this.prisma.ad.findMany({
         where: {
-          status: AdStatus.ACTIVE,
+          status: AdStatus.PUBLISHED,
           startDate: { lte: now },
           endDate: { gte: now },
         },
@@ -111,7 +99,7 @@ export class AdsService {
       }),
       this.prisma.ad.count({
         where: {
-          status: AdStatus.ACTIVE,
+          status: AdStatus.PUBLISHED,
           startDate: { lte: now },
           endDate: { gte: now },
         },
@@ -146,33 +134,23 @@ export class AdsService {
 
     const updateData: any = { ...updateAdDto };
     
-    // Calculate endDate if startDate or days changed
+    // Calculate endDate if startDate or range changed
     let startDate = existingAd.startDate;
-    let days = existingAd.days;
+    let range = existingAd.range;
     
     if (updateAdDto.startDate) {
       startDate = new Date(updateAdDto.startDate);
       updateData.startDate = startDate;
     }
-    if (updateAdDto.days !== undefined) {
-      days = updateAdDto.days;
-      updateData.days = days;
+    if (updateAdDto.range !== undefined) {
+      range = updateAdDto.range;
+      updateData.range = range;
     }
     
-    // Recalculate endDate
+    // Recalculate endDate: endDate = startDate + range
     const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + days);
+    endDate.setDate(endDate.getDate() + range);
     updateData.endDate = endDate;
-    
-    // Auto-update status based on new dates
-    const now = new Date();
-    if (startDate <= now && endDate >= now) {
-      updateData.status = AdStatus.ACTIVE;
-    } else if (endDate < now) {
-      updateData.status = AdStatus.EXPIRED;
-    } else {
-      updateData.status = AdStatus.PENDING;
-    }
 
     const ad = await this.prisma.ad.update({
       where: { id },
@@ -251,18 +229,5 @@ export class AdsService {
     }
   }
 
-  // Helper method to update expired ads
-  private async updateExpiredAds(now: Date) {
-    try {
-      await this.prisma.$executeRaw`
-        UPDATE ads.ads 
-        SET status = 'EXPIRED', "updatedAt" = NOW()
-        WHERE status IN ('ACTIVE', 'PENDING')
-        AND "endDate" < ${now}
-      `;
-    } catch (error) {
-      this.logger.error('Failed to update expired ads:', error);
-    }
-  }
 }
 
