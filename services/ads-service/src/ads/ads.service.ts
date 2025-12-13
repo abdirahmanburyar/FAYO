@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/database/prisma.service';
 import { CreateAdDto, AdStatusEnum } from './dto/create-ad.dto';
 import { UpdateAdDto } from './dto/update-ad.dto';
-import { Prisma } from '@prisma/client';
+import { AdStatus } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
@@ -31,8 +31,8 @@ export class AdsService {
         startDate,
         endDate,
         status: createAdDto.status
-            ? (createAdDto.status as Prisma.AdStatus)
-            : Prisma.AdStatus.PENDING,
+            ? (createAdDto.status as AdStatus)
+            : AdStatus.PENDING,
         createdBy: createAdDto.createdBy,
       },
     });
@@ -50,7 +50,7 @@ export class AdsService {
     
     if (activeOnly) {
       // Only show PUBLISHED ads that are within date range
-      where.status = Prisma.AdStatus.PUBLISHED;
+      where.status = AdStatus.PUBLISHED;
       where.startDate = { lte: now };
       where.endDate = { gte: now };
     }
@@ -108,7 +108,7 @@ export class AdsService {
     const [data, total] = await Promise.all([
       this.prisma.ad.findMany({
         where: {
-          status: Prisma.AdStatus.PUBLISHED,
+          status: AdStatus.PUBLISHED,
           startDate: { lte: now },
           endDate: { gte: now },
         },
@@ -136,7 +136,7 @@ export class AdsService {
       }),
       this.prisma.ad.count({
         where: {
-          status: Prisma.AdStatus.PUBLISHED,
+          status: AdStatus.PUBLISHED,
           startDate: { lte: now },
           endDate: { gte: now },
         },
@@ -254,7 +254,7 @@ export class AdsService {
         where: { id },
         select: {
           id: true,
-          image: true,
+          imageUrl: true,
           clickCount: true,
           viewCount: true,
           status: true,

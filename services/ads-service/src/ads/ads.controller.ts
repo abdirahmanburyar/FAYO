@@ -18,7 +18,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
-import type { Multer } from 'multer';
+import type { File as MulterFile } from 'multer';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { AdsService } from './ads.service';
@@ -55,7 +55,7 @@ export class AdsController {
         ],
       }),
     )
-    file: Multer.File,
+    file: MulterFile,
     @Req() req: Request,
   ) {
     const imagePath = `/uploads/ads/${file.filename}`;
@@ -129,7 +129,7 @@ export class AdsController {
         ],
       }),
     )
-    file?: Multer.File,
+    file?: MulterFile,
   ) {
     const body = req.body;
     const updateData: UpdateAdDto = {};
