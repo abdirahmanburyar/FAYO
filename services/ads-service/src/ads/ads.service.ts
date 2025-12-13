@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/database/prisma.service';
-import { CreateAdDto } from './dto/create-ad.dto';
+import { CreateAdDto, AdStatusEnum } from './dto/create-ad.dto';
 import { UpdateAdDto } from './dto/update-ad.dto';
-import { AdStatus } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
@@ -30,7 +30,9 @@ export class AdsService {
         type: createAdDto.type || undefined,
         startDate,
         endDate,
-        status: createAdDto.status || AdStatus.PENDING,
+        status: createAdDto.status
+            ? (createAdDto.status as Prisma.AdStatus)
+            : Prisma.AdStatus.PENDING,
         createdBy: createAdDto.createdBy,
       },
     });
@@ -48,7 +50,7 @@ export class AdsService {
     
     if (activeOnly) {
       // Only show PUBLISHED ads that are within date range
-      where.status = AdStatus.PUBLISHED;
+      where.status = Prisma.AdStatus.PUBLISHED;
       where.startDate = { lte: now };
       where.endDate = { gte: now };
     }
@@ -60,11 +62,27 @@ export class AdsService {
     const [data, total] = await Promise.all([
       this.prisma.ad.findMany({
         where,
-        orderBy: [
-          { createdAt: 'desc' },
-        ],
+        orderBy: [{ createdAt: 'desc' }],
         take,
         skip,
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          company: true,
+          imageUrl: true,
+          linkUrl: true,
+          type: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          priority: true,
+          clickCount: true,
+          viewCount: true,
+          createdBy: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       }),
       this.prisma.ad.count({ where }),
     ]);
@@ -90,19 +108,35 @@ export class AdsService {
     const [data, total] = await Promise.all([
       this.prisma.ad.findMany({
         where: {
-          status: AdStatus.PUBLISHED,
+          status: Prisma.AdStatus.PUBLISHED,
           startDate: { lte: now },
           endDate: { gte: now },
         },
-        orderBy: [
-          { createdAt: 'desc' },
-        ],
+        orderBy: [{ createdAt: 'desc' }],
         take,
         skip,
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          company: true,
+          imageUrl: true,
+          linkUrl: true,
+          type: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          priority: true,
+          clickCount: true,
+          viewCount: true,
+          createdBy: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       }),
       this.prisma.ad.count({
         where: {
-          status: AdStatus.PUBLISHED,
+          status: Prisma.AdStatus.PUBLISHED,
           startDate: { lte: now },
           endDate: { gte: now },
         },

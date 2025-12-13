@@ -1,5 +1,19 @@
 import { IsString, IsOptional, IsDateString, IsInt, Min, IsEnum } from 'class-validator';
-import { AdStatus, AdType } from '@prisma/client';
+
+// Local enums to avoid client import issues; keep in sync with Prisma schema
+export enum AdStatusEnum {
+  INACTIVE = 'INACTIVE',
+  PENDING = 'PENDING',
+  ACTIVE = 'ACTIVE',
+  EXPIRED = 'EXPIRED',
+  PUBLISHED = 'PUBLISHED',
+}
+
+export enum AdTypeEnum {
+  BANNER = 'BANNER',
+  CAROUSEL = 'CAROUSEL',
+  INTERSTITIAL = 'INTERSTITIAL',
+}
 
 export class CreateAdDto {
   @IsString()
@@ -20,8 +34,8 @@ export class CreateAdDto {
   linkUrl?: string;
 
   @IsOptional()
-  @IsEnum(AdType)
-  type?: AdType;
+  @IsEnum(AdTypeEnum)
+  type?: AdTypeEnum;
 
   @IsDateString()
   startDate: string;
@@ -31,8 +45,8 @@ export class CreateAdDto {
   range: number; // Number of days (endDate = startDate + range)
 
   @IsOptional()
-  @IsEnum(AdStatus)
-  status?: AdStatus;
+  @IsEnum(AdStatusEnum)
+  status?: AdStatusEnum;
 
   @IsOptional()
   @IsString()

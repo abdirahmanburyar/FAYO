@@ -18,6 +18,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
+import type { Multer } from 'multer';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { AdsService } from './ads.service';
@@ -54,14 +55,18 @@ export class AdsController {
         ],
       }),
     )
-    file: Express.Multer.File,
+    file: Multer.File,
     @Req() req: Request,
   ) {
     const imagePath = `/uploads/ads/${file.filename}`;
     const body = req.body;
     return this.adsService.create({
       company: body.company,
-      image: imagePath,
+      title: body.title,
+      description: body.description,
+      imageUrl: imagePath,
+      linkUrl: body.linkUrl,
+      type: body.type,
       startDate: body.startDate,
       range: parseInt(body.range, 10),
       status: body.status,
@@ -124,16 +129,28 @@ export class AdsController {
         ],
       }),
     )
-    file?: Express.Multer.File,
+    file?: Multer.File,
   ) {
     const body = req.body;
     const updateData: UpdateAdDto = {};
     
     if (file) {
-      updateData.image = `/uploads/ads/${file.filename}`;
+      updateData.imageUrl = `/uploads/ads/${file.filename}`;
     }
     if (body.company) {
       updateData.company = body.company;
+    }
+    if (body.title) {
+      updateData.title = body.title;
+    }
+    if (body.description) {
+      updateData.description = body.description;
+    }
+    if (body.linkUrl) {
+      updateData.linkUrl = body.linkUrl;
+    }
+    if (body.type) {
+      updateData.type = body.type;
     }
     if (body.startDate) {
       updateData.startDate = body.startDate;

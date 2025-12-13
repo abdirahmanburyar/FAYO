@@ -1,7 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { CreateAdDto } from './create-ad.dto';
+import { CreateAdDto, AdStatusEnum, AdTypeEnum } from './create-ad.dto';
 import { IsOptional, IsInt, Min, IsString, IsDateString, IsEnum } from 'class-validator';
-import { AdStatus, AdType } from '@prisma/client';
 
 export class UpdateAdDto extends PartialType(CreateAdDto) {
   @IsOptional()
@@ -22,12 +21,12 @@ export class UpdateAdDto extends PartialType(CreateAdDto) {
   range?: number;
 
   @IsOptional()
-  @IsEnum(AdStatus)
-  status?: AdStatus;
+  @IsEnum(AdStatusEnum)
+  status?: AdStatusEnum;
 
   @IsOptional()
-  @IsEnum(AdType)
-  type?: AdType;
+  @IsEnum(AdTypeEnum)
+  type?: AdTypeEnum;
 
   @IsOptional()
   @IsInt()
