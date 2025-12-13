@@ -22,12 +22,15 @@ export class AdsService {
 
     const ad = await this.prisma.ad.create({
       data: {
+        title: createAdDto.title,
         company: createAdDto.company,
-        image: createAdDto.image,
+        description: createAdDto.description,
+        imageUrl: createAdDto.imageUrl,
+        linkUrl: createAdDto.linkUrl,
+        type: createAdDto.type || undefined,
         startDate,
         endDate,
-        range: createAdDto.range,
-        status: createAdDto.status || AdStatus.INACTIVE,
+        status: createAdDto.status || AdStatus.PENDING,
         createdBy: createAdDto.createdBy,
       },
     });
@@ -136,7 +139,15 @@ export class AdsService {
     
     // Calculate endDate if startDate or range changed
     let startDate = existingAd.startDate;
-    let range = existingAd.range;
+    // derive current range from existing dates
+    const currentRange = Math.max(
+      1,
+      Math.round(
+        (existingAd.endDate.getTime() - existingAd.startDate.getTime()) /
+          (1000 * 60 * 60 * 24)
+      )
+    );
+    let range = currentRange;
     
     if (updateAdDto.startDate) {
       startDate = new Date(updateAdDto.startDate);
@@ -144,7 +155,6 @@ export class AdsService {
     }
     if (updateAdDto.range !== undefined) {
       range = updateAdDto.range;
-      updateData.range = range;
     }
     
     // Recalculate endDate: endDate = startDate + range
