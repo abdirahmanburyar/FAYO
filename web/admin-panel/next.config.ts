@@ -52,7 +52,7 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Next.js requires unsafe-eval for development
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: https:",
+              "img-src 'self' data: https: http: http://72.62.51.50:*",
               "font-src 'self' data:",
               "connect-src 'self' http://72.62.51.50:* ws://72.62.51.50:* wss://72.62.51.50:*", // Allow connections to your services
               "frame-ancestors 'none'",
