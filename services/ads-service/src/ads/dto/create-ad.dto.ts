@@ -19,11 +19,12 @@ export class CreateAdDto {
   @IsString()
   company: string; // Company or person name
 
+  @IsOptional()
   @IsString()
-  title: string;
+  title?: string;
 
   @IsString()
-  imageUrl: string; // File path after upload
+  imageUrl: string; // Image URL (uploaded separately via /uploads endpoint)
 
   @IsOptional()
   @IsString()

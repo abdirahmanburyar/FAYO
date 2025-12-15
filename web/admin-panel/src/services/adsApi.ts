@@ -19,7 +19,7 @@ export interface Ad {
 
 export interface CreateAdDto {
   company: string; // Company or person name
-  image: File; // Image file to upload
+  imageUrl: string; // Image URL (uploaded separately)
   startDate: string; // ISO date string
   range: number; // Number of days (endDate = startDate + range)
   status?: AdStatus;
@@ -28,7 +28,7 @@ export interface CreateAdDto {
 
 export interface UpdateAdDto {
   company?: string;
-  image?: File; // Optional image file to upload
+  imageUrl?: string; // Optional image URL (uploaded separately)
   startDate?: string;
   range?: number;
   status?: AdStatus;
@@ -131,20 +131,10 @@ class AdsApiService {
 
   async createAd(ad: CreateAdDto): Promise<Ad> {
     try {
-      const formData = new FormData();
-      formData.append('company', ad.company);
-      formData.append('image', ad.image);
-      formData.append('startDate', ad.startDate);
-      formData.append('range', ad.range.toString());
-      if (ad.status) {
-        formData.append('status', ad.status);
-      }
-      if (ad.createdBy) {
-        formData.append('createdBy', ad.createdBy);
-      }
-
       const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
-      const headers: HeadersInit = {};
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
@@ -152,7 +142,14 @@ class AdsApiService {
       const response = await fetch(`${this.getBaseUrl()}/api/v1/ads`, {
         method: 'POST',
         headers,
-        body: formData,
+        body: JSON.stringify({
+          company: ad.company,
+          imageUrl: ad.imageUrl,
+          startDate: ad.startDate,
+          range: ad.range,
+          status: ad.status,
+          createdBy: ad.createdBy,
+        }),
       });
 
       if (!response.ok) {
@@ -169,33 +166,35 @@ class AdsApiService {
 
   async updateAd(id: string, ad: UpdateAdDto): Promise<Ad> {
     try {
-      const formData = new FormData();
-      if (ad.image) {
-        formData.append('image', ad.image);
-      }
-      if (ad.company) {
-        formData.append('company', ad.company);
-      }
-      if (ad.startDate) {
-        formData.append('startDate', ad.startDate);
-      }
-      if (ad.range !== undefined) {
-        formData.append('range', ad.range.toString());
-      }
-      if (ad.status) {
-        formData.append('status', ad.status);
-      }
-
       const token = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
-      const headers: HeadersInit = {};
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const body: any = {};
+      if (ad.imageUrl) {
+        body.imageUrl = ad.imageUrl;
+      }
+      if (ad.company) {
+        body.company = ad.company;
+      }
+      if (ad.startDate) {
+        body.startDate = ad.startDate;
+      }
+      if (ad.range !== undefined) {
+        body.range = ad.range;
+      }
+      if (ad.status) {
+        body.status = ad.status;
       }
 
       const response = await fetch(`${this.getBaseUrl()}/api/v1/ads/${id}`, {
         method: 'PATCH',
         headers,
-        body: formData,
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {

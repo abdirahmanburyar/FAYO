@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/constants/app_constants.dart';
@@ -281,11 +280,22 @@ class ApiClient {
   }
 
   // Ads APIs
-  Future<List<AdDto>> getActiveAds() async {
+  Future<List<AdDto>> getActiveAds({int page = 1, int limit = 50}) async {
     try {
-      final response = await _dio.get(ApiConstants.activeAdsEndpoint);
-      final List<dynamic> data = response.data;
-      return data.map((json) => AdDto.fromJson(json)).toList();
+      final response = await _dio.get(
+        ApiConstants.activeAdsEndpoint,
+        queryParameters: {'page': page, 'limit': limit},
+      );
+      // Backend returns { data: [...], pagination: {...} }
+      final responseData = response.data;
+      if (responseData is Map<String, dynamic>) {
+        final List<dynamic> data = responseData['data'] ?? [];
+        return data.map((json) => AdDto.fromJson(json)).toList();
+      } else if (responseData is List) {
+        // Fallback for direct list response
+        return responseData.map((json) => AdDto.fromJson(json)).toList();
+      }
+      return [];
     } catch (e) {
       throw _handleError(e);
     }

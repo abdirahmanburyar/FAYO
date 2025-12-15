@@ -328,6 +328,8 @@ services:
       HOST: 0.0.0.0
       PORT: 3007
       SERVICE_NAME: ads-service
+    volumes:
+      - ads_uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -440,4 +442,5 @@ volumes:
   redisdata:
   rabbitmqdata:
   admin_uploads:
+  ads_uploads:
 

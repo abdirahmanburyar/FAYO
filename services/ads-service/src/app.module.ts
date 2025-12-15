@@ -5,6 +5,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { DatabaseModule } from './common/database/database.module';
 import { AdsModule } from './ads/ads.module';
+import { UploadModule } from './upload/upload.module';
 import { HealthController } from './health/health.controller';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { WebsocketModule } from './websocket/websocket.module';
@@ -22,6 +23,7 @@ import { WebsocketModule } from './websocket/websocket.module';
     }]),
     DatabaseModule,
     AdsModule,
+    UploadModule,
     WebsocketModule,
   ],
   controllers: [HealthController],

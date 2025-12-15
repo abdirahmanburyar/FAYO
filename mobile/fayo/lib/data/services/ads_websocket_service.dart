@@ -1,14 +1,14 @@
 import 'dart:async';
-import 'dart:convert';
-import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../../core/constants/api_constants.dart';
 import '../models/ads_models.dart';
 
 class AdsWebSocketService {
-  WebSocketChannel? _channel;
+  IO.Socket? _socket;
   StreamController<AdUpdateEvent>? _controller;
-  Timer? _pingTimer;
+  Timer? _reconnectTimer;
   bool _isConnected = false;
+  bool _isConnecting = false;
 
   Stream<AdUpdateEvent> connect() {
     _controller ??= StreamController<AdUpdateEvent>.broadcast();
@@ -17,64 +17,121 @@ class AdsWebSocketService {
   }
 
   void _connect() {
+    if (_isConnected || _isConnecting) return; // Prevent multiple connections
+    
     try {
-      final uri = Uri.parse(ApiConstants.adsWebSocketUrl);
-      _channel = WebSocketChannel.connect(uri);
-      _isConnected = true;
-
-      // Send join message
-      _channel?.sink.add(jsonEncode({'type': 'join_ads_updates'}));
-
-      // Start ping timer
-      _pingTimer = Timer.periodic(
-        const Duration(seconds: 30),
-        (_) {
-          _channel?.sink.add(jsonEncode({'type': 'ping'}));
-        },
+      _isConnecting = true;
+      final baseUrl = ApiConstants.adsBaseUrl.replaceFirst('/api/v1', '');
+      print('🔌 Connecting to Ads WebSocket: $baseUrl');
+      
+      _socket = IO.io(
+        baseUrl,
+        IO.OptionBuilder()
+            .setTransports(['websocket', 'polling'])
+            .setPath('/ws/ads')
+            .enableAutoConnect()
+            .enableReconnection()
+            .setReconnectionDelay(5000)
+            .setReconnectionDelayMax(10000)
+            .setReconnectionAttempts(5)
+            .setTimeout(20000)
+            .build(),
       );
 
-      // Listen for messages
-      _channel?.stream.listen(
-        (message) {
-          try {
-            final data = jsonDecode(message);
+      // Connection event
+      _socket!.onConnect((_) {
+        print('✅ Ads WebSocket connected');
+        _isConnected = true;
+        _isConnecting = false;
+        
+        // Join ads updates room
+        _socket!.emit('join_ads_updates');
+      });
+
+      // Disconnection event
+      _socket!.onDisconnect((_) {
+        print('🔌 Ads WebSocket disconnected');
+        _isConnected = false;
+        _isConnecting = false;
+      });
+
+      // Connection error
+      _socket!.onConnectError((error) {
+        print('❌ Ads WebSocket connection error: $error');
+        _isConnected = false;
+        _isConnecting = false;
+      });
+
+      // Listen for ad events
+      _socket!.on('ad.created', (data) {
+        try {
+          if (data is Map<String, dynamic>) {
             final event = AdUpdateEvent.fromJson(data);
             _controller?.add(event);
-          } catch (e) {
-            print('Error parsing Ads WebSocket message: $e');
           }
-        },
-        onError: (error) {
-          print('Ads WebSocket error: $error');
-          _isConnected = false;
-          _reconnect();
-        },
-        onDone: () {
-          print('Ads WebSocket connection closed');
-          _isConnected = false;
-          _reconnect();
-        },
-      );
+        } catch (e) {
+          print('Error parsing ad.created event: $e');
+        }
+      });
+
+      _socket!.on('ad.updated', (data) {
+        try {
+          if (data is Map<String, dynamic>) {
+            final event = AdUpdateEvent.fromJson(data);
+            _controller?.add(event);
+          }
+        } catch (e) {
+          print('Error parsing ad.updated event: $e');
+        }
+      });
+
+      _socket!.on('ad.deleted', (data) {
+        try {
+          if (data is Map<String, dynamic>) {
+            final event = AdUpdateEvent.fromJson(data);
+            _controller?.add(event);
+          }
+        } catch (e) {
+          print('Error parsing ad.deleted event: $e');
+        }
+      });
+
+      _socket!.on('ad.clicked', (data) {
+        try {
+          if (data is Map<String, dynamic>) {
+            final event = AdUpdateEvent.fromJson(data);
+            _controller?.add(event);
+          }
+        } catch (e) {
+          print('Error parsing ad.clicked event: $e');
+        }
+      });
+
+      // Error handler
+      _socket!.onError((error) {
+        print('Ads WebSocket error: $error');
+        _isConnected = false;
+        _isConnecting = false;
+      });
+
     } catch (e) {
       print('Error connecting to Ads WebSocket: $e');
       _isConnected = false;
-      _reconnect();
+      _isConnecting = false;
     }
   }
 
-  void _reconnect() {
-    Future.delayed(const Duration(seconds: 5), () {
-      if (!_isConnected) {
-        _connect();
-      }
-    });
-  }
-
   void disconnect() {
-    _pingTimer?.cancel();
-    _channel?.sink.close();
+    print('🔌 Disconnecting Ads WebSocket...');
+    _reconnectTimer?.cancel();
+    _reconnectTimer = null;
+    _socket?.disconnect();
+    _socket?.dispose();
+    _socket = null;
     _controller?.close();
+    _controller = null;
     _isConnected = false;
+    _isConnecting = false;
   }
 
   bool get isConnected => _isConnected;

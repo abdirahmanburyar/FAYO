@@ -6,7 +6,7 @@ enum AdStatus {
 class AdDto {
   final String id;
   final String company;
-  final String image;
+  final String imageUrl; // Changed from 'image' to match backend
   final String startDate;
   final String endDate;
   final int range;
@@ -20,7 +20,7 @@ class AdDto {
   AdDto({
     required this.id,
     required this.company,
-    required this.image,
+    required this.imageUrl,
     required this.startDate,
     required this.endDate,
     required this.range,
@@ -36,7 +36,7 @@ class AdDto {
     return AdDto(
       id: json['id'] ?? '',
       company: json['company'] ?? '',
-      image: json['image'] ?? '',
+      imageUrl: json['imageUrl'] ?? json['image'] ?? '', // Support both for backward compatibility
       startDate: json['startDate'] ?? '',
       endDate: json['endDate'] ?? '',
       range: json['range'] ?? 0,
@@ -52,7 +52,7 @@ class AdDto {
   Map<String, dynamic> toJson() => {
         'id': id,
         'company': company,
-        'image': image,
+        'imageUrl': imageUrl,
         'startDate': startDate,
         'endDate': endDate,
         'range': range,

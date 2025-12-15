@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,10 +29,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   List<AdDto> _ads = [];
   CallInvitationDto? _callInvitation;
   bool _isLoading = true;
+  PageController? _adsPageController;
+  Timer? _adsScrollTimer;
 
   @override
   void initState() {
     super.initState();
+    _adsPageController = PageController();
     _loadData();
     _setupWebSockets();
   }
@@ -46,12 +50,54 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         setState(() {
           _ads = ads;
         });
+        // Start auto-scrolling if we have ads (after widget is built)
+        if (ads.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _resetAndStartAutoScroll();
+          });
+        }
       }
     } catch (e) {
       print('Error loading home data: $e');
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  void _resetAndStartAutoScroll() {
+    if (_adsPageController == null || !_adsPageController!.hasClients) {
+      // If controller is not ready, try again after a short delay
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _resetAndStartAutoScroll();
+      });
+      return;
+    }
+    
+    // Reset to first page
+    _adsPageController!.jumpToPage(0);
+    // Start auto-scrolling
+    _startAdsAutoScroll();
+  }
+
+  void _startAdsAutoScroll() {
+    _adsScrollTimer?.cancel();
+    if (_ads.isEmpty || _adsPageController == null) return;
+    
+    _adsScrollTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_adsPageController == null || !_adsPageController!.hasClients) {
+        timer.cancel();
+        return;
+      }
+      
+      final currentPage = _adsPageController!.page?.round() ?? 0;
+      final nextPage = (currentPage + 1) % _ads.length;
+      
+      _adsPageController!.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    });
   }
 
   void _setupWebSockets() {
@@ -70,13 +116,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Setup ads updates
     _adsService.connect().listen((event) {
       if (event.type == 'ad.created' || event.type == 'ad.updated') {
-        _loadData(); // Reload ads
+        _loadData(); // _loadData will handle restarting auto-scroll
       }
     });
   }
 
   @override
   void dispose() {
+    _adsScrollTimer?.cancel();
+    _adsPageController?.dispose();
     _callService.disconnect();
     _adsService.disconnect();
     super.dispose();
@@ -184,6 +232,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           SizedBox(
             height: 200,
             child: PageView.builder(
+              controller: _adsPageController,
               itemCount: _ads.length,
               itemBuilder: (context, index) {
                 final ad = _ads[index];
@@ -254,14 +303,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          children: [
-            // Ad Image
-            if (ad.image.isNotEmpty)
-              CachedNetworkImage(
-                imageUrl: ad.image.startsWith('http')
-                    ? ad.image
-                    : 'http://72.62.51.50:3007${ad.image}',
+        child: ad.imageUrl.isNotEmpty
+            ? CachedNetworkImage(
+                imageUrl: ad.imageUrl.startsWith('http')
+                    ? ad.imageUrl
+                    : 'http://72.62.51.50:3007${ad.imageUrl}',
                 width: double.infinity,
                 height: 200,
                 fit: BoxFit.cover,
@@ -274,49 +320,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: const Icon(Icons.error),
                 ),
               )
-            else
-              Container(
+            : Container(
                 color: AppColors.gray200,
                 child: const Center(child: Icon(Icons.image)),
               ),
-            // Gradient overlay
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                height: 80,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.7),
-                    ],
-                  ),
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      ad.company,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

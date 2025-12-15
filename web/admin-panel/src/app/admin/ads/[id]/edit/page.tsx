@@ -96,8 +96,22 @@ export default function EditAdPage() {
         status: formData.status,
       };
       
+      // If new image is selected, upload it first (like doctors/hospitals)
       if (imageFile) {
-        updateData.image = imageFile;
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', imageFile);
+
+        const adsServiceUrl = process.env.NEXT_PUBLIC_ADS_SERVICE_URL || 'http://72.62.51.50:3007';
+        const uploadResponse = await fetch(`${adsServiceUrl}/api/v1/uploads`, {
+          method: 'POST',
+          body: uploadFormData,
+        });
+
+        if (!uploadResponse.ok) throw new Error('Failed to upload image');
+
+        const uploadData = await uploadResponse.json();
+        const fullImageUrl = `${adsServiceUrl}${uploadData.url}`;
+        updateData.imageUrl = fullImageUrl;
       }
 
       await adsApi.updateAd(adId, updateData);

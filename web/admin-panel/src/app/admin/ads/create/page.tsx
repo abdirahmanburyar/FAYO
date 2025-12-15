@@ -66,9 +66,25 @@ export default function CreateAdPage() {
     setLoading(true);
 
     try {
+      // 1. Upload image first (like doctors/hospitals)
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', imageFile);
+
+      const adsServiceUrl = process.env.NEXT_PUBLIC_ADS_SERVICE_URL || 'http://72.62.51.50:3007';
+      const uploadResponse = await fetch(`${adsServiceUrl}/api/v1/uploads`, {
+        method: 'POST',
+        body: uploadFormData,
+      });
+
+      if (!uploadResponse.ok) throw new Error('Failed to upload image');
+
+      const uploadData = await uploadResponse.json();
+      const fullImageUrl = `${adsServiceUrl}${uploadData.url}`;
+
+      // 2. Create ad with the image URL
       const adData: CreateAdDto = {
         company: formData.company.trim(),
-        image: imageFile,
+        imageUrl: fullImageUrl,
         startDate: new Date(formData.startDate).toISOString(),
         range: formData.range,
         status: formData.status,

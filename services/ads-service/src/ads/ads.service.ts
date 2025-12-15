@@ -21,7 +21,7 @@ export class AdsService {
 
     const ad = await this.prisma.ad.create({
       data: {
-        title: createAdDto.title,
+        title: createAdDto.title || createAdDto.company, // Fallback to company if title not provided
         company: createAdDto.company,
         description: createAdDto.description,
         imageUrl: createAdDto.imageUrl,
