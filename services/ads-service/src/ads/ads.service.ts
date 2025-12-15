@@ -2,7 +2,6 @@ import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/database/prisma.service';
 import { CreateAdDto, AdStatusEnum } from './dto/create-ad.dto';
 import { UpdateAdDto } from './dto/update-ad.dto';
-import { AdStatus } from '@prisma/client';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
@@ -31,8 +30,8 @@ export class AdsService {
         startDate,
         endDate,
         status: createAdDto.status
-            ? (createAdDto.status as AdStatus)
-            : AdStatus.PENDING,
+            ? (createAdDto.status as any)
+            : AdStatusEnum.PENDING,
         createdBy: createAdDto.createdBy,
       },
     });
@@ -50,7 +49,7 @@ export class AdsService {
     
     if (activeOnly) {
       // Only show PUBLISHED ads that are within date range
-      where.status = AdStatus.PUBLISHED;
+      where.status = AdStatusEnum.PUBLISHED;
       where.startDate = { lte: now };
       where.endDate = { gte: now };
     }
@@ -65,24 +64,6 @@ export class AdsService {
         orderBy: [{ createdAt: 'desc' }],
         take,
         skip,
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          company: true,
-          imageUrl: true,
-          linkUrl: true,
-          type: true,
-          status: true,
-          startDate: true,
-          endDate: true,
-          priority: true,
-          clickCount: true,
-          viewCount: true,
-          createdBy: true,
-          createdAt: true,
-          updatedAt: true,
-        },
       }),
       this.prisma.ad.count({ where }),
     ]);
@@ -108,35 +89,17 @@ export class AdsService {
     const [data, total] = await Promise.all([
       this.prisma.ad.findMany({
         where: {
-          status: AdStatus.PUBLISHED,
+          status: AdStatusEnum.PUBLISHED,
           startDate: { lte: now },
           endDate: { gte: now },
         },
         orderBy: [{ createdAt: 'desc' }],
         take,
         skip,
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          company: true,
-          imageUrl: true,
-          linkUrl: true,
-          type: true,
-          status: true,
-          startDate: true,
-          endDate: true,
-          priority: true,
-          clickCount: true,
-          viewCount: true,
-          createdBy: true,
-          createdAt: true,
-          updatedAt: true,
-        },
       }),
       this.prisma.ad.count({
         where: {
-          status: AdStatus.PUBLISHED,
+          status: AdStatusEnum.PUBLISHED,
           startDate: { lte: now },
           endDate: { gte: now },
         },
@@ -252,13 +215,6 @@ export class AdsService {
       // Fetch only necessary fields for event emission (more efficient)
       const ad = await this.prisma.ad.findUnique({
         where: { id },
-        select: {
-          id: true,
-          imageUrl: true,
-          clickCount: true,
-          viewCount: true,
-          status: true,
-        },
       });
 
       if (ad) {

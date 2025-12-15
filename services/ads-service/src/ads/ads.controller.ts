@@ -10,20 +10,18 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFile,
-  ParseFilePipe,
-  MaxFileSizeValidator,
-  FileTypeValidator,
+  BadRequestException,
   Req,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
-import type { File as MulterFile } from 'multer';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { AdsService } from './ads.service';
 import { CreateAdDto } from './dto/create-ad.dto';
 import { UpdateAdDto } from './dto/update-ad.dto';
+
 
 @Controller('ads')
 export class AdsController {
@@ -47,26 +45,34 @@ export class AdsController {
     }),
   )
   create(
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
-          new FileTypeValidator({ fileType: /(jpg|jpeg|png|gif|webp)$/ }),
-        ],
-      }),
-    )
-    file: MulterFile,
+    @UploadedFile() file: any,
     @Req() req: Request,
   ) {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
     const imagePath = `/uploads/ads/${file.filename}`;
     const body = req.body;
+    
+    // Log received data for debugging
+    console.log('=== RECEIVED DATA FROM FRONTEND ===');
+    console.log('File:', {
+      filename: file?.filename,
+      originalname: file?.originalname,
+      mimetype: file?.mimetype,
+      size: file?.size,
+    });
+    console.log('Body:', JSON.stringify(body, null, 2));
+    console.log('All body keys:', Object.keys(body));
+    console.log('===================================');
+    
     return this.adsService.create({
       company: body.company,
-      title: body.title,
-      description: body.description,
+      title: body.title || body.company, // Fallback to company if title not provided
+      description: body.description || null,
       imageUrl: imagePath,
-      linkUrl: body.linkUrl,
-      type: body.type,
+      linkUrl: body.linkUrl || null,
+      type: body.type || 'BANNER',
       startDate: body.startDate,
       range: parseInt(body.range, 10),
       status: body.status,
@@ -120,16 +126,7 @@ export class AdsController {
   update(
     @Param('id') id: string,
     @Req() req: Request,
-    @UploadedFile(
-      new ParseFilePipe({
-        fileIsRequired: false,
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
-          new FileTypeValidator({ fileType: /(jpg|jpeg|png|gif|webp)$/ }),
-        ],
-      }),
-    )
-    file?: MulterFile,
+    @UploadedFile() file?: any,
   ) {
     const body = req.body;
     const updateData: UpdateAdDto = {};

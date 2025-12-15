@@ -5,7 +5,7 @@ export type AdStatus = 'INACTIVE' | 'PUBLISHED';
 export interface Ad {
   id: string;
   company: string; // Company or person name
-  image: string; // File path to uploaded image
+  imageUrl: string; // File path to uploaded image (changed from 'image' to match backend)
   startDate: string; // ISO date string
   endDate: string; // ISO date string (calculated from startDate + range)
   range: number; // Number of days (endDate = startDate + range)

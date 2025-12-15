@@ -384,9 +384,9 @@ export default function AdsPage() {
                   >
                     <td className="px-6 py-4">
                       <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
-                        {ad.image ? (
+                        {ad.imageUrl ? (
                           <img
-                            src={`${process.env.NEXT_PUBLIC_ADS_SERVICE_URL || 'http://72.62.51.50:3007'}${ad.image}`}
+                            src={`${process.env.NEXT_PUBLIC_ADS_SERVICE_URL || 'http://72.62.51.50:3007'}${ad.imageUrl}`}
                             alt="Ad image"
                             className="w-full h-full object-cover"
                             onError={(e) => {

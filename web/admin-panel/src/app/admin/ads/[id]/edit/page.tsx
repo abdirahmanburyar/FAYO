@@ -46,7 +46,7 @@ export default function EditAdPage() {
         });
         // Set preview to existing image
         const baseUrl = process.env.NEXT_PUBLIC_ADS_SERVICE_URL || 'http://72.62.51.50:3007';
-        setImagePreview(`${baseUrl}${adData.image}`);
+        setImagePreview(`${baseUrl}${adData.imageUrl}`);
       } catch (error) {
         console.error('Error fetching ad:', error);
         setError(error instanceof Error ? error.message : 'Failed to fetch ad');
