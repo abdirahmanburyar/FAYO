@@ -256,9 +256,13 @@ class AdsApiService {
    */
   async calculateFee(range: number, type?: string): Promise<{ fee: number; feeInDollars: string; range: number; type: string }> {
     try {
+      // Validate range
+      const validRange = typeof range === 'number' && range > 0 ? range : 7;
+      const validType = type || 'BANNER';
+      
       const queryParams = new URLSearchParams();
-      queryParams.append('range', range.toString());
-      if (type) queryParams.append('type', type);
+      queryParams.append('range', validRange.toString());
+      queryParams.append('type', validType);
 
       const response = await fetch(
         `${this.getBaseUrl()}/api/v1/ads/calculate-fee?${queryParams.toString()}`,
@@ -273,7 +277,24 @@ class AdsApiService {
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      
+      // Ensure response has required fields
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid response from fee calculation API');
+      }
+      
+      // Calculate feeInDollars if not provided
+      if (!data.feeInDollars && data.fee) {
+        data.feeInDollars = (data.fee / 100).toFixed(2);
+      }
+      
+      return {
+        fee: data.fee || 0,
+        feeInDollars: data.feeInDollars || '0.00',
+        range: data.range || validRange,
+        type: data.type || validType,
+      };
     } catch (error) {
       console.error('Error calculating fee:', error);
       throw error;

@@ -30,21 +30,34 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
 
   // Calculate fee when modal opens
   useEffect(() => {
-    if (isOpen && ad) {
+    if (isOpen && ad && ad.id) {
       calculateFee();
       loadPayments();
     }
-  }, [isOpen, ad]);
+  }, [isOpen, ad?.id, ad?.range, ad?.type]);
 
   const calculateFee = async () => {
     try {
       setCalculatingFee(true);
-      const result = await adsApi.calculateFee(ad.range, ad.type || 'BANNER');
-      setFee(result.fee);
-      setFeeInDollars(result.feeInDollars);
+      setError(null);
+      // Ensure range and type are valid
+      const range = ad.range && typeof ad.range === 'number' ? ad.range : 7;
+      const type = ad.type || 'BANNER';
+      
+      const result = await adsApi.calculateFee(range, type);
+      
+      // Safely extract values with fallbacks
+      if (result && typeof result === 'object') {
+        setFee(result.fee || null);
+        setFeeInDollars(result.feeInDollars || (result.fee ? (result.fee / 100).toFixed(2) : '0.00'));
+      } else {
+        throw new Error('Invalid response from fee calculation');
+      }
     } catch (err) {
       console.error('Error calculating fee:', err);
       setError(err instanceof Error ? err.message : 'Failed to calculate fee');
+      setFee(null);
+      setFeeInDollars('0.00');
     } finally {
       setCalculatingFee(false);
     }
@@ -129,7 +142,7 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <Calendar className="w-4 h-4" />
-                  <span>Duration: {ad.range} day{ad.range !== 1 ? 's' : ''}</span>
+                  <span>Duration: {ad.range || 0} day{(ad.range || 0) !== 1 ? 's' : ''}</span>
                 </div>
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <Building2 className="w-4 h-4" />
@@ -155,7 +168,7 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
                     Base: ${ad.type === 'BANNER' ? '10' : ad.type === 'CAROUSEL' ? '20' : '50'}
                   </p>
                   <p className="text-sm text-gray-700">
-                    Daily: ${ad.type === 'BANNER' ? '1' : ad.type === 'CAROUSEL' ? '2' : '5'}/day × {ad.range} days
+                    Daily: ${ad.type === 'BANNER' ? '1' : ad.type === 'CAROUSEL' ? '2' : '5'}/day × {ad.range || 0} days
                   </p>
                 </div>
               </div>
@@ -276,7 +289,7 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
                   </button>
                   <button
                     type="submit"
-                    disabled={loading || !fee || calculatingFee}
+                    disabled={loading || !fee || calculatingFee || !feeInDollars || feeInDollars === '0.00'}
                     className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                   >
                     {loading ? (
@@ -287,7 +300,7 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
                     ) : (
                       <>
                         <CreditCard className="w-4 h-4" />
-                        <span>Pay ${feeInDollars}</span>
+                        <span>Pay ${feeInDollars || '0.00'}</span>
                       </>
                     )}
                   </button>
