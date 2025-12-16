@@ -9,9 +9,12 @@ WORKDIR /app
 
 # Install dependencies based on the preferred package manager with retry logic
 COPY package.json package-lock.json* ./
-RUN for i in 1 2 3; do \
-      (npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || \
-       npm install --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000) && break || \
+# Increase npm timeout and memory for large installs
+RUN npm config set fetch-timeout 600000 && \
+    npm config set network-timeout 600000 && \
+    for i in 1 2 3; do \
+      (npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 --prefer-offline --no-optional || \
+       npm install --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 --prefer-offline --no-optional) && break || \
       (echo "Attempt $i failed, retrying in $((i*10)) seconds..." && sleep $((i*10))); \
     done
 
@@ -26,7 +29,12 @@ RUN mkdir -p ./public || true
 # Disable Next.js telemetry during build for security and privacy
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN npm run build
+# Increase Node.js memory limit for build process
+ENV NODE_OPTIONS="--max-old-space-size=512"
+
+# Clean npm cache and build
+RUN npm cache clean --force && \
+    npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
