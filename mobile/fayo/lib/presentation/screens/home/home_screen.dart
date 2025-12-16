@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../data/datasources/api_client.dart';
 import '../../../data/models/ads_models.dart';
 import '../../../data/models/appointment_models.dart';
@@ -64,6 +65,64 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  // Refresh only ads without showing loading skeleton
+  Future<void> _refreshAdsOnly() async {
+    try {
+      final user = ref.read(authProvider);
+      if (user != null) {
+        // Load active ads without setting loading state
+        final ads = await _apiClient.getActiveAds();
+        setState(() {
+          _ads = ads;
+        });
+        // Restart auto-scrolling if we have ads (after widget is built)
+        if (ads.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _resetAndStartAutoScroll();
+          });
+        } else {
+          // Stop auto-scrolling if no ads
+          _adsScrollTimer?.cancel();
+        }
+      }
+    } catch (e) {
+      print('Error refreshing ads: $e');
+    }
+  }
+
+  void _showLogoutConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop(); // Close dialog
+                await ref.read(authProvider.notifier).clearUser();
+                if (context.mounted) {
+                  context.go('/login');
+                }
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _resetAndStartAutoScroll() {
     if (_adsPageController == null || !_adsPageController!.hasClients) {
       // If controller is not ready, try again after a short delay
@@ -113,10 +172,78 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     });
 
-    // Setup ads updates
+    // Setup ads updates - update only ads list without reloading entire screen
     _adsService.connect().listen((event) {
-      if (event.type == 'ad.created' || event.type == 'ad.updated') {
-        _loadData(); // _loadData will handle restarting auto-scroll
+      if (!mounted) return;
+      
+      switch (event.type) {
+        case 'ad.created':
+          // New ad created - refresh ads list to get active ads only
+          if (event.ad != null && event.ad!.status == AdStatus.published) {
+            _refreshAdsOnly();
+          }
+          break;
+          
+        case 'ad.updated':
+          // Ad updated - update in place if it exists, or refresh if status changed
+          if (event.ad != null) {
+            final updatedAd = event.ad!;
+            setState(() {
+              final index = _ads.indexWhere((a) => a.id == updatedAd.id);
+              if (index != -1) {
+                // Update existing ad
+                if (updatedAd.status == AdStatus.published) {
+                  _ads[index] = updatedAd;
+                } else {
+                  // Remove if status changed to inactive
+                  _ads.removeAt(index);
+                  if (_ads.isEmpty) {
+                    _adsScrollTimer?.cancel();
+                  }
+                }
+              } else if (updatedAd.status == AdStatus.published) {
+                // New published ad - refresh to get it
+                _refreshAdsOnly();
+              }
+            });
+            // Restart auto-scroll if needed
+            if (_ads.isNotEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _resetAndStartAutoScroll();
+              });
+            }
+          }
+          break;
+          
+        case 'ad.deleted':
+          // Ad deleted - remove from list
+          if (event.adId != null) {
+            setState(() {
+              _ads.removeWhere((a) => a.id == event.adId);
+              if (_ads.isEmpty) {
+                _adsScrollTimer?.cancel();
+              }
+            });
+            // Restart auto-scroll if still have ads
+            if (_ads.isNotEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _resetAndStartAutoScroll();
+              });
+            }
+          }
+          break;
+          
+        case 'ad.clicked':
+          // Ad clicked - just update click/view counts in place
+          if (event.ad != null) {
+            setState(() {
+              final index = _ads.indexWhere((a) => a.id == event.ad!.id);
+              if (index != -1) {
+                _ads[index] = event.ad!;
+              }
+            });
+          }
+          break;
       }
     });
   }
@@ -161,26 +288,79 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   // TODO: Implement notifications
                 },
               ),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: Color(0xFF6B7280)),
+                onSelected: (value) {
+                  switch (value) {
+                    case 'settings':
+                      // TODO: Navigate to settings
+                      break;
+                    case 'help':
+                      // TODO: Navigate to help
+                      break;
+                    case 'about':
+                      // TODO: Navigate to about
+                      break;
+                    case 'logout':
+                      _showLogoutConfirmation(context);
+                      break;
+                  }
+                },
+                itemBuilder: (BuildContext context) => [
+                  const PopupMenuItem<String>(
+                    value: 'settings',
+                    child: Row(
+                      children: [
+                        Icon(Icons.settings, size: 20),
+                        SizedBox(width: 12),
+                        Text('Settings'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'help',
+                    child: Row(
+                      children: [
+                        Icon(Icons.help_outline, size: 20),
+                        SizedBox(width: 12),
+                        Text('Help & Support'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'about',
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 20),
+                        SizedBox(width: 12),
+                        Text('About'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem<String>(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout, size: 20, color: Colors.red),
+                        SizedBox(width: 12),
+                        Text('Logout', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.person_outline),
+                color: AppColors.gray700,
+                onPressed: () {
+                  context.push('/profile');
+                },
+              ),
             ],
           ),
           body: _isLoading
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.skyBlue600),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Loading your healthcare dashboard...',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.gray600,
-                            ),
-                      ),
-                    ],
-                  ),
-                )
+              ? _buildSkeletonLoading()
               : RefreshIndicator(
                   onRefresh: _loadData,
                   color: AppColors.skyBlue600,
@@ -296,43 +476,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // Sample ad when no ads available
           _buildSampleAdCard(context)
         else
-          Column(
-            children: [
-              SizedBox(
-                height: 200,
-                child: PageView.builder(
-                  controller: _adsPageController,
-                  itemCount: _ads.length,
-                  itemBuilder: (context, index) {
-                    final ad = _ads[index];
-                    return _buildAdCard(context, ad);
-                  },
-                ),
-              ),
-              if (_ads.length > 1)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(
-                      _ads.length,
-                      (index) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        height: 8,
-                        width: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: (_adsPageController?.hasClients ?? false) &&
-                                  (_adsPageController?.page?.round() ?? 0) == index
-                              ? AppColors.skyBlue600
-                              : AppColors.gray300,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+          SizedBox(
+            height: 200,
+            child: PageView.builder(
+              controller: _adsPageController,
+              itemCount: _ads.length,
+              itemBuilder: (context, index) {
+                final ad = _ads[index];
+                return _buildAdCard(context, ad);
+              },
+            ),
           ),
       ],
     );
@@ -383,13 +536,44 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildAdCard(BuildContext context, AdDto ad) {
+    // Build the full image URL
+    String imageUrl = '';
+    if (ad.imageUrl.isNotEmpty) {
+      if (ad.imageUrl.startsWith('http://') || ad.imageUrl.startsWith('https://')) {
+        // Already a full URL - use as is
+        imageUrl = ad.imageUrl;
+      } else {
+        // Relative path - construct full URL
+        // Images are served from /uploads/ads/ on the ads service (port 3007)
+        final baseUrl = ApiConstants.adsBaseUrl.replaceFirst('/api/v1', '');
+        String path = ad.imageUrl;
+        
+        // Normalize the path
+        if (!path.startsWith('/')) {
+          path = '/$path';
+        }
+        
+        // If path doesn't start with /uploads/, prepend /uploads/ads/
+        if (!path.startsWith('/uploads/')) {
+          path = '/uploads/ads$path';
+        } else if (path.startsWith('/uploads/') && !path.startsWith('/uploads/ads/')) {
+          // If it's /uploads/ but not /uploads/ads/, replace /uploads/ with /uploads/ads/
+          path = path.replaceFirst('/uploads/', '/uploads/ads/');
+        }
+        
+        imageUrl = '$baseUrl$path';
+      }
+      
+      // Debug: print the constructed URL (remove in production)
+      print('Ad image URL: $imageUrl (original: ${ad.imageUrl})');
+    }
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -397,11 +581,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: ad.imageUrl.isNotEmpty
+        child: imageUrl.isNotEmpty
             ? CachedNetworkImage(
-                imageUrl: ad.imageUrl.startsWith('http')
-                    ? ad.imageUrl
-                    : 'http://72.62.51.50:3007${ad.imageUrl}',
+                imageUrl: imageUrl,
                 width: double.infinity,
                 height: 200,
                 fit: BoxFit.cover,
@@ -409,10 +591,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   color: AppColors.gray200,
                   child: const Center(child: CircularProgressIndicator()),
                 ),
-                errorWidget: (context, url, error) => Container(
-                  color: AppColors.gray200,
-                  child: const Icon(Icons.error),
-                ),
+                errorWidget: (context, url, error) {
+                  print('Error loading ad image: $url, error: $error');
+                  return Container(
+                    color: AppColors.gray200,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 48, color: AppColors.gray400),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Failed to load image',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppColors.gray500,
+                              ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               )
             : Container(
                 color: AppColors.gray200,
@@ -585,6 +782,199 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSkeletonLoading() {
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Ads Section Skeleton
+          _buildAdsSkeleton(),
+          const SizedBox(height: 32),
+          // Services Section Skeleton
+          _buildServicesSkeleton(),
+          const SizedBox(height: 32),
+          // Quick Actions Section Skeleton
+          _buildQuickActionsSkeleton(),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdsSkeleton() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Title skeleton
+        Container(
+          width: 140,
+          height: 24,
+          decoration: BoxDecoration(
+            color: AppColors.gray200,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(height: 4),
+        // Subtitle skeleton
+        Container(
+          width: 200,
+          height: 16,
+          decoration: BoxDecoration(
+            color: AppColors.gray100,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Ads carousel skeleton
+        Container(
+          height: 180,
+          decoration: BoxDecoration(
+            color: AppColors.gray100,
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildServicesSkeleton() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Title skeleton
+        Container(
+          width: 120,
+          height: 24,
+          decoration: BoxDecoration(
+            color: AppColors.gray200,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Subtitle skeleton
+        Container(
+          width: 280,
+          height: 16,
+          decoration: BoxDecoration(
+            color: AppColors.gray100,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(height: 20),
+        // Services grid skeleton
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          children: List.generate(4, (index) {
+            return Container(
+              decoration: BoxDecoration(
+                color: AppColors.gray100,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Icon skeleton
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.gray200,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Text skeleton
+                    Container(
+                      width: 60,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: AppColors.gray200,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickActionsSkeleton() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Title skeleton
+        Container(
+          width: 120,
+          height: 24,
+          decoration: BoxDecoration(
+            color: AppColors.gray200,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Quick actions container skeleton
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.gray100,
+                AppColors.gray200,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(3, (index) {
+                  return Column(
+                    children: [
+                      // Icon skeleton
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: AppColors.gray300,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Text skeleton
+                      Container(
+                        width: 60,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: AppColors.gray300,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  );
+                }),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

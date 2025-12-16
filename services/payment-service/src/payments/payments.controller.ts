@@ -28,6 +28,8 @@ export class PaymentsController {
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   findAll(
     @Query('appointmentId') appointmentId?: string,
+    @Query('adId') adId?: string,
+    @Query('paymentType') paymentType?: string,
     @Query('paymentStatus') paymentStatus?: string,
     @Query('paymentMethod') paymentMethod?: string,
     @Query('startDate') startDate?: string,
@@ -35,6 +37,8 @@ export class PaymentsController {
   ) {
     return this.paymentsService.findAll({
       appointmentId,
+      adId,
+      paymentType,
       paymentStatus,
       paymentMethod,
       startDate,
@@ -46,6 +50,12 @@ export class PaymentsController {
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   findByAppointmentId(@Param('appointmentId') appointmentId: string) {
     return this.paymentsService.findByAppointmentId(appointmentId);
+  }
+
+  @Get('ad/:adId')
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  findByAdId(@Param('adId') adId: string) {
+    return this.paymentsService.findByAdId(adId);
   }
 
   @Get(':id')

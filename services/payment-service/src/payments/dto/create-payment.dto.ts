@@ -1,4 +1,4 @@
-import { IsString, IsInt, IsEnum, IsOptional, IsNotEmpty, Min } from 'class-validator';
+import { IsString, IsInt, IsEnum, IsOptional, IsNotEmpty, Min, ValidateIf } from 'class-validator';
 
 export enum PaymentMethod {
   CASH = 'CASH',
@@ -9,10 +9,25 @@ export enum PaymentMethod {
   OTHER = 'OTHER',
 }
 
+export enum PaymentType {
+  APPOINTMENT = 'APPOINTMENT',
+  AD = 'AD',
+}
+
 export class CreatePaymentDto {
+  @IsEnum(PaymentType)
+  @IsOptional()
+  paymentType?: PaymentType; // Defaults to APPOINTMENT for backward compatibility
+
   @IsString()
+  @ValidateIf((o) => o.paymentType === PaymentType.APPOINTMENT || !o.paymentType)
   @IsNotEmpty()
-  appointmentId: string;
+  appointmentId?: string;
+
+  @IsString()
+  @ValidateIf((o) => o.paymentType === PaymentType.AD)
+  @IsNotEmpty()
+  adId?: string;
 
   @IsInt()
   @Min(1)

@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../data/datasources/local_storage.dart';
-import '../../../presentation/providers/auth_provider.dart';
+import '../../providers/auth_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -66,8 +65,8 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 32),
                   ElevatedButton(
-                    onPressed: () {
-                      ref.read(authProvider.notifier).clearUser();
+                    onPressed: () async {
+                      await ref.read(authProvider.notifier).clearUser();
                       context.go('/login');
                     },
                     style: ElevatedButton.styleFrom(

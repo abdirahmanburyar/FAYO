@@ -12,7 +12,9 @@ datasource db {
 
 model Payment {
   id                String        @id @default(cuid())
-  appointmentId     String
+  paymentType       PaymentType   @default(APPOINTMENT)
+  appointmentId     String?       // Optional: for appointment payments
+  adId              String?       // Optional: for ad payments
   amount            Int           // Amount in cents
   currency          String        @default("USD")
   paymentMethod     PaymentMethod
@@ -32,6 +34,8 @@ model Payment {
   updatedAt         DateTime      @updatedAt
 
   @@index([appointmentId])
+  @@index([adId])
+  @@index([paymentType])
   @@index([paymentStatus])
   @@index([paymentMethod])
   @@index([transactionId])
@@ -50,6 +54,13 @@ enum PaymentMethod {
   MOBILE_MONEY
   CHEQUE
   OTHER
+
+  @@schema("payments")
+}
+
+enum PaymentType {
+  APPOINTMENT
+  AD
 
   @@schema("payments")
 }

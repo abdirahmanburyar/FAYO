@@ -1,28 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../data/models/appointment_models.dart';
-import '../../data/models/auth_models.dart';
+import 'dart:async';
+import '../../data/datasources/local_storage.dart';
 import '../../presentation/screens/splash/splash_screen.dart';
 import '../../presentation/screens/auth/login_screen.dart';
 import '../../presentation/screens/auth/otp_verification_screen.dart';
 import '../../presentation/screens/home/home_screen.dart';
-import '../../presentation/screens/main/main_navigation_screen.dart';
 import '../../presentation/screens/hospitals/hospitals_screen.dart';
 import '../../presentation/screens/hospitals/hospital_details_screen.dart';
 import '../../presentation/screens/doctors/doctors_screen.dart';
 import '../../presentation/screens/doctors/doctor_detail_screen.dart';
 import '../../presentation/screens/appointments/appointments_screen.dart';
 import '../../presentation/screens/appointments/book_appointment_screen.dart';
-import '../../presentation/screens/payment/payment_screen.dart';
-import '../../presentation/screens/call/call_screen.dart';
 import '../../presentation/screens/profile/profile_screen.dart';
 import '../../presentation/screens/telemedicine/telemedicine_screen.dart';
 import '../../presentation/screens/health_advices/health_advices_screen.dart';
-import '../constants/app_constants.dart';
-import '../../data/datasources/local_storage.dart';
+
+class _AuthRefreshListenable extends ChangeNotifier {
+  _AuthRefreshListenable(Stream<dynamic> stream) {
+    _subscription = stream.listen((_) => notifyListeners());
+  }
+
+  late final StreamSubscription<dynamic> _subscription;
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+}
 
 class AppRouter {
+  static final _authStateController = StreamController<String?>.broadcast();
+
+  static void refreshAuthState() {
+    _authStateController.add(null);
+  }
+
   static final GoRouter router = GoRouter(
+    refreshListenable: _AuthRefreshListenable(_authStateController.stream),
     initialLocation: '/splash',
     routes: [
       GoRoute(
@@ -46,7 +62,7 @@ class AppRouter {
       GoRoute(
         path: '/home',
         name: 'home',
-        builder: (context, state) => const MainNavigationScreen(),
+        builder: (context, state) => const HomeScreen(),
       ),
       GoRoute(
         path: '/hospitals',

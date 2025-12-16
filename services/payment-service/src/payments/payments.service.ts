@@ -5,9 +5,9 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../common/database/prisma.service';
-import { CreatePaymentDto } from './dto/create-payment.dto';
+import { CreatePaymentDto, PaymentType } from './dto/create-payment.dto';
 import { UpdatePaymentDto } from './dto/update-payment.dto';
-import { PaymentStatus } from '@prisma/client';
+import { PaymentStatus, PaymentType as PrismaPaymentType } from '@prisma/client';
 
 @Injectable()
 export class PaymentsService {
@@ -22,7 +22,22 @@ export class PaymentsService {
    */
   async create(createPaymentDto: CreatePaymentDto) {
     try {
-      this.logger.log(`💳 Creating payment for appointment: ${createPaymentDto.appointmentId}`);
+      // Determine payment type (default to APPOINTMENT for backward compatibility)
+      const paymentType = createPaymentDto.paymentType || PaymentType.APPOINTMENT;
+      
+      // Validate that either appointmentId or adId is provided based on payment type
+      if (paymentType === PaymentType.APPOINTMENT && !createPaymentDto.appointmentId) {
+        throw new BadRequestException('appointmentId is required for appointment payments');
+      }
+      
+      if (paymentType === PaymentType.AD && !createPaymentDto.adId) {
+        throw new BadRequestException('adId is required for ad payments');
+      }
+
+      const logMessage = paymentType === PaymentType.AD
+        ? `💳 Creating payment for ad: ${createPaymentDto.adId}`
+        : `💳 Creating payment for appointment: ${createPaymentDto.appointmentId}`;
+      this.logger.log(logMessage);
 
       // Generate receipt number
       const receiptNumber = await this.generateReceiptNumber();
@@ -30,7 +45,9 @@ export class PaymentsService {
       // Create payment record
       const payment = await this.prisma.payment.create({
         data: {
+          paymentType: paymentType === PaymentType.AD ? PrismaPaymentType.AD : PrismaPaymentType.APPOINTMENT,
           appointmentId: createPaymentDto.appointmentId,
+          adId: createPaymentDto.adId,
           amount: createPaymentDto.amount,
           currency: createPaymentDto.currency || 'USD',
           paymentMethod: createPaymentDto.paymentMethod,
@@ -44,11 +61,14 @@ export class PaymentsService {
         },
       });
 
-      this.logger.log(`✅ Payment created: ${payment.id}, Receipt: ${receiptNumber}`);
+      this.logger.log(`✅ Payment created: ${payment.id}, Receipt: ${receiptNumber}, Type: ${paymentType}`);
 
       return payment;
     } catch (error) {
       this.logger.error(`❌ Error creating payment:`, error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
       throw new BadRequestException(
         `Failed to create payment: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
@@ -138,10 +158,22 @@ export class PaymentsService {
   }
 
   /**
+   * Get payments by ad ID
+   */
+  async findByAdId(adId: string) {
+    return this.prisma.payment.findMany({
+      where: { adId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
    * Get all payments with filters
    */
   async findAll(filters?: {
     appointmentId?: string;
+    adId?: string;
+    paymentType?: string;
     paymentStatus?: string;
     paymentMethod?: string;
     startDate?: string;
@@ -151,6 +183,14 @@ export class PaymentsService {
 
     if (filters?.appointmentId) {
       where.appointmentId = filters.appointmentId;
+    }
+
+    if (filters?.adId) {
+      where.adId = filters.adId;
+    }
+
+    if (filters?.paymentType) {
+      where.paymentType = filters.paymentType;
     }
 
     if (filters?.paymentStatus) {

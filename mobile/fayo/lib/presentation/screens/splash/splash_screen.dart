@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../data/datasources/local_storage.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -11,39 +10,27 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
+    with TickerProviderStateMixin {
+  late AnimationController _rippleController;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+
+    // Ripple effect controller
+    _rippleController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeIn),
-      ),
-    );
+    // Start ripple animation
+    _rippleController.repeat();
 
-    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
-      ),
-    );
-
-    _controller.forward();
     _checkAuthAndNavigate();
   }
 
   Future<void> _checkAuthAndNavigate() async {
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
 
     final isLoggedIn = LocalStorage().isLoggedIn();
@@ -56,89 +43,87 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
-    _controller.dispose();
+    _rippleController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.skyBlue600,
-              AppColors.skyBlue400,
-              AppColors.blue500,
-            ],
-          ),
-        ),
-        child: Center(
-          child: AnimatedBuilder(
-            animation: _controller,
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          // Ripple effect background
+          AnimatedBuilder(
+            animation: _rippleController,
             builder: (context, child) {
-              return FadeTransition(
-                opacity: _fadeAnimation,
-                child: ScaleTransition(
-                  scale: _scaleAnimation,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // App Logo/Icon
-                      Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.medical_services,
-                          size: 60,
-                          color: AppColors.skyBlue600,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      // App Name
-                      Text(
-                        'FAYO Healthcare',
-                        style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Your Health, Our Priority',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: Colors.white.withOpacity(0.9),
-                              letterSpacing: 0.5,
-                            ),
-                      ),
-                      const SizedBox(height: 48),
-                      // Loading Indicator
-                      const CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    ],
-                  ),
+              return CustomPaint(
+                painter: RipplePainter(
+                  animation: _rippleController,
+                ),
+                size: Size(
+                  MediaQuery.of(context).size.width,
+                  MediaQuery.of(context).size.height,
                 ),
               );
             },
           ),
-        ),
+          // Logo centered
+          Center(
+            child: Image.asset(
+              'assets/logo/logo.png',
+              width: 120,
+              height: 120,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(
+                  Icons.medical_services,
+                  size: 60,
+                  color: Colors.blue,
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+// Custom ripple painter for the animated ripple effect
+class RipplePainter extends CustomPainter {
+  final Animation<double> animation;
+
+  RipplePainter({required this.animation});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    
+    // Draw three concentric ripple circles (outermost to innermost)
+    final rippleRadii = [180.0, 140.0, 100.0];
+    final rippleOpacities = [0.15, 0.25, 0.35];
+    final rippleColors = [
+      const Color(0xFFE3F2FD), // Lightest blue
+      const Color(0xFFBBDEFB), // Medium light blue
+      const Color(0xFF90CAF9), // Light blue
+    ];
+    
+    // Draw ripple circles
+    for (int i = 0; i < 3; i++) {
+      final progress = (animation.value + i * 0.3) % 1.0;
+      final currentRadius = rippleRadii[i] * (0.8 + progress * 0.2);
+      final opacity = rippleOpacities[i] * (1.0 - progress * 0.3);
+      
+      final paint = Paint()
+        ..color = rippleColors[i].withOpacity(opacity)
+        ..style = PaintingStyle.fill;
+      
+      canvas.drawCircle(center, currentRadius, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(RipplePainter oldDelegate) => true;
 }
 

@@ -79,6 +79,7 @@ dev_dependencies:
   json_serializable: ^6.7.1
   freezed: ^2.4.7
   hive_generator: ^2.0.1
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
@@ -88,8 +89,16 @@ flutter:
     - assets/images/header.png
     - assets/icons/
     - assets/animations/
+    - assets/logo/
+    - assets/logo/logo.png
 
-  fonts:
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo/logo.png"
+  min_sdk_android: 21
+
+fonts:
     - family: Inter
       fonts:
         - asset: assets/fonts/Inter-Regular.otf

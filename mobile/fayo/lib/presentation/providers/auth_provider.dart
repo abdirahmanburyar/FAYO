@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/local_storage.dart';
 import '../../data/models/auth_models.dart';
+import '../../core/router/app_router.dart';
 
 class AuthNotifier extends StateNotifier<UserDto?> {
   final LocalStorage _storage;
@@ -16,9 +17,10 @@ class AuthNotifier extends StateNotifier<UserDto?> {
     _storage.saveUser(user);
   }
 
-  void clearUser() {
+  Future<void> clearUser() async {
     state = null;
-    _storage.clearAll();
+    await _storage.clearAll();
+    AppRouter.refreshAuthState();
   }
 }
 
