@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: 'standalone',
   // Build optimizations
-  swcMinify: true,
+  // Note: swcMinify is deprecated in Next.js 15, SWC minification is enabled by default
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },

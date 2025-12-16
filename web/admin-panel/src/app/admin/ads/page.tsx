@@ -5,8 +5,8 @@
  * - Real-time updates via WebSocket
  * - Pagination support
  * - Client-side filtering and search
- * - Performance metrics (views & clicks)
- * - CRUD operations (Create, Read, Update, Delete)
+ * - Performance metrics (clicks)
+ * - CRUD operations (Create, Delete)
  * 
  * Key Features:
  * - Optimized with React hooks (useMemo, useCallback) for better performance
@@ -25,9 +25,7 @@ import {
   Megaphone,
   Search,
   Plus,
-  Edit,
   Trash2,
-  Eye,
   AlertCircle,
   CheckCircle,
   Clock,
@@ -65,6 +63,27 @@ export default function AdsPage() {
   // Base URL for ad images
   const adsServiceUrl = process.env.NEXT_PUBLIC_ADS_SERVICE_URL || 'http://72.62.51.50:3007';
 
+  // Load payments for ads
+  const loadAdPayments = useCallback(async (adIds: string[]) => {
+    try {
+      const paymentsMap: Record<string, any[]> = {};
+      await Promise.all(
+        adIds.map(async (adId) => {
+          try {
+            const payments = await paymentApi.getPaymentsByAd(adId);
+            paymentsMap[adId] = payments;
+          } catch (err) {
+            console.error(`Error loading payments for ad ${adId}:`, err);
+            paymentsMap[adId] = [];
+          }
+        })
+      );
+      setAdPayments(paymentsMap);
+    } catch (err) {
+      console.error('Error loading ad payments:', err);
+    }
+  }, []);
+
   // Fetch ads from API
   const fetchAds = useCallback(async (page: number = 1, limit: number = 10, showRefreshing: boolean = false) => {
     try {
@@ -78,6 +97,11 @@ export default function AdsPage() {
       const response = await adsApi.getAds(false, page, limit);
       setAds(response.data);
       setPagination(response.pagination);
+      
+      // Load payments for all ads
+      if (response.data.length > 0) {
+        await loadAdPayments(response.data.map((ad) => ad.id));
+      }
     } catch (err) {
       console.error('Error fetching ads:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch ads';
@@ -86,7 +110,7 @@ export default function AdsPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [loadAdPayments]);
 
   // Initial fetch
   useEffect(() => {
@@ -221,7 +245,6 @@ export default function AdsPage() {
     displayed: filteredAds.length,
     published: filteredAds.filter((a) => a.status === 'PUBLISHED').length,
     inactive: filteredAds.filter((a) => a.status === 'INACTIVE').length,
-    totalViews: filteredAds.reduce((sum, a) => sum + a.viewCount, 0),
     totalClicks: filteredAds.reduce((sum, a) => sum + a.clickCount, 0),
   }), [filteredAds, pagination.total]);
 
@@ -286,7 +309,7 @@ export default function AdsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -342,21 +365,6 @@ export default function AdsPage() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Total Views</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalViews.toLocaleString()}</p>
-            </div>
-            <Eye className="w-8 h-8 text-blue-600" />
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-white p-6 rounded-xl shadow-sm border border-gray-200"
-        >
-          <div className="flex items-center justify-between">
-            <div>
               <p className="text-sm text-gray-600">Total Clicks</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalClicks.toLocaleString()}</p>
             </div>
@@ -400,168 +408,193 @@ export default function AdsPage() {
       </div>
 
       {/* Ads Cards Grid */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         {filteredAds.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-            <Megaphone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No ads found</p>
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-16 text-center">
+            <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
+              <Megaphone className="w-12 h-12 text-gray-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No ads found</h3>
+            <p className="text-gray-500 mb-6">Try adjusting your search or filters</p>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => router.push('/admin/ads/create')}
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Create Your First Ad</span>
+            </motion.button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredAds.map((ad, index) => (
-              <motion.div
-                key={ad.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
-              >
-                {/* Ad Image */}
-                <div className="relative w-full h-48 bg-gray-100 flex items-center justify-center">
-                  {ad.imageUrl ? (
-                    <img
-                      src={getImageUrl(ad.imageUrl) || ''}
-                      alt={`${ad.company} ad`}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const fallback = target.parentElement?.querySelector('.fallback-icon');
-                        if (fallback) fallback.classList.remove('hidden');
-                      }}
-                    />
-                  ) : null}
-                  <ImageIcon className={`w-12 h-12 text-gray-400 fallback-icon absolute ${ad.imageUrl ? 'hidden' : ''}`} />
-                  
-                  {/* Status Badge */}
-                  <div className="absolute top-3 right-3">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium shadow-sm ${getStatusBadgeColor(ad.status)}`}>
-                      {ad.status}
-                    </span>
-                  </div>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {filteredAds.map((ad, index) => {
+              const payments = adPayments[ad.id] || [];
+              const hasPaid = payments.some((p: any) => p.paymentStatus === 'PAID');
+              const totalPaid = payments
+                .filter((p: any) => p.paymentStatus === 'PAID')
+                .reduce((sum: number, p: any) => sum + p.amount, 0);
 
-                {/* Ad Content */}
-                <div className="p-6">
-                  {/* Company Name */}
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">{ad.company}</h3>
+              return (
+                <motion.div
+                  key={ad.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="group bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+                >
+                  {/* Ad Image Header */}
+                  <div className="relative w-full h-56 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
+                    {ad.imageUrl ? (
+                      <img
+                        src={getImageUrl(ad.imageUrl) || ''}
+                        alt={`${ad.company} ad`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const fallback = target.parentElement?.querySelector('.fallback-icon');
+                          if (fallback) fallback.classList.remove('hidden');
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ImageIcon className="w-16 h-16 text-gray-400" />
+                      </div>
+                    )}
+                    
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                    
+                    {/* Status Badge */}
+                    <div className="absolute top-4 right-4 z-10">
+                      <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg backdrop-blur-sm ${
+                        ad.status === 'PUBLISHED' 
+                          ? 'bg-green-500/90 text-white' 
+                          : 'bg-gray-500/90 text-white'
+                      }`}>
+                        {ad.status}
+                      </span>
+                    </div>
 
-                  {/* Date Range */}
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                      <span className="font-medium mr-2">Start:</span>
-                      <span>{new Date(ad.startDate).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                      <span className="font-medium mr-2">End:</span>
-                      <span>{new Date(ad.endDate).toLocaleDateString()}</span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Clock className="w-4 h-4 mr-2 text-gray-400" />
-                      <span className="font-medium mr-2">Duration:</span>
-                      <span>{ad.range} day{ad.range !== 1 ? 's' : ''}</span>
+                    {/* Company Name Overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 p-4 z-10">
+                      <h3 className="text-xl font-bold text-white drop-shadow-lg">{ad.company}</h3>
                     </div>
                   </div>
 
-                  {/* Performance Metrics */}
-                  <div className="grid grid-cols-2 gap-3 mb-4 pt-4 border-t border-gray-200">
-                    <div className="flex items-center space-x-2">
-                      <div className="bg-blue-50 p-2 rounded-lg">
-                        <Eye className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Views</p>
-                        <p className="text-sm font-semibold text-gray-900">{ad.viewCount.toLocaleString()}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="bg-purple-50 p-2 rounded-lg">
-                        <MousePointerClick className="w-4 h-4 text-purple-600" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Clicks</p>
-                        <p className="text-sm font-semibold text-gray-900">{ad.clickCount.toLocaleString()}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Payment Status */}
-                  {(() => {
-                    const payments = adPayments[ad.id] || [];
-                    const hasPaid = payments.some((p: any) => p.paymentStatus === 'PAID');
-                    const totalPaid = payments
-                      .filter((p: any) => p.paymentStatus === 'PAID')
-                      .reduce((sum: number, p: any) => sum + p.amount, 0);
-
-                    if (hasPaid) {
-                      return (
-                        <div className="mb-4 pt-4 border-t border-gray-200">
-                          <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <CheckCircle className="w-4 h-4 text-green-600" />
-                              <span className="text-sm font-medium text-green-900">Paid</span>
-                            </div>
-                            <span className="text-sm font-semibold text-green-700">
-                              ${(totalPaid / 100).toFixed(2)}
-                            </span>
-                          </div>
+                  {/* Card Content */}
+                  <div className="p-6 space-y-4">
+                    {/* Ad Type & Duration */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2 text-sm">
+                        <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium">
+                          {ad.type || 'BANNER'}
                         </div>
-                      );
-                    }
-
-                    return (
-                      <div className="mb-4 pt-4 border-t border-gray-200">
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <AlertCircle className="w-4 h-4 text-yellow-600" />
-                            <span className="text-sm font-medium text-yellow-900">Payment Required</span>
-                          </div>
+                        <div className="flex items-center text-gray-600">
+                          <Clock className="w-4 h-4 mr-1" />
+                          <span>{ad.range} day{ad.range !== 1 ? 's' : ''}</span>
                         </div>
                       </div>
-                    );
-                  })()}
+                    </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex flex-col gap-2 pt-4 border-t border-gray-200">
-                    <div className="flex items-center gap-2">
+                    {/* Date Range */}
+                    <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center text-gray-600">
+                          <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+                          <span className="font-medium">Start Date</span>
+                        </div>
+                        <span className="text-gray-900 font-semibold">
+                          {new Date(ad.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center text-gray-600">
+                          <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+                          <span className="font-medium">End Date</span>
+                        </div>
+                        <span className="text-gray-900 font-semibold">
+                          {new Date(ad.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Performance Metrics */}
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-purple-500 p-2.5 rounded-lg">
+                          <MousePointerClick className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 font-medium">Total Clicks</p>
+                          <p className="text-lg font-bold text-gray-900">{ad.clickCount.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Payment Status */}
+                    <div className={`rounded-xl p-4 border-2 ${
+                      hasPaid 
+                        ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200' 
+                        : 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-200'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          {hasPaid ? (
+                            <CheckCircle className="w-5 h-5 text-green-600" />
+                          ) : (
+                            <AlertCircle className="w-5 h-5 text-yellow-600" />
+                          )}
+                          <span className={`text-sm font-semibold ${
+                            hasPaid ? 'text-green-900' : 'text-yellow-900'
+                          }`}>
+                            {hasPaid ? 'Payment Received' : 'Payment Required'}
+                          </span>
+                        </div>
+                        {hasPaid && (
+                          <span className="text-lg font-bold text-green-700">
+                            ${(totalPaid / 100).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="space-y-2 pt-2">
+                      {/* Payment Button */}
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => router.push(`/admin/ads/${ad.id}/edit`)}
-                        className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                        title="Edit"
+                        onClick={() => setSelectedAdForPayment(ad)}
+                        className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-xl font-semibold transition-all shadow-lg ${
+                          hasPaid
+                            ? 'bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700'
+                            : 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:from-green-600 hover:to-green-700'
+                        }`}
+                        title="Make Payment for Ad"
                       >
-                        <Edit className="w-4 h-4" />
-                        <span>Edit</span>
+                        <DollarSign className="w-5 h-5" />
+                        <span>{hasPaid ? 'View Payment' : 'Make Payment'}</span>
                       </motion.button>
+                      
+                      {/* Delete Button */}
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => handleDelete(ad)}
                         disabled={deletingAdId === ad.id}
-                        className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Delete"
+                        className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                        title="Delete Ad"
                       >
                         <Trash2 className="w-4 h-4" />
                         <span>{deletingAdId === ad.id ? 'Deleting...' : 'Delete'}</span>
                       </motion.button>
                     </div>
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setSelectedAdForPayment(ad)}
-                      className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                      title="Pay for Ad"
-                    >
-                      <DollarSign className="w-4 h-4" />
-                      <span>Pay for Ad</span>
-                    </motion.button>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>

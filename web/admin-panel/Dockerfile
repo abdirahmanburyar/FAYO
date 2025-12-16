@@ -11,12 +11,16 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 # Increase npm timeout and memory for large installs
 RUN npm config set fetch-timeout 600000 && \
-    npm config set network-timeout 600000 && \
     for i in 1 2 3; do \
       (npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 --prefer-offline --no-optional || \
        npm install --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 --prefer-offline --no-optional) && break || \
       (echo "Attempt $i failed, retrying in $((i*10)) seconds..." && sleep $((i*10))); \
-    done
+    done && \
+    # Explicitly reinstall lightningcss WITH optional dependencies (required for Tailwind CSS v4 native binaries on Alpine/musl)
+    # This ensures the linux-x64-musl native binary is installed even though we used --no-optional above
+    # Note: We don't use --no-optional here so that optional dependencies (native binaries) are installed
+    npm install lightningcss --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || \
+    echo "Warning: lightningcss optional dependencies installation failed, but continuing..."
 
 # Rebuild the source code only when needed
 FROM base AS builder

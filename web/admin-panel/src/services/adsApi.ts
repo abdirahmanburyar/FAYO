@@ -9,6 +9,7 @@ export interface Ad {
   startDate: string; // ISO date string
   endDate: string; // ISO date string (calculated from startDate + range)
   range: number; // Number of days (endDate = startDate + range)
+  type?: 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL'; // Ad type
   status: AdStatus;
   clickCount: number;
   viewCount: number;

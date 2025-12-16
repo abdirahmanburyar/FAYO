@@ -7,11 +7,9 @@ import {
   Users,
   Calendar,
   FileText,
-  Settings,
   LogOut,
   Stethoscope,
   Building2,
-  Palette,
   BookOpen,
   Megaphone
 } from 'lucide-react';
@@ -41,8 +39,6 @@ const menuItems = [
   { name: 'Appointments', href: '/admin/appointments', icon: Calendar },
   { name: 'Advertisements', href: '/admin/ads', icon: Megaphone },
   { name: 'Reports', href: '/admin/reports', icon: FileText },
-  { name: 'Components', href: '/admin/components', icon: Palette },
-  { name: 'Settings', href: '/admin/settings', icon: Settings },
 ];
 
 export default function AdminSidebar({ isOpen, onClose, adminUser }: AdminSidebarProps) {
