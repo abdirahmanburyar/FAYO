@@ -35,11 +35,14 @@ import {
   MousePointerClick,
   Image as ImageIcon,
   RefreshCw,
+  DollarSign,
 } from 'lucide-react';
 import { adsApi, Ad, AdStatus } from '@/services/adsApi';
 import { getAdsWebSocketService, AdsWebSocketEvent } from '@/services/adsWebSocket';
 import { SkeletonStats, SkeletonTable } from '@/components/skeletons';
 import { SearchableSelect, SelectOption } from '@/components/ui';
+import AdPaymentModal from '@/components/AdPaymentModal';
+import { paymentApi } from '@/services/paymentApi';
 
 export default function AdsPage() {
   const router = useRouter();
@@ -56,6 +59,8 @@ export default function AdsPage() {
     totalPages: 0,
   });
   const [deletingAdId, setDeletingAdId] = useState<string | null>(null);
+  const [selectedAdForPayment, setSelectedAdForPayment] = useState<Ad | null>(null);
+  const [adPayments, setAdPayments] = useState<Record<string, any[]>>({});
 
   // Base URL for ad images
   const adsServiceUrl = process.env.NEXT_PUBLIC_ADS_SERVICE_URL || 'http://72.62.51.50:3007';
@@ -482,28 +487,76 @@ export default function AdsPage() {
                     </div>
                   </div>
 
+                  {/* Payment Status */}
+                  {(() => {
+                    const payments = adPayments[ad.id] || [];
+                    const hasPaid = payments.some((p: any) => p.paymentStatus === 'PAID');
+                    const totalPaid = payments
+                      .filter((p: any) => p.paymentStatus === 'PAID')
+                      .reduce((sum: number, p: any) => sum + p.amount, 0);
+
+                    if (hasPaid) {
+                      return (
+                        <div className="mb-4 pt-4 border-t border-gray-200">
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <CheckCircle className="w-4 h-4 text-green-600" />
+                              <span className="text-sm font-medium text-green-900">Paid</span>
+                            </div>
+                            <span className="text-sm font-semibold text-green-700">
+                              ${(totalPaid / 100).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="mb-4 pt-4 border-t border-gray-200">
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <AlertCircle className="w-4 h-4 text-yellow-600" />
+                            <span className="text-sm font-medium text-yellow-900">Payment Required</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Action Buttons */}
-                  <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
+                  <div className="flex flex-col gap-2 pt-4 border-t border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => router.push(`/admin/ads/${ad.id}/edit`)}
+                        className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        title="Edit"
+                      >
+                        <Edit className="w-4 h-4" />
+                        <span>Edit</span>
+                      </motion.button>
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => handleDelete(ad)}
+                        disabled={deletingAdId === ad.id}
+                        className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span>{deletingAdId === ad.id ? 'Deleting...' : 'Delete'}</span>
+                      </motion.button>
+                    </div>
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => router.push(`/admin/ads/${ad.id}/edit`)}
-                      className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      title="Edit"
+                      onClick={() => setSelectedAdForPayment(ad)}
+                      className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      title="Pay for Ad"
                     >
-                      <Edit className="w-4 h-4" />
-                      <span>Edit</span>
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => handleDelete(ad)}
-                      disabled={deletingAdId === ad.id}
-                      className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span>{deletingAdId === ad.id ? 'Deleting...' : 'Delete'}</span>
+                      <DollarSign className="w-4 h-4" />
+                      <span>Pay for Ad</span>
                     </motion.button>
                   </div>
                 </div>
@@ -550,6 +603,25 @@ export default function AdsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Payment Modal */}
+      {selectedAdForPayment && (
+        <AdPaymentModal
+          ad={selectedAdForPayment}
+          isOpen={!!selectedAdForPayment}
+          onClose={() => {
+            setSelectedAdForPayment(null);
+            // Reload payments
+            if (ads.length > 0) {
+              loadAdPayments(ads.map((ad) => ad.id));
+            }
+          }}
+          onPaymentSuccess={() => {
+            // Refresh ads list
+            fetchAds(pagination.page, pagination.limit, true);
+          }}
+        />
       )}
     </div>
   );

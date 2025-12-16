@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   Calendar,
   Building2,
+  DollarSign,
 } from 'lucide-react';
 import { adsApi, CreateAdDto, AdStatus } from '@/services/adsApi';
 
@@ -23,8 +24,11 @@ export default function CreateAdPage() {
     company: '',
     startDate: new Date().toISOString().split('T')[0],
     range: 7,
+    type: 'BANNER' as 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL',
     status: 'INACTIVE' as AdStatus,
   });
+  const [fee, setFee] = useState<{ fee: number; feeInDollars: string } | null>(null);
+  const [calculatingFee, setCalculatingFee] = useState(false);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -87,7 +91,8 @@ export default function CreateAdPage() {
         imageUrl: fullImageUrl,
         startDate: new Date(formData.startDate).toISOString(),
         range: formData.range,
-        status: formData.status,
+        type: formData.type,
+        status: formData.status === 'PENDING' ? 'PENDING' : formData.status,
         createdBy: 'ADMIN',
       };
 
@@ -107,6 +112,26 @@ export default function CreateAdPage() {
         .toISOString()
         .split('T')[0]
     : '';
+
+  // Calculate fee when range or type changes
+  useEffect(() => {
+    const calculateFee = async () => {
+      if (formData.range > 0) {
+        setCalculatingFee(true);
+        try {
+          const result = await adsApi.calculateFee(formData.range, formData.type);
+          setFee(result);
+        } catch (err) {
+          console.error('Error calculating fee:', err);
+          setFee(null);
+        } finally {
+          setCalculatingFee(false);
+        }
+      }
+    };
+
+    calculateFee();
+  }, [formData.range, formData.type]);
 
   return (
     <div className="space-y-6">
@@ -268,6 +293,61 @@ export default function CreateAdPage() {
           </div>
         </div>
 
+        {/* Ad Type */}
+        <div className="space-y-4 border-t border-gray-200 pt-6">
+          <h2 className="text-xl font-semibold text-gray-900">Ad Type</h2>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Type <span className="text-red-500">*</span>
+            </label>
+            <select
+              required
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL' })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="BANNER">Banner ($10 base + $1/day)</option>
+              <option value="CAROUSEL">Carousel ($20 base + $2/day)</option>
+              <option value="INTERSTITIAL">Interstitial ($50 base + $5/day)</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">Select the type of advertisement</p>
+          </div>
+        </div>
+
+        {/* Fee Calculation */}
+        {fee && (
+          <div className="space-y-4 border-t border-gray-200 pt-6">
+            <h2 className="text-xl font-semibold text-gray-900 flex items-center space-x-2">
+              <DollarSign className="w-5 h-5" />
+              <span>Payment</span>
+            </h2>
+            <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-6 border-2 border-blue-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Estimated Fee</p>
+                  {calculatingFee ? (
+                    <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
+                  ) : (
+                    <p className="text-3xl font-bold text-gray-900">${fee.feeInDollars}</p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-500 mb-1">Fee Breakdown</p>
+                  <p className="text-sm text-gray-700">
+                    Base: ${formData.type === 'BANNER' ? '10' : formData.type === 'CAROUSEL' ? '20' : '50'}
+                  </p>
+                  <p className="text-sm text-gray-700">
+                    Daily: ${formData.type === 'BANNER' ? '1' : formData.type === 'CAROUSEL' ? '2' : '5'}/day × {formData.range} days
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-3">
+                Note: Payment will be required after creating the ad. The ad will be published once payment is confirmed.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Status */}
         <div className="space-y-4 border-t border-gray-200 pt-6">
           <h2 className="text-xl font-semibold text-gray-900">Status</h2>
@@ -282,9 +362,12 @@ export default function CreateAdPage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="INACTIVE">Inactive</option>
+              <option value="PENDING">Pending (Requires Payment)</option>
               <option value="PUBLISHED">Published</option>
             </select>
-            <p className="text-xs text-gray-500 mt-1">Only published ads within date range will be displayed</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Select "Pending" to require payment before publishing. Only published ads within date range will be displayed.
+            </p>
           </div>
         </div>
 

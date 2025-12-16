@@ -22,6 +22,7 @@ export interface CreateAdDto {
   imageUrl: string; // Image URL (uploaded separately)
   startDate: string; // ISO date string
   range: number; // Number of days (endDate = startDate + range)
+  type?: 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL'; // Ad type
   status?: AdStatus;
   createdBy?: string;
 }
@@ -147,6 +148,7 @@ class AdsApiService {
           imageUrl: ad.imageUrl,
           startDate: ad.startDate,
           range: ad.range,
+          type: ad.type,
           status: ad.status,
           createdBy: ad.createdBy,
         }),
@@ -245,6 +247,89 @@ class AdsApiService {
       });
     } catch (error) {
       console.error('Error incrementing click count:', error);
+    }
+  }
+
+  /**
+   * Calculate fee for an ad
+   */
+  async calculateFee(range: number, type?: string): Promise<{ fee: number; feeInDollars: string; range: number; type: string }> {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('range', range.toString());
+      if (type) queryParams.append('type', type);
+
+      const response = await fetch(
+        `${this.getBaseUrl()}/api/v1/ads/calculate-fee?${queryParams.toString()}`,
+        {
+          method: 'GET',
+          headers: this.getAuthHeaders(),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error calculating fee:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Pay for an ad
+   */
+  async payForAd(
+    adId: string,
+    paymentData: {
+      paymentMethod: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'MOBILE_MONEY' | 'CHEQUE' | 'OTHER';
+      paidBy?: string;
+      processedBy?: string;
+      notes?: string;
+      transactionId?: string;
+    }
+  ): Promise<{ payment: any; ad: Ad }> {
+    try {
+      const response = await fetch(`${this.getBaseUrl()}/api/v1/ads/${adId}/pay`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(paymentData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error paying for ad:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get payments for an ad
+   */
+  async getAdPayments(adId: string): Promise<any[]> {
+    try {
+      const response = await fetch(`${this.getBaseUrl()}/api/v1/ads/${adId}/payments`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching ad payments:', error);
+      throw error;
     }
   }
 }

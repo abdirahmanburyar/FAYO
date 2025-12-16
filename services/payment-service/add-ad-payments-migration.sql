@@ -1,5 +1,12 @@
 -- Migration: Add support for ad payments
 -- This migration adds paymentType enum and adId field to support ad payments
+--
+-- To run this migration through Docker:
+--   cat services/payment-service/add-ad-payments-migration.sql | docker exec -i postgres psql -U postgres -d fayo
+--
+-- Or copy and execute:
+--   docker cp services/payment-service/add-ad-payments-migration.sql postgres:/tmp/migration.sql
+--   docker exec -i postgres psql -U postgres -d fayo -f /tmp/migration.sql
 
 -- Step 1: Create PaymentType enum
 DO $$ BEGIN

@@ -12,15 +12,29 @@ The payment service now supports payments for both **appointments** and **ads**.
 - `appointmentId` is now optional (was required)
 
 ### Migration
-Run the migration SQL file to update your database:
+
+#### Option 1: Using Docker (Recommended)
+Run the migration SQL file through Docker:
 ```bash
-psql -d your_database -f add-ad-payments-migration.sql
+# Copy the migration file into the postgres container and execute it
+docker cp services/payment-service/add-ad-payments-migration.sql postgres:/tmp/add-ad-payments-migration.sql
+docker exec -i postgres psql -U postgres -d fayo -f /tmp/add-ad-payments-migration.sql
 ```
 
-Or use Prisma migrations:
+Or execute directly from your local machine:
 ```bash
+# Execute the migration file directly through Docker
+cat services/payment-service/add-ad-payments-migration.sql | docker exec -i postgres psql -U postgres -d fayo
+```
+
+#### Option 2: Using Prisma Migrations
+If you prefer using Prisma migrations:
+```bash
+cd services/payment-service
 npm run prisma:migrate dev --name add_ad_payments
 ```
+
+**Note**: The Docker container name is `postgres` and the database name is `fayo`. Adjust these if your setup differs.
 
 ## API Endpoints
 

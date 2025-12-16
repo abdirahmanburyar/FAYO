@@ -1,6 +1,8 @@
 interface Payment {
   id: string;
-  appointmentId: string;
+  paymentType?: 'APPOINTMENT' | 'AD';
+  appointmentId?: string;
+  adId?: string;
   amount: number;
   currency: string;
   paymentMethod: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'MOBILE_MONEY' | 'CHEQUE' | 'OTHER';
@@ -17,7 +19,9 @@ interface Payment {
 }
 
 interface CreatePaymentRequest {
-  appointmentId: string;
+  paymentType?: 'APPOINTMENT' | 'AD';
+  appointmentId?: string;
+  adId?: string;
   amount: number;
   paymentMethod: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'MOBILE_MONEY' | 'CHEQUE' | 'OTHER';
   currency?: string;
@@ -134,8 +138,32 @@ class PaymentApiService {
     }
   }
 
+  async getPaymentsByAd(adId: string): Promise<Payment[]> {
+    try {
+      const url = `/api/v1/payments/ad/${adId}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to fetch payments: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error: any) {
+      if (this.isConnectionError(error)) {
+        throw this.createConnectionError(error);
+      }
+      throw error;
+    }
+  }
+
   async getAllPayments(filters?: {
     appointmentId?: string;
+    adId?: string;
+    paymentType?: string;
     paymentStatus?: string;
     paymentMethod?: string;
     startDate?: string;
@@ -144,6 +172,8 @@ class PaymentApiService {
     try {
       const queryParams = new URLSearchParams();
       if (filters?.appointmentId) queryParams.append('appointmentId', filters.appointmentId);
+      if (filters?.adId) queryParams.append('adId', filters.adId);
+      if (filters?.paymentType) queryParams.append('paymentType', filters.paymentType);
       if (filters?.paymentStatus) queryParams.append('paymentStatus', filters.paymentStatus);
       if (filters?.paymentMethod) queryParams.append('paymentMethod', filters.paymentMethod);
       if (filters?.startDate) queryParams.append('startDate', filters.startDate);
