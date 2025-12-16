@@ -37,6 +37,7 @@ model Ad {
   linkUrl     String?
   type        AdType    @default(BANNER)
   status      AdStatus  @default(PENDING)
+  price       Int       // Price per day in cents
   startDate   DateTime
   endDate     DateTime
   priority    Int       @default(0)

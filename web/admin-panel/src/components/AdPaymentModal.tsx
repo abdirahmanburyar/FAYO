@@ -40,11 +40,11 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
     try {
       setCalculatingFee(true);
       setError(null);
-      // Ensure range and type are valid
+      // Ensure range and price are valid
       const range = ad.range && typeof ad.range === 'number' ? ad.range : 7;
-      const type = ad.type || 'BANNER';
+      const price = ad.price && typeof ad.price === 'number' && ad.price > 0 ? ad.price : 100; // Default $1.00/day
       
-      const result = await adsApi.calculateFee(range, type);
+      const result = await adsApi.calculateFee(range, price);
       
       // Safely extract values with fallbacks
       if (result && typeof result === 'object') {
@@ -163,12 +163,12 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
                   )}
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-gray-500 mb-1">Fee Breakdown</p>
+                  <p className="text-xs text-gray-500 mb-1">Calculation</p>
                   <p className="text-sm text-gray-700">
-                    Base: ${ad.type === 'BANNER' ? '10' : ad.type === 'CAROUSEL' ? '20' : '50'}
+                    ${ad.price ? (ad.price / 100).toFixed(2) : '0.00'}/day × {ad.range || 0} days
                   </p>
-                  <p className="text-sm text-gray-700">
-                    Daily: ${ad.type === 'BANNER' ? '1' : ad.type === 'CAROUSEL' ? '2' : '5'}/day × {ad.range || 0} days
+                  <p className="text-sm text-gray-700 font-semibold">
+                    = ${feeInDollars}
                   </p>
                 </div>
               </div>

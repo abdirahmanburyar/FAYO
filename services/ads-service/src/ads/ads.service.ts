@@ -27,6 +27,7 @@ export class AdsService {
         imageUrl: createAdDto.imageUrl,
         linkUrl: createAdDto.linkUrl,
         type: createAdDto.type || undefined,
+        price: createAdDto.price, // Price per day in cents
         startDate,
         endDate,
         status: createAdDto.status
@@ -227,6 +228,21 @@ export class AdsService {
       this.logger.error(`Failed to increment click count for ad ${id}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Calculate ad fee based on price per day and duration
+   * @param range Number of days
+   * @param price Price per day in cents
+   * @returns Fee in cents (price × range)
+   */
+  calculateAdFee(range: number, price: number): number {
+    // Validate inputs
+    const validRange = Math.max(1, Math.floor(range || 1));
+    const validPrice = Math.max(1, Math.floor(price || 0));
+    
+    // Calculate: price per day × number of days
+    return validPrice * validRange;
   }
 
 }

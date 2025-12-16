@@ -45,6 +45,10 @@ export class CreateAdDto {
   @Min(1)
   range: number; // Number of days (endDate = startDate + range)
 
+  @IsInt()
+  @Min(1)
+  price: number; // Price per day in cents (total = price × range)
+
   @IsOptional()
   @IsEnum(AdStatusEnum)
   status?: AdStatusEnum;

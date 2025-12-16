@@ -10,6 +10,7 @@ export interface Ad {
   endDate: string; // ISO date string (calculated from startDate + range)
   range: number; // Number of days (endDate = startDate + range)
   type?: 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL'; // Ad type
+  price?: number; // Price per day in cents
   status: AdStatus;
   clickCount: number;
   viewCount: number;
@@ -23,6 +24,7 @@ export interface CreateAdDto {
   imageUrl: string; // Image URL (uploaded separately)
   startDate: string; // ISO date string
   range: number; // Number of days (endDate = startDate + range)
+  price: number; // Price per day in cents
   type?: 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL'; // Ad type
   status?: AdStatus;
   createdBy?: string;
@@ -254,15 +256,19 @@ class AdsApiService {
   /**
    * Calculate fee for an ad
    */
-  async calculateFee(range: number, type?: string): Promise<{ fee: number; feeInDollars: string; range: number; type: string }> {
+  async calculateFee(range: number, price: number): Promise<{ fee: number; feeInDollars: string; range: number; price: number }> {
     try {
-      // Validate range
+      // Validate inputs
       const validRange = typeof range === 'number' && range > 0 ? range : 7;
-      const validType = type || 'BANNER';
+      const validPrice = typeof price === 'number' && price > 0 ? price : 0;
+      
+      if (validPrice === 0) {
+        throw new Error('Price must be greater than 0');
+      }
       
       const queryParams = new URLSearchParams();
       queryParams.append('range', validRange.toString());
-      queryParams.append('type', validType);
+      queryParams.append('price', validPrice.toString());
 
       const response = await fetch(
         `${this.getBaseUrl()}/api/v1/ads/calculate-fee?${queryParams.toString()}`,
@@ -293,7 +299,7 @@ class AdsApiService {
         fee: data.fee || 0,
         feeInDollars: data.feeInDollars || '0.00',
         range: data.range || validRange,
-        type: data.type || validType,
+        price: data.price || validPrice,
       };
     } catch (error) {
       console.error('Error calculating fee:', error);

@@ -24,6 +24,7 @@ export default function CreateAdPage() {
     company: '',
     startDate: new Date().toISOString().split('T')[0],
     range: 7,
+    price: 100, // Price per day in cents (default $1.00)
     type: 'BANNER' as 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL',
     status: 'INACTIVE' as AdStatus,
   });
@@ -91,6 +92,7 @@ export default function CreateAdPage() {
         imageUrl: fullImageUrl,
         startDate: new Date(formData.startDate).toISOString(),
         range: formData.range,
+        price: formData.price, // Price per day in cents
         type: formData.type,
         status: formData.status === 'PENDING' ? 'PENDING' : formData.status,
         createdBy: 'ADMIN',
@@ -113,13 +115,13 @@ export default function CreateAdPage() {
         .split('T')[0]
     : '';
 
-  // Calculate fee when range or type changes
+  // Calculate fee when range or price changes
   useEffect(() => {
     const calculateFee = async () => {
-      if (formData.range > 0) {
+      if (formData.range > 0 && formData.price > 0) {
         setCalculatingFee(true);
         try {
-          const result = await adsApi.calculateFee(formData.range, formData.type);
+          const result = await adsApi.calculateFee(formData.range, formData.price);
           setFee(result);
         } catch (err) {
           console.error('Error calculating fee:', err);
@@ -127,11 +129,13 @@ export default function CreateAdPage() {
         } finally {
           setCalculatingFee(false);
         }
+      } else {
+        setFee(null);
       }
     };
 
     calculateFee();
-  }, [formData.range, formData.type]);
+  }, [formData.range, formData.price]);
 
   return (
     <div className="space-y-6">
@@ -293,24 +297,50 @@ export default function CreateAdPage() {
           </div>
         </div>
 
-        {/* Ad Type */}
+        {/* Price and Type */}
         <div className="space-y-4 border-t border-gray-200 pt-6">
-          <h2 className="text-xl font-semibold text-gray-900">Ad Type</h2>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Type <span className="text-red-500">*</span>
-            </label>
-            <select
-              required
-              value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL' })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="BANNER">Banner ($10 base + $1/day)</option>
-              <option value="CAROUSEL">Carousel ($20 base + $2/day)</option>
-              <option value="INTERSTITIAL">Interstitial ($50 base + $5/day)</option>
-            </select>
-            <p className="text-xs text-gray-500 mt-1">Select the type of advertisement</p>
+          <h2 className="text-xl font-semibold text-gray-900 flex items-center space-x-2">
+            <DollarSign className="w-5 h-5" />
+            <span>Pricing</span>
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Price per Day ($) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                required
+                min="0.01"
+                step="0.01"
+                value={(formData.price / 100).toFixed(2)}
+                onChange={(e) => {
+                  const priceInDollars = parseFloat(e.target.value) || 0;
+                  setFormData({ ...formData, price: Math.round(priceInDollars * 100) });
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="1.00"
+              />
+              <p className="text-xs text-gray-500 mt-1">Price per day in dollars</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                required
+                value={formData.type}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value as 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL' })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="BANNER">Banner</option>
+                <option value="CAROUSEL">Carousel</option>
+                <option value="INTERSTITIAL">Interstitial</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-1">Select the type of advertisement</p>
+            </div>
           </div>
         </div>
 
@@ -319,12 +349,12 @@ export default function CreateAdPage() {
           <div className="space-y-4 border-t border-gray-200 pt-6">
             <h2 className="text-xl font-semibold text-gray-900 flex items-center space-x-2">
               <DollarSign className="w-5 h-5" />
-              <span>Payment</span>
+              <span>Total Amount</span>
             </h2>
             <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-6 border-2 border-blue-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Estimated Fee</p>
+                  <p className="text-sm text-gray-600 mb-1">Total Fee</p>
                   {calculatingFee ? (
                     <div className="h-8 w-32 bg-gray-200 rounded animate-pulse" />
                   ) : (
@@ -332,12 +362,12 @@ export default function CreateAdPage() {
                   )}
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-gray-500 mb-1">Fee Breakdown</p>
+                  <p className="text-xs text-gray-500 mb-1">Calculation</p>
                   <p className="text-sm text-gray-700">
-                    Base: ${formData.type === 'BANNER' ? '10' : formData.type === 'CAROUSEL' ? '20' : '50'}
+                    ${(formData.price / 100).toFixed(2)}/day × {formData.range} days
                   </p>
-                  <p className="text-sm text-gray-700">
-                    Daily: ${formData.type === 'BANNER' ? '1' : formData.type === 'CAROUSEL' ? '2' : '5'}/day × {formData.range} days
+                  <p className="text-sm text-gray-700 font-semibold">
+                    = ${fee.feeInDollars}
                   </p>
                 </div>
               </div>
@@ -386,7 +416,7 @@ export default function CreateAdPage() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             type="submit"
-            disabled={loading || !imageFile || !formData.company.trim()}
+            disabled={loading || !imageFile || !formData.company.trim() || formData.price <= 0}
             className="flex items-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="w-5 h-5" />
