@@ -13,8 +13,7 @@ export class UploadController {
   @UseInterceptors(FileInterceptor('file', {
     storage: diskStorage({
       destination: (req, file, cb) => {
-        const uploadsPath = process.env.UPLOADS_PATH || process.cwd();
-        const adsPath = join(uploadsPath, 'uploads', 'ads');
+        const adsPath = '/app/uploads/ads'; // Use absolute path like doctor-service
         // Ensure directory exists
         if (!existsSync(adsPath)) {
           mkdirSync(adsPath, { recursive: true });

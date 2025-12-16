@@ -17,6 +17,9 @@ class AppColors {
   static const Color blue50 = Color(0xFFEFF6FF);
   static const Color blue500 = Color(0xFF3B82F6);
   static const Color blue600 = Color(0xFF2563EB);
+  static const Color green500 = Color(0xFF10B981);
+  static const Color purple500 = Color(0xFF8B5CF6);
+  static const Color orange500 = Color(0xFFF97316);
 
   // Neutral Colors
   static const Color gray50 = Color(0xFFF9FAFB);

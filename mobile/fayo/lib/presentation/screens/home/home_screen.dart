@@ -83,7 +83,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _adsScrollTimer?.cancel();
     if (_ads.isEmpty || _adsPageController == null) return;
     
-    _adsScrollTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    _adsScrollTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (_adsPageController == null || !_adsPageController!.hasClients) {
         timer.cancel();
         return;
@@ -164,11 +164,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
           ),
           body: _isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(AppColors.skyBlue600),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Loading your healthcare dashboard...',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.gray600,
+                            ),
+                      ),
+                    ],
+                  ),
+                )
               : RefreshIndicator(
                   onRefresh: _loadData,
+                  color: AppColors.skyBlue600,
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(16),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -178,8 +196,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         // Section 2: Services
                         _buildServicesSection(context),
                         const SizedBox(height: 32),
-                        // Section 3: Blank (for later)
+                        // Section 3: Quick Actions
                         _buildBlankSection(context),
+                        const SizedBox(height: 20),
                       ],
                     ),
                   ),
@@ -218,27 +237,102 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Advertisements',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Featured Ads',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.gray900,
+                      ),
+                ),
+                const SizedBox(height: 4),
+                if (_ads.isNotEmpty)
+                  Text(
+                    '${_ads.length} active advertisement${_ads.length != 1 ? 's' : ''}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.gray600,
+                        ),
+                  ),
+              ],
+            ),
+            if (_ads.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.skyBlue50,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.skyBlue200,
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.auto_awesome,
+                      size: 14,
+                      color: AppColors.skyBlue600,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Sponsored',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.skyBlue700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ],
+                ),
               ),
+          ],
         ),
         const SizedBox(height: 16),
         if (_ads.isEmpty)
           // Sample ad when no ads available
           _buildSampleAdCard(context)
         else
-          SizedBox(
-            height: 200,
-            child: PageView.builder(
-              controller: _adsPageController,
-              itemCount: _ads.length,
-              itemBuilder: (context, index) {
-                final ad = _ads[index];
-                return _buildAdCard(context, ad);
-              },
-            ),
+          Column(
+            children: [
+              SizedBox(
+                height: 200,
+                child: PageView.builder(
+                  controller: _adsPageController,
+                  itemCount: _ads.length,
+                  itemBuilder: (context, index) {
+                    final ad = _ads[index];
+                    return _buildAdCard(context, ad);
+                  },
+                ),
+              ),
+              if (_ads.length > 1)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      _ads.length,
+                      (index) => AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        height: 8,
+                        width: 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: (_adsPageController?.hasClients ?? false) &&
+                                  (_adsPageController?.page?.round() ?? 0) == index
+                              ? AppColors.skyBlue600
+                              : AppColors.gray300,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
       ],
     );
@@ -333,24 +427,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Services',
+          'Our Services',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
+                color: AppColors.gray900,
               ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
+        Text(
+          'Access healthcare services at your fingertips',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.gray600,
+              ),
+        ),
+        const SizedBox(height: 20),
         GridView.count(
-          crossAxisCount: 4,
+          crossAxisCount: 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 1.0,
+          crossAxisSpacing: 16,
+          mainAxisSpacing: 16,
+          childAspectRatio: 1.1,
           children: [
             _buildServiceCard(
               context,
-              'Hospital',
+              'Hospitals',
+              'Find nearby hospitals and medical facilities',
               'assets/images/hospital.png',
+              AppColors.blue500,
               () => NavHelper.pushNewScreen(
                 context,
                 const HospitalsScreen(),
@@ -359,20 +463,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             _buildServiceCard(
               context,
-              'Appointment',
+              'Appointments',
+              'Book and manage your appointments',
               'assets/images/appointment.png',
+              AppColors.green500,
               () => context.push('/appointments'),
             ),
             _buildServiceCard(
               context,
               'Telemedicine',
+              'Consult doctors remotely via video',
               'assets/images/telemedicine.png',
+              AppColors.purple500,
               () => context.push('/telemedicine'),
             ),
             _buildServiceCard(
               context,
-              'Health Advices',
+              'Health Advice',
+              'Get expert health tips and guidance',
               'assets/images/advices.png',
+              AppColors.orange500,
               () => context.push('/health-advices'),
             ),
           ],
@@ -384,42 +494,94 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildServiceCard(
     BuildContext context,
     String title,
+    String description,
     String? imagePath,
+    Color accentColor,
     VoidCallback onTap,
   ) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
-          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: accentColor.withOpacity(0.15),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+            border: Border.all(
+              color: accentColor.withOpacity(0.2),
+              width: 1,
+            ),
           ),
-          child: Center(
-            child: imagePath != null
-                ? SizedBox(
-                    height: 80,
-                    width: 80,
-                    child: Image.asset(
-                      imagePath,
-                      fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Icon(
-                          Icons.medical_services,
-                          size: 80,
-                          color: AppColors.skyBlue600,
-                        );
-                      },
-                    ),
-                  )
-                : Icon(
-                    Icons.health_and_safety,
-                    size: 80,
-                    color: AppColors.skyBlue600,
-                  ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Icon Container with colored background
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: accentColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: imagePath != null
+                    ? Image.asset(
+                        imagePath,
+                        height: 48,
+                        width: 48,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(
+                            Icons.medical_services,
+                            size: 48,
+                            color: accentColor,
+                          );
+                        },
+                      )
+                    : Icon(
+                        Icons.health_and_safety,
+                        size: 48,
+                        color: accentColor,
+                      ),
+              ),
+              const SizedBox(height: 12),
+              // Title
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.gray900,
+                      ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 4),
+              // Description
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  description,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.gray600,
+                        fontSize: 11,
+                      ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -427,24 +589,62 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildBlankSection(BuildContext context) {
-    return Container(
-      height: 200,
-      decoration: BoxDecoration(
-        color: AppColors.gray50,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.gray200,
-          width: 1,
-        ),
-      ),
-      child: Center(
-        child: Text(
-          'Coming Soon',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppColors.gray400,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Quick Actions',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.gray900,
               ),
         ),
-      ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.skyBlue50,
+                AppColors.blue50,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: AppColors.skyBlue200,
+              width: 1,
+            ),
+          ),
+          child: Column(
+            children: [
+              Icon(
+                Icons.rocket_launch_outlined,
+                size: 48,
+                color: AppColors.skyBlue600,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'More Features Coming Soon',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppColors.gray900,
+                      fontWeight: FontWeight.bold,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'We\'re working on exciting new features to enhance your healthcare experience',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.gray600,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

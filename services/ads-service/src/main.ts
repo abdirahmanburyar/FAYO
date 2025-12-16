@@ -10,26 +10,31 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   
   // Ensure uploads directory exists
-  const uploadsPath = process.env.UPLOADS_PATH || join(process.cwd(), 'uploads');
+  const uploadsPath = '/app/uploads'; // Use absolute path like doctor-service
   const adsPath = join(uploadsPath, 'ads');
   if (!existsSync(adsPath)) {
     mkdirSync(adsPath, { recursive: true });
     console.log(`📁 Created uploads directory: ${adsPath}`);
   }
   
-  // Security - configure helmet to allow static file serving
-  app.use(helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin' },
-    contentSecurityPolicy: false, // Disable CSP for static files
-  }));
-  
-  // Serve static files for uploaded images AFTER helmet
-  // Files are saved to /app/uploads/ads in Docker
-  // Serve from /app/uploads with prefix /uploads
-  console.log(`📁 Serving static files from: ${uploadsPath}`);
-  app.useStaticAssets(uploadsPath, {
-    prefix: '/uploads',
+  // Serve static files from /app/uploads (like doctor-service)
+  // This corresponds to the volume mounted in docker-compose
+  app.useStaticAssets('/app/uploads', {
+    prefix: '/uploads/',
   });
+  
+  // Security middleware
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  }));
   
   // CORS
   app.enableCors({
