@@ -24,7 +24,7 @@ export default function CreateAdPage() {
     company: '',
     startDate: new Date().toISOString().split('T')[0],
     range: 7,
-    price: 1.00, // Price per day in dollars (default $1.00)
+    price: undefined as number | undefined, // Required price per day in dollars - user must provide
     status: 'INACTIVE' as AdStatus,
   });
   const [fee, setFee] = useState<{ fee: number; feeInDollars: string } | null>(null);
@@ -86,13 +86,19 @@ export default function CreateAdPage() {
       const fullImageUrl = `${adsServiceUrl}${uploadData.url}`;
 
       // 2. Create ad with the image URL
+      if (!formData.price || formData.price <= 0) {
+        setError('Please enter a valid price per day (minimum $0.10)');
+        setLoading(false);
+        return;
+      }
+
       const adData: CreateAdDto = {
         company: formData.company.trim(),
         imageUrl: fullImageUrl,
         startDate: new Date(formData.startDate).toISOString(),
         range: formData.range,
-        price: formData.price, // Price per day in dollars
-        status: formData.status === 'PENDING' ? 'PENDING' : formData.status,
+        price: formData.price, // Required price per day in dollars
+        status: formData.status,
         createdBy: 'ADMIN',
       };
 
@@ -116,7 +122,7 @@ export default function CreateAdPage() {
   // Calculate fee when range or price changes
   useEffect(() => {
     const calculateFee = async () => {
-      if (formData.range > 0 && formData.price > 0) {
+      if (formData.range > 0 && formData.price && formData.price > 0) {
         setCalculatingFee(true);
         try {
           const result = await adsApi.calculateFee(formData.range, formData.price);
@@ -311,15 +317,16 @@ export default function CreateAdPage() {
               required
               min="0.1"
               step="0.01"
-              value={formData.price}
+              value={formData.price || ''}
               onChange={(e) => {
-                const priceInDollars = parseFloat(e.target.value) || 0;
+                const value = e.target.value;
+                const priceInDollars = value ? parseFloat(value) : undefined;
                 setFormData({ ...formData, price: priceInDollars });
               }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="1.00"
+              placeholder="Enter price per day"
             />
-            <p className="text-xs text-gray-500 mt-1">Price per day in dollars (minimum $0.10)</p>
+            <p className="text-xs text-gray-500 mt-1">Price per day in dollars (required, minimum $0.10)</p>
           </div>
         </div>
 
@@ -343,7 +350,7 @@ export default function CreateAdPage() {
                 <div className="text-right">
                   <p className="text-xs text-gray-500 mb-1">Calculation</p>
                   <p className="text-sm text-gray-700">
-                    ${formData.price.toFixed(2)}/day × {formData.range} days
+                    ${formData.price ? formData.price.toFixed(2) : '0.00'}/day × {formData.range} days
                   </p>
                   <p className="text-sm text-gray-700 font-semibold">
                     = ${fee.feeInDollars}
@@ -395,7 +402,7 @@ export default function CreateAdPage() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             type="submit"
-            disabled={loading || !imageFile || !formData.company.trim() || formData.price <= 0}
+            disabled={loading || !imageFile || !formData.company.trim() || !formData.price || formData.price <= 0}
             className="flex items-center space-x-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="w-5 h-5" />

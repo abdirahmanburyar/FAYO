@@ -149,7 +149,7 @@ class AdsApiService {
           imageUrl: ad.imageUrl,
           startDate: ad.startDate,
           range: ad.range,
-          price: ad.price,
+          price: ad.price, // Required field
           status: ad.status,
           createdBy: ad.createdBy,
         }),

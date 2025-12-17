@@ -37,6 +37,6 @@ export class CreateAdDto {
 
   @IsNumber()
   @Min(0.1)
-  price: number; // Price per day in dollars (total = price × range)
+  price: number; // Price per day in dollars (total = price × range) - required
 }
 
