@@ -9,12 +9,6 @@ export enum AdStatusEnum {
   PUBLISHED = 'PUBLISHED',
 }
 
-export enum AdTypeEnum {
-  BANNER = 'BANNER',
-  CAROUSEL = 'CAROUSEL',
-  INTERSTITIAL = 'INTERSTITIAL',
-}
-
 export class CreateAdDto {
   @IsString()
   company: string; // Company or person name
@@ -33,10 +27,6 @@ export class CreateAdDto {
   @IsOptional()
   @IsString()
   linkUrl?: string;
-
-  @IsOptional()
-  @IsEnum(AdTypeEnum)
-  adType?: AdTypeEnum;
 
   @IsDateString()
   startDate: string;

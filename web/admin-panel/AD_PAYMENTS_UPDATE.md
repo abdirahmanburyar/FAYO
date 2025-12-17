@@ -17,8 +17,8 @@ The admin panel has been updated to support ad payments. Admins can now:
 - ✅ Updated `getAllPayments()` to filter by `adId` and `paymentType`
 
 ### 2. Ads API Service (`src/services/adsApi.ts`)
-- ✅ Added `type` field to `CreateAdDto` interface
-- ✅ Added `calculateFee()` method
+- ✅ Added `price` field to `CreateAdDto` interface (price per day in dollars)
+- ✅ Added `calculateFee()` method (uses `price × range`)
 - ✅ Added `payForAd()` method
 - ✅ Added `getAdPayments()` method
 
@@ -36,9 +36,9 @@ The admin panel has been updated to support ad payments. Admins can now:
 - ✅ Loads payment history for each ad
 
 ### 5. Create Ad Page (`src/app/admin/ads/create/page.tsx`)
-- ✅ Added ad type selector (Banner/Carousel/Interstitial)
+- ✅ Added price per day input field (minimum $0.10)
 - ✅ Real-time fee calculation display
-- ✅ Fee breakdown showing base + daily rates
+- ✅ Fee breakdown showing `price/day × range days`
 - ✅ Added "PENDING" status option (requires payment)
 
 ## Features
@@ -49,12 +49,11 @@ The admin panel has been updated to support ad payments. Admins can now:
 
 ### Fee Calculation
 - Automatically calculates fee based on:
-  - Ad type (Banner/Carousel/Interstitial)
+  - Price per day (in dollars, minimum $0.10)
   - Duration (number of days)
-- Formula:
-  - **Banner**: $10 base + $1/day
-  - **Carousel**: $20 base + $2/day
-  - **Interstitial**: $50 base + $5/day
+- Formula: `Total = price per day × number of days`
+  - Example: $1.50/day × 7 days = $10.50
+  - Amount is stored in cents (e.g., $10.50 = 1050 cents)
 
 ### Payment Flow
 1. Admin creates ad → Status: `PENDING`
@@ -87,7 +86,7 @@ The admin panel has been updated to support ad payments. Admins can now:
 
 ## API Endpoints Used
 
-- `GET /api/v1/ads/calculate-fee?range=X&type=Y` - Calculate fee
+- `GET /api/v1/ads/calculate-fee?range=X&price=Y` - Calculate fee (range in days, price in dollars)
 - `POST /api/v1/ads/{id}/pay` - Pay for ad
 - `GET /api/v1/ads/{id}/payments` - Get ad payments
 - `GET /api/v1/payments/ad/{adId}` - Get payments by ad ID

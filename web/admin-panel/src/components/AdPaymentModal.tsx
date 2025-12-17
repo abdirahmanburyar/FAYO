@@ -34,7 +34,7 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
       calculateFee();
       loadPayments();
     }
-  }, [isOpen, ad?.id, ad?.range, ad?.adType]);
+  }, [isOpen, ad?.id, ad?.range, ad?.price]);
 
   const calculateFee = async () => {
     try {
@@ -42,7 +42,7 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
       setError(null);
       // Ensure range and price are valid
       const range = ad.range && typeof ad.range === 'number' ? ad.range : 7;
-      const price = ad.price && typeof ad.price === 'number' && ad.price > 0 ? ad.price : 100; // Default $1.00/day
+      const price = ad.price && typeof ad.price === 'number' && ad.price > 0 ? ad.price : 0.1; // Default $0.10/day
       
       const result = await adsApi.calculateFee(range, price);
       
@@ -144,10 +144,6 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
                   <Calendar className="w-4 h-4" />
                   <span>Duration: {ad.range || 0} day{(ad.range || 0) !== 1 ? 's' : ''}</span>
                 </div>
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <Building2 className="w-4 h-4" />
-                  <span>Type: {ad.adType || 'BANNER'}</span>
-                </div>
               </div>
             </div>
 
@@ -165,7 +161,7 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
                 <div className="text-right">
                   <p className="text-xs text-gray-500 mb-1">Calculation</p>
                   <p className="text-sm text-gray-700">
-                    ${ad.price ? (ad.price / 100).toFixed(2) : '0.00'}/day × {ad.range || 0} days
+                    ${ad.price ? ad.price.toFixed(2) : '0.00'}/day × {ad.range || 0} days
                   </p>
                   <p className="text-sm text-gray-700 font-semibold">
                     = ${feeInDollars}

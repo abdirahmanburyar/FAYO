@@ -270,17 +270,23 @@ export class AdsController {
   @Throttle({ default: { limit: 100, ttl: 60000 } })
   calculateFee(
     @Query('range') range: string,
-    @Query('type') type?: string,
+    @Query('price') price: string,
   ) {
     const rangeNum = parseInt(range, 10);
+    const priceNum = parseFloat(price);
+    
     if (isNaN(rangeNum) || rangeNum < 1) {
       throw new BadRequestException('Invalid range. Must be a positive number.');
     }
     
-    const fee = this.adsService.calculateAdFee(rangeNum, type);
+    if (isNaN(priceNum) || priceNum < 0.1) {
+      throw new BadRequestException('Invalid price. Must be a positive number (minimum $0.10).');
+    }
+    
+    const fee = this.adsService.calculateAdFee(rangeNum, priceNum);
     return {
       range: rangeNum,
-      type: type || 'BANNER',
+      price: priceNum, // price per day in dollars
       fee, // in cents
       feeInDollars: (fee / 100).toFixed(2),
     };
@@ -308,11 +314,9 @@ export class AdsController {
       throw new NotFoundException(`Ad with ID ${id} not found`);
     }
 
-    // Calculate fee
-    const fee = this.adsService.calculateAdFee(
-      Math.ceil((ad.endDate.getTime() - ad.startDate.getTime()) / (1000 * 60 * 60 * 24)),
-      ad.type,
-    );
+    // Calculate fee based on price per day and range
+    const range = Math.ceil((ad.endDate.getTime() - ad.startDate.getTime()) / (1000 * 60 * 60 * 24));
+    const fee = this.adsService.calculateAdFee(range, Number(ad.price));
 
     // Create payment
     const payment = await this.paymentClient.createAdPayment({

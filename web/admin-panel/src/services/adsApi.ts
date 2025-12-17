@@ -9,7 +9,6 @@ export interface Ad {
   startDate: string; // ISO date string
   endDate: string; // ISO date string (calculated from startDate + range)
   range: number; // Number of days (endDate = startDate + range)
-  adType?: 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL'; // Ad type
   price?: number; // Price per day in dollars
   status: AdStatus;
   clickCount: number;
@@ -25,7 +24,6 @@ export interface CreateAdDto {
   startDate: string; // ISO date string
   range: number; // Number of days (endDate = startDate + range)
   price: number; // Price per day in dollars
-  adType?: 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL'; // Ad type
   status?: AdStatus;
   createdBy?: string;
 }
@@ -152,7 +150,6 @@ class AdsApiService {
           startDate: ad.startDate,
           range: ad.range,
           price: ad.price,
-          adType: ad.adType,
           status: ad.status,
           createdBy: ad.createdBy,
         }),

@@ -1,5 +1,5 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { CreateAdDto, AdStatusEnum, AdTypeEnum } from './create-ad.dto';
+import { CreateAdDto, AdStatusEnum } from './create-ad.dto';
 import { IsOptional, IsInt, Min, IsString, IsDateString, IsEnum } from 'class-validator';
 
 export class UpdateAdDto extends PartialType(CreateAdDto) {
@@ -23,10 +23,6 @@ export class UpdateAdDto extends PartialType(CreateAdDto) {
   @IsOptional()
   @IsEnum(AdStatusEnum)
   status?: AdStatusEnum;
-
-  @IsOptional()
-  @IsEnum(AdTypeEnum)
-  adType?: AdTypeEnum;
 
   @IsOptional()
   @IsInt()

@@ -78,8 +78,8 @@ When creating an ad, you can require payment:
 ```typescript
 // In ads service
 async createAd(createAdDto: CreateAdDto) {
-  // Calculate ad fee based on duration, type, etc.
-  const adFee = this.calculateAdFee(createAdDto.range, createAdDto.type);
+  // Calculate ad fee based on duration and price per day
+  const adFee = this.calculateAdFee(createAdDto.range, createAdDto.price);
   
   // Create ad with PENDING status
   const ad = await this.prisma.ad.create({
@@ -130,14 +130,14 @@ async activateAdAfterPayment(adId: string, paymentId: string) {
 // In ads controller
 @Post(':id/pay')
 async payForAd(
-  @Param('id') id: string,
+@Param('id') id: string,
   @Body() paymentDto: CreateAdPaymentDto,
 ) {
   // Get ad details
   const ad = await this.adsService.findOne(id);
   
-  // Calculate fee
-  const fee = this.calculateAdFee(ad.range, ad.type);
+  // Calculate fee based on price per day and range
+  const fee = this.calculateAdFee(ad.range, ad.price);
   
   // Create payment via payment service
   const payment = await this.paymentService.create({
@@ -163,8 +163,8 @@ async payForAd(
 1. **Ad Creation**: Admin creates ad → Status: `PENDING`
 2. **Payment Required**: System calculates fee based on:
    - Ad duration (range in days)
-   - Ad type (BANNER, CAROUSEL, INTERSTITIAL)
-   - Priority/placement
+   - Price per day (in dollars)
+   - Formula: `total = price × range` (converted to cents for storage)
 3. **Payment Processing**: 
    - User pays via payment service
    - Payment record created with `paymentType: 'AD'`
@@ -175,24 +175,17 @@ async payForAd(
 ## Fee Calculation Example
 
 ```typescript
-function calculateAdFee(range: number, type: AdType): number {
-  const baseFee = {
-    BANNER: 1000,      // $10.00
-    CAROUSEL: 2000,    // $20.00
-    INTERSTITIAL: 5000, // $50.00
-  };
+function calculateAdFee(range: number, price: number): number {
+  // Validate inputs
+  const validRange = Math.max(1, Math.floor(range || 1));
+  const validPrice = Math.max(0.1, price || 0.1); // Minimum price $0.10/day
   
-  const dailyRate = {
-    BANNER: 100,       // $1.00/day
-    CAROUSEL: 200,     // $2.00/day
-    INTERSTITIAL: 500, // $5.00/day
-  };
-  
-  const base = baseFee[type];
-  const daily = dailyRate[type] * range;
-  
-  return base + daily; // Total in cents
+  // Calculate: price per day × number of days (convert dollars to cents for storage)
+  return Math.round(validPrice * 100 * validRange);
 }
+
+// Example: $1.50/day × 7 days = $10.50 = 1050 cents
+const fee = calculateAdFee(7, 1.5); // Returns 1050
 ```
 
 ## Admin Panel Integration
@@ -203,7 +196,7 @@ Add a "Pay for Ad" button in the admin panel:
 // When admin clicks "Pay for Ad"
 const handlePayForAd = async (adId: string) => {
   const ad = await adsApi.getAd(adId);
-  const fee = calculateAdFee(ad.range, ad.type);
+  const fee = calculateAdFee(ad.range, ad.price);
   
   // Show payment modal
   const payment = await paymentApi.createPayment({

@@ -26,8 +26,8 @@ export class AdsService {
         description: createAdDto.description,
         imageUrl: createAdDto.imageUrl,
         linkUrl: createAdDto.linkUrl,
-        type: createAdDto.adType || undefined,
-        price: createAdDto.price, // Price per day in cents
+        type: undefined, // Type is no longer used, kept for database compatibility
+        price: createAdDto.price, // Price per day in dollars
         startDate,
         endDate,
         status: createAdDto.status
