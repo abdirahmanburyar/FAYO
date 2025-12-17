@@ -26,7 +26,7 @@ export class UpdateAdDto extends PartialType(CreateAdDto) {
 
   @IsOptional()
   @IsEnum(AdTypeEnum)
-  type?: AdTypeEnum;
+  adType?: AdTypeEnum;
 
   @IsOptional()
   @IsInt()

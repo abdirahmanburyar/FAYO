@@ -34,7 +34,7 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
       calculateFee();
       loadPayments();
     }
-  }, [isOpen, ad?.id, ad?.range, ad?.type]);
+  }, [isOpen, ad?.id, ad?.range, ad?.adType]);
 
   const calculateFee = async () => {
     try {
@@ -146,7 +146,7 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
                 </div>
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <Building2 className="w-4 h-4" />
-                  <span>Type: {ad.type || 'BANNER'}</span>
+                  <span>Type: {ad.adType || 'BANNER'}</span>
                 </div>
               </div>
             </div>

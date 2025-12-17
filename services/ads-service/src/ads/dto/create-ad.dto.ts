@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsDateString, IsInt, Min, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsInt, IsNumber, Min, IsEnum } from 'class-validator';
 
 // Local enums to avoid client import issues; keep in sync with Prisma schema
 export enum AdStatusEnum {
@@ -36,7 +36,7 @@ export class CreateAdDto {
 
   @IsOptional()
   @IsEnum(AdTypeEnum)
-  type?: AdTypeEnum;
+  adType?: AdTypeEnum;
 
   @IsDateString()
   startDate: string;
@@ -45,16 +45,8 @@ export class CreateAdDto {
   @Min(1)
   range: number; // Number of days (endDate = startDate + range)
 
-  @IsInt()
-  @Min(1)
-  price: number; // Price per day in cents (total = price × range)
-
-  @IsOptional()
-  @IsEnum(AdStatusEnum)
-  status?: AdStatusEnum;
-
-  @IsOptional()
-  @IsString()
-  createdBy?: string;
+  @IsNumber()
+  @Min(0.1)
+  price: number; // Price per day in dollars (total = price × range)
 }
 

@@ -25,7 +25,7 @@ export default function CreateAdPage() {
     startDate: new Date().toISOString().split('T')[0],
     range: 7,
     price: 100, // Price per day in cents (default $1.00)
-    type: 'BANNER' as 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL',
+    adType: 'BANNER' as 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL',
     status: 'INACTIVE' as AdStatus,
   });
   const [fee, setFee] = useState<{ fee: number; feeInDollars: string } | null>(null);
@@ -93,7 +93,7 @@ export default function CreateAdPage() {
         startDate: new Date(formData.startDate).toISOString(),
         range: formData.range,
         price: formData.price, // Price per day in cents
-        type: formData.type,
+        adType: formData.adType,
         status: formData.status === 'PENDING' ? 'PENDING' : formData.status,
         createdBy: 'ADMIN',
       };
@@ -331,8 +331,8 @@ export default function CreateAdPage() {
               </label>
               <select
                 required
-                value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value as 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL' })}
+              value={formData.adType}
+              onChange={(e) => setFormData({ ...formData, adType: e.target.value as 'BANNER' | 'CAROUSEL' | 'INTERSTITIAL' })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="BANNER">Banner</option>

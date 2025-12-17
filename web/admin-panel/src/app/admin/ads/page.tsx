@@ -489,7 +489,7 @@ export default function AdsPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2 text-sm">
                         <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-medium">
-                          {ad.type || 'BANNER'}
+                          {ad.adType || 'BANNER'}
                         </div>
                         <div className="flex items-center text-gray-600">
                           <Clock className="w-4 h-4 mr-1" />
