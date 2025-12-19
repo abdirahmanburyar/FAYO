@@ -38,5 +38,13 @@ export class CreateAdDto {
   @IsNumber()
   @Min(0.1)
   price: number; // Price per day in dollars (total = price × range) - required
+
+  @IsOptional()
+  @IsEnum(AdStatusEnum)
+  status?: AdStatusEnum; // Optional status, defaults to PENDING if not provided
+
+  @IsOptional()
+  @IsString()
+  createdBy?: string; // Optional creator ID
 }
 

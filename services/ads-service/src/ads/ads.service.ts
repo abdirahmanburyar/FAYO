@@ -30,10 +30,8 @@ export class AdsService {
         price: createAdDto.price, // Price per day in dollars
         startDate,
         endDate,
-        status: createAdDto.status
-            ? (createAdDto.status as any)
-            : AdStatusEnum.PENDING,
-        createdBy: createAdDto.createdBy,
+        status: createAdDto.status ?? AdStatusEnum.PENDING,
+        createdBy: createAdDto.createdBy
       },
     });
 
@@ -134,12 +132,6 @@ export class AdsService {
     const existingAd = await this.findOne(id);
 
     const updateData: any = { ...updateAdDto };
-    
-    // Map adType to type for database
-    if (updateAdDto.adType !== undefined) {
-      updateData.type = updateAdDto.adType;
-      delete updateData.adType;
-    }
     
     // Calculate endDate if startDate or range changed
     let startDate = existingAd.startDate;
