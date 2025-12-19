@@ -48,16 +48,12 @@ ENV FETCH_TIMEOUT=30000
 RUN npm cache clean --force || true
 
 # Build with verbose logging and better error handling
-# The retry messages are from Next.js fetching Google Fonts - this is expected behavior
-# Next.js will retry font fetching up to 3 times before using fallback fonts
-# We'll allow the build to complete even if font fetching has retries
 RUN echo "Starting Next.js build (this may take several minutes)..." && \
-    echo "Note: Retry messages for font fetching are normal and expected" && \
     npm run build 2>&1 | tee /tmp/build.log && \
     echo "Build completed successfully!" || \
     (echo "=== Build failed ===" && \
-     echo "Checking for actual errors (ignoring font retry messages)..." && \
-     grep -i "error\|failed\|fatal" /tmp/build.log | grep -v "Retrying" | tail -n 20 || true && \
+     echo "Checking for errors in build log..." && \
+     grep -i "error\|failed\|fatal" /tmp/build.log | tail -n 20 || true && \
      echo "Last 100 lines of build output:" && \
      tail -n 100 /tmp/build.log && \
      echo "=== Full build log saved to /tmp/build.log ===" && \
