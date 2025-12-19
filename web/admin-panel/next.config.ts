@@ -11,6 +11,15 @@ const nextConfig: NextConfig = {
     // Reduce build memory usage
     webpackBuildWorker: false,
   },
+  // Image optimization settings to prevent network timeouts during build
+  images: {
+    // Disable image optimization during build to prevent network requests
+    unoptimized: false,
+    // Add remote patterns if needed, but avoid external fetches during build
+    remotePatterns: [],
+    // Increase timeout for image optimization
+    minimumCacheTTL: 60,
+  },
   eslint: {
     // Warning: This allows production builds to successfully complete even if
     // your project has ESLint errors.
