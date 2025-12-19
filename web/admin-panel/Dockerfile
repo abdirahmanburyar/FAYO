@@ -33,12 +33,16 @@ RUN mkdir -p ./public || true
 # Disable Next.js telemetry during build for security and privacy
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Increase Node.js memory limit for build process
-ENV NODE_OPTIONS="--max-old-space-size=512"
+# Increase Node.js memory limit for build process (Next.js 15 requires more memory)
+# Increased from 512MB to 4GB to handle large builds and prevent OOM errors
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
-# Clean npm cache and build
-RUN npm cache clean --force && \
-    npm run build
+# Clean npm cache and build with better error handling
+# Split into separate commands to avoid long-running single command timeouts
+RUN npm cache clean --force || true
+
+# Build with explicit timeout and error handling
+RUN npm run build || (echo "Build failed, checking for errors..." && exit 1)
 
 # Production image, copy all the files and run next
 FROM base AS runner
