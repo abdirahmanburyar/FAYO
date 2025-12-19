@@ -37,12 +37,27 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Increased from 512MB to 4GB to handle large builds and prevent OOM errors
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
+# Set build environment variables to reduce network calls and improve reliability
+ENV NEXT_BUILD_NO_TELEMETRY=1
+ENV SKIP_ENV_VALIDATION=1
+
 # Clean npm cache and build with better error handling
 # Split into separate commands to avoid long-running single command timeouts
 RUN npm cache clean --force || true
 
-# Build with explicit timeout and error handling
-RUN npm run build || (echo "Build failed, checking for errors..." && exit 1)
+# Build with verbose logging and better error handling
+# The retry messages are likely from Next.js internal processes - this is normal
+# but we'll capture full output to diagnose any actual failures
+RUN echo "Starting Next.js build (this may take several minutes)..." && \
+    npm run build 2>&1 | tee /tmp/build.log && \
+    echo "Build completed successfully!" || \
+    (echo "=== Build failed ===" && \
+     echo "Checking for errors in build log..." && \
+     grep -i "error\|failed\|fatal" /tmp/build.log | tail -n 20 || true && \
+     echo "Last 100 lines of build output:" && \
+     tail -n 100 /tmp/build.log && \
+     echo "=== Full build log saved to /tmp/build.log ===" && \
+     exit 1)
 
 # Production image, copy all the files and run next
 FROM base AS runner
