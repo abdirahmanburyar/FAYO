@@ -37,11 +37,7 @@ ENV SKIP_ENV_VALIDATION=1
 
 # Increase Node.js memory limit for build process (Next.js 15 requires more memory)
 # Increased from 512MB to 4GB to handle large builds and prevent OOM errors
-# Also increase HTTP header size for font fetching
-ENV NODE_OPTIONS="--max-old-space-size=4096 --max-http-header-size=16384"
-
-# Set longer timeout for fetch operations (30 seconds) - helps with font fetching
-ENV FETCH_TIMEOUT=30000
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Clean npm cache and build with better error handling
 # Split into separate commands to avoid long-running single command timeouts

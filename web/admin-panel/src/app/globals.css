@@ -32,8 +32,8 @@
 
 body {
   background: var(--background);
-  /* Don't set default text color - let Tailwind utility classes handle it */
-  font-family: Arial, Helvetica, sans-serif;
+  /* Use CSS variable for font family to ensure consistency */
+  font-family: var(--font-sans);
 }
 
 /* Ensure text is readable by default, but Tailwind classes override */
