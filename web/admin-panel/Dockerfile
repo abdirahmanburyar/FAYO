@@ -7,9 +7,14 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
+# Install dependencies based on the preferred package manager with retry logic
 COPY package.json package-lock.json* ./
-RUN npm ci || npm install --legacy-peer-deps
+# Add retry logic to handle network failures (Broken pipe errors)
+RUN for i in 1 2 3; do \
+      (npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || \
+       npm install --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000) && break || \
+      (echo "Attempt $i failed, retrying in $((i*10)) seconds..." && sleep $((i*10))); \
+    done
 
 # Rebuild the source code only when needed
 FROM base AS builder
