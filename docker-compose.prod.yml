@@ -14,15 +14,15 @@ services:
     command:
       - postgres
       - -c
-      - shared_buffers=256MB
+      - shared_buffers=128MB
       - -c
-      - effective_cache_size=1GB
+      - effective_cache_size=512MB
       - -c
-      - maintenance_work_mem=128MB
+      - maintenance_work_mem=64MB
       - -c
       - checkpoint_completion_target=0.9
       - -c
-      - wal_buffers=16MB
+      - wal_buffers=8MB
       - -c
       - default_statistics_target=100
       - -c
@@ -30,19 +30,19 @@ services:
       - -c
       - effective_io_concurrency=200
       - -c
-      - work_mem=4MB
+      - work_mem=2MB
       - -c
-      - min_wal_size=1GB
+      - min_wal_size=512MB
       - -c
-      - max_wal_size=4GB
+      - max_wal_size=2GB
       - -c
-      - max_connections=100
+      - max_connections=50
       - -c
-      - max_worker_processes=4
+      - max_worker_processes=2
       - -c
-      - max_parallel_workers_per_gather=2
+      - max_parallel_workers_per_gather=1
       - -c
-      - max_parallel_workers=4
+      - max_parallel_workers=2
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -50,8 +50,8 @@ services:
     networks:
       - fayo-network
     restart: unless-stopped
-    mem_limit: 2g
-    mem_reservation: 1g
+    mem_limit: 1g
+    mem_reservation: 512m
     cpu_quota: 100000
     cpu_period: 100000
     healthcheck:
@@ -72,11 +72,11 @@ services:
     command: >
       redis-server
       --appendonly yes
-      --maxmemory 256mb
+      --maxmemory 192mb
       --maxmemory-policy allkeys-lru
       --save 60 1000
-    mem_limit: 512m
-    mem_reservation: 256m
+    mem_limit: 384m
+    mem_reservation: 192m
     cpu_quota: 50000
     cpu_period: 100000
     volumes:
@@ -88,14 +88,15 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+      RABBITMQ_VM_MEMORY_HIGH_WATERMARK: 0.3
     ports:
       - '5672:5672'
       - '15672:15672'
     networks:
       - fayo-network
     restart: unless-stopped
-    mem_limit: 512m
-    mem_reservation: 256m
+    mem_limit: 384m
+    mem_reservation: 192m
     cpu_quota: 50000
     cpu_period: 100000
     volumes:
@@ -109,11 +110,12 @@ services:
     container_name: user-service
     ports:
       - '3001:3001'
-    mem_limit: 512m
-    mem_reservation: 256m
+    mem_limit: 384m
+    mem_reservation: 192m
     cpu_quota: 50000
     cpu_period: 100000
     environment:
+      NODE_OPTIONS: "--max-old-space-size=256"
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/user_service?schema=users}
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -156,12 +158,13 @@ services:
     container_name: hospital-service
     ports:
       - '3002:3002'
-    mem_limit: 512m
-    mem_reservation: 256m
+    mem_limit: 384m
+    mem_reservation: 192m
     cpu_quota: 50000
     cpu_period: 100000
     environment:
       NODE_ENV: production
+      NODE_OPTIONS: "--max-old-space-size=256"
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/hospital_service?schema=hospitals}
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -198,12 +201,13 @@ services:
     container_name: doctor-service
     ports:
       - '3003:3003'
-    mem_limit: 512m
-    mem_reservation: 256m
+    mem_limit: 384m
+    mem_reservation: 192m
     cpu_quota: 50000
     cpu_period: 100000
     environment:
       NODE_ENV: production
+      NODE_OPTIONS: "--max-old-space-size=256"
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/doctor_service?schema=public}
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -240,12 +244,13 @@ services:
     container_name: specialty-service
     ports:
       - '3004:3004'
-    mem_limit: 256m
-    mem_reservation: 128m
+    mem_limit: 192m
+    mem_reservation: 96m
     cpu_quota: 30000
     cpu_period: 100000
     environment:
       NODE_ENV: production
+      NODE_OPTIONS: "--max-old-space-size=128"
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/specialty_service?schema=public}
       HOST: 0.0.0.0
       PORT: 3004
@@ -270,12 +275,13 @@ services:
     container_name: appointment-service
     ports:
       - '3005:3005'
-    mem_limit: 512m
-    mem_reservation: 256m
+    mem_limit: 384m
+    mem_reservation: 192m
     cpu_quota: 50000
     cpu_period: 100000
     environment:
       NODE_ENV: production
+      NODE_OPTIONS: "--max-old-space-size=256"
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/appointment_service?schema=appointments}
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -318,12 +324,13 @@ services:
     container_name: ads-service
     ports:
       - '3007:3007'
-    mem_limit: 256m
-    mem_reservation: 128m
+    mem_limit: 192m
+    mem_reservation: 96m
     cpu_quota: 30000
     cpu_period: 100000
     environment:
       NODE_ENV: production
+      NODE_OPTIONS: "--max-old-space-size=128"
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/ads_service?schema=ads}
       HOST: 0.0.0.0
       PORT: 3007
@@ -350,12 +357,13 @@ services:
     container_name: payment-service
     ports:
       - '3006:3006'
-    mem_limit: 256m
-    mem_reservation: 128m
+    mem_limit: 192m
+    mem_reservation: 96m
     cpu_quota: 30000
     cpu_period: 100000
     environment:
       NODE_ENV: production
+      NODE_OPTIONS: "--max-old-space-size=128"
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/payment_service?schema=payments}
       PORT: 3006
       HOST: 0.0.0.0
@@ -392,12 +400,13 @@ services:
     container_name: admin-panel
     ports:
       - '3000:3000'
-    mem_limit: 512m
-    mem_reservation: 256m
+    mem_limit: 384m
+    mem_reservation: 192m
     cpu_quota: 50000
     cpu_period: 100000
     environment:
       NODE_ENV: production
+      NODE_OPTIONS: "--max-old-space-size=256"
       # Server-side URLs (for API routes) - use Docker service names
       USER_SERVICE_URL: ${USER_SERVICE_URL:-http://user-service:3001}
       HOSPITAL_SERVICE_URL: ${HOSPITAL_SERVICE_URL:-http://hospital-service:3002}

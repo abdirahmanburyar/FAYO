@@ -33,8 +33,8 @@ RUN mkdir -p ./public || true
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Increase Node.js memory limit for build process (Next.js 15 requires more memory)
-# Increased to 4GB to handle large builds and prevent OOM errors
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+# Reduced to 2GB to save memory during build (only affects build time, not runtime)
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 
 RUN npm run build
 
