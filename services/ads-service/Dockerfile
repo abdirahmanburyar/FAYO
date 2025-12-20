@@ -32,8 +32,8 @@ FROM node:22.17.1-alpine AS production
 
 WORKDIR /app
 
-# Install dumb-init and OpenSSL for Prisma
-RUN apk add --no-cache dumb-init openssl libc6-compat
+# Install dumb-init, OpenSSL for Prisma, and su-exec for user switching
+RUN apk add --no-cache dumb-init openssl libc6-compat su-exec
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
@@ -54,8 +54,12 @@ COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nestjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
-# Switch to non-root user
-USER nestjs
+# Copy startup script
+COPY --chown=root:root start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Note: We stay as root to run the entrypoint script which will switch to nestjs user
+# This allows the script to fix permissions on mounted volumes
 
 # Expose port
 EXPOSE 3007
@@ -65,6 +69,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3007/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
 
 # Start the application
+# The start.sh script will handle permissions and switch to nestjs user
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/main.js"]
+CMD ["/app/start.sh", "node", "dist/main.js"]
 
