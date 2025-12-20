@@ -1,6 +1,6 @@
 -- Ads Service Database Schema
 -- This file creates the complete database schema for the ads-service
--- Run with: cat ads-service.sql | docker exec -i postgres psql -U postgres
+-- Run with: cat services/ads-service/ads-service.sql | docker exec -i postgres psql -U postgres -d ads_service
 
 -- Create ads schema if it doesn't exist
 CREATE SCHEMA IF NOT EXISTS ads;
@@ -21,7 +21,7 @@ END $$;
 
 -- Create ads table
 CREATE TABLE IF NOT EXISTS ads.ads (
-    id TEXT PRIMARY KEY,
+    id TEXT NOT NULL,
     title TEXT NOT NULL,
     description TEXT,
     company TEXT NOT NULL,
@@ -30,14 +30,15 @@ CREATE TABLE IF NOT EXISTS ads.ads (
     type ads."AdType" NOT NULL DEFAULT 'BANNER',
     status ads."AdStatus" NOT NULL DEFAULT 'PENDING',
     price DECIMAL NOT NULL,
-    "startDate" TIMESTAMP NOT NULL,
-    "endDate" TIMESTAMP NOT NULL,
+    "startDate" TIMESTAMP(3) NOT NULL,
+    "endDate" TIMESTAMP(3) NOT NULL,
     priority INTEGER NOT NULL DEFAULT 0,
     "clickCount" INTEGER NOT NULL DEFAULT 0,
     "viewCount" INTEGER NOT NULL DEFAULT 0,
     "createdBy" TEXT,
-    "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
-    "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ads_pkey" PRIMARY KEY (id)
 );
 
 -- Create indexes for better query performance

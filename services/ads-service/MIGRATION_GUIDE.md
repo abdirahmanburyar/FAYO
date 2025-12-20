@@ -4,13 +4,18 @@ This guide explains how to set up the ads-service database schema using Docker P
 
 ## Quick Start
 
-**To create the database schema, use this single command:**
+### Step 1: Create the Database
 
 ```bash
-cat services/ads-service/ads-service.sql | docker exec -i postgres psql -U postgres
+cat create-ads-service-db.sql | docker exec -i postgres psql -U postgres
 ```
 
-Or if you need to specify a database:
+Or use a direct command:
+```bash
+docker exec -i postgres psql -U postgres -c "CREATE DATABASE ads_service;" 2>/dev/null || echo "Database may already exist"
+```
+
+### Step 2: Create the Schema
 
 ```bash
 cat services/ads-service/ads-service.sql | docker exec -i postgres psql -U postgres -d ads_service
@@ -62,17 +67,17 @@ After running the SQL file, verify the schema:
 
 ```bash
 # Check table structure
-docker exec -i postgres psql -U postgres -c "\d ads.ads"
+docker exec -i postgres psql -U postgres -d ads_service -c "\d ads.ads"
 
 # Check enum values
-docker exec -i postgres psql -U postgres -c "SELECT unnest(enum_range(NULL::ads.\"AdStatus\")) AS status_values;"
-docker exec -i postgres psql -U postgres -c "SELECT unnest(enum_range(NULL::ads.\"AdType\")) AS type_values;"
+docker exec -i postgres psql -U postgres -d ads_service -c "SELECT unnest(enum_range(NULL::ads.\"AdStatus\")) AS status_values;"
+docker exec -i postgres psql -U postgres -d ads_service -c "SELECT unnest(enum_range(NULL::ads.\"AdType\")) AS type_values;"
 
 # Check indexes
-docker exec -i postgres psql -U postgres -c "\d ads.ads" | grep -i index
+docker exec -i postgres psql -U postgres -d ads_service -c "\d ads.ads" | grep -i index
 
 # Check sample data (if any)
-docker exec -i postgres psql -U postgres -c "SELECT * FROM ads.ads LIMIT 5;"
+docker exec -i postgres psql -U postgres -d ads_service -c "SELECT * FROM ads.ads LIMIT 5;"
 ```
 
 ## Updating Existing Schema
