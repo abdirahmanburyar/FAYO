@@ -77,13 +77,41 @@ docker exec -i postgres psql -U postgres -c "SELECT * FROM ads.ads LIMIT 5;"
 
 ## Updating Existing Schema
 
-If you have an existing `ads.ads` table that's missing the `company` or `price` columns, run:
+If you have an existing `ads.ads` table that needs to be updated:
+
+### 1. Add Missing Columns
+
+If the table is missing the `company` or `price` columns, run:
 
 ```bash
 cat services/ads-service/add-missing-columns.sql | docker exec -i postgres psql -U postgres -d ads_service
 ```
 
 This will add the missing columns without affecting existing data.
+
+### 2. Add Missing Enum Value
+
+If the `AdStatus` enum is missing the `PUBLISHED` value, run:
+
+```bash
+cat services/ads-service/add-published-enum.sql | docker exec -i postgres psql -U postgres -d ads_service
+```
+
+This will add `PUBLISHED` to the `AdStatus` enum.
+
+### 3. Complete Migration (All Updates - Recommended)
+
+To apply all updates at once (adds columns and enum value):
+
+```bash
+cat services/ads-service/migrate-existing-schema.sql | docker exec -i postgres psql -U postgres -d ads_service
+```
+
+This single script will:
+- Add `company` column (if missing)
+- Add `price` column (if missing)
+- Add `PUBLISHED` to `AdStatus` enum (if missing)
+- Verify all changes
 
 ## Notes
 
