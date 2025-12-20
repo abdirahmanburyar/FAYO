@@ -7,20 +7,9 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager with retry logic
+# Install dependencies based on the preferred package manager
 COPY package.json package-lock.json* ./
-# Increase npm timeout and memory for large installs
-RUN npm config set fetch-timeout 600000 && \
-    for i in 1 2 3; do \
-      (npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 --prefer-offline --no-optional || \
-       npm install --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 --prefer-offline --no-optional) && break || \
-      (echo "Attempt $i failed, retrying in $((i*10)) seconds..." && sleep $((i*10))); \
-    done && \
-    # Explicitly reinstall lightningcss WITH optional dependencies (required for Tailwind CSS v4 native binaries on Alpine/musl)
-    # This ensures the linux-x64-musl native binary is installed even though we used --no-optional above
-    # Note: We don't use --no-optional here so that optional dependencies (native binaries) are installed
-    npm install lightningcss --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || \
-    echo "Warning: lightningcss optional dependencies installation failed, but continuing..."
+RUN npm ci || npm install --legacy-peer-deps
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -32,28 +21,12 @@ RUN mkdir -p ./public || true
 
 # Disable Next.js telemetry during build for security and privacy
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NEXT_BUILD_NO_TELEMETRY=1
-ENV SKIP_ENV_VALIDATION=1
 
 # Increase Node.js memory limit for build process (Next.js 15 requires more memory)
-# Increased from 512MB to 4GB to handle large builds and prevent OOM errors
+# Increased to 4GB to handle large builds and prevent OOM errors
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
-# Clean npm cache and build with better error handling
-# Split into separate commands to avoid long-running single command timeouts
-RUN npm cache clean --force || true
-
-# Build with verbose logging and better error handling
-RUN echo "Starting Next.js build (this may take several minutes)..." && \
-    npm run build 2>&1 | tee /tmp/build.log && \
-    echo "Build completed successfully!" || \
-    (echo "=== Build failed ===" && \
-     echo "Checking for errors in build log..." && \
-     grep -i "error\|failed\|fatal" /tmp/build.log | tail -n 20 || true && \
-     echo "Last 100 lines of build output:" && \
-     tail -n 100 /tmp/build.log && \
-     echo "=== Full build log saved to /tmp/build.log ===" && \
-     exit 1)
+RUN npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
