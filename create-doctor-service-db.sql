@@ -15,4 +15,3 @@ END $$;
 -- Verify the database was created
 SELECT 'Database doctor_service created successfully!' AS status;
 SELECT datname FROM pg_database WHERE datname = 'doctor_service';
-
