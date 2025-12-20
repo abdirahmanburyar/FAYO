@@ -1,41 +1,48 @@
+# Build stage
 FROM node:22.17.1-alpine AS builder
 
 WORKDIR /app
 
-# Install OpenSSL for Prisma
+# Install OpenSSL for Prisma (needed during build for prisma generate)
 RUN apk add --no-cache openssl libc6-compat
 
 # Copy package files
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies with retry logic for network failures
-# Use npm install instead of npm ci to handle package-lock.json mismatches
+# Install all dependencies (including dev for build) with retry logic
 RUN for i in 1 2 3; do \
-      npm install --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 && break || \
+      (npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || \
+       npm install --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || \
+       npm install --force --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000) && break || \
       (echo "Attempt $i failed, retrying in $((i*10)) seconds..." && sleep $((i*10))); \
     done
 
 # Copy source code
 COPY . .
 
-# Generate Prisma client
+# Generate Prisma client (no migrations - use ads-service.sql for schema setup)
 RUN npx prisma generate
 
 # Build the application
 RUN npm run build
 
-FROM node:22.17.1-alpine
+# Production stage
+FROM node:22.17.1-alpine AS production
 
 WORKDIR /app
 
-# Install OpenSSL for Prisma
-RUN apk add --no-cache openssl libc6-compat
+# Install dumb-init and OpenSSL for Prisma
+RUN apk add --no-cache dumb-init openssl libc6-compat
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nestjs -u 1001
 
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies and Prisma with retry logic
+# Install only production dependencies (including prisma for ORM) with retry logic
 RUN for i in 1 2 3; do \
       npm install --omit=dev --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 && \
       npm install prisma@^5.20.0 --save-prod --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 && break || \
@@ -43,11 +50,21 @@ RUN for i in 1 2 3; do \
     done
 
 # Copy built application and Prisma client
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nestjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nestjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
+# Switch to non-root user
+USER nestjs
+
+# Expose port
 EXPOSE 3007
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3007/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"
+
+# Start the application
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "dist/main.js"]
 
