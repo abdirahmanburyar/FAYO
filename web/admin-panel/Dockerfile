@@ -9,10 +9,15 @@ WORKDIR /app
 
 # Install dependencies based on the preferred package manager with retry logic
 COPY package.json package-lock.json* ./
+# Configure npm with increased timeouts to handle network issues
+RUN npm config set fetch-timeout 600000 && \
+    npm config set fetch-retries 5 && \
+    npm config set fetch-retry-factor 2 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000
 # Add retry logic to handle network failures (Broken pipe errors)
 RUN for i in 1 2 3; do \
-      (npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || \
-       npm install --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000) && break || \
+      npm install --legacy-peer-deps --no-audit --no-fund && break || \
       (echo "Attempt $i failed, retrying in $((i*10)) seconds..." && sleep $((i*10))); \
     done
 
