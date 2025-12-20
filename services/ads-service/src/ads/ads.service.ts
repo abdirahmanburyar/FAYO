@@ -13,6 +13,31 @@ export class AdsService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
+  /**
+   * Convert Prisma Decimal price to number for JSON serialization
+   */
+  private convertPriceToNumber(price: any): number {
+    if (price === null || price === undefined) return 0;
+    if (typeof price === 'number') return price;
+    if (typeof price === 'string') return parseFloat(price) || 0;
+    if (typeof price === 'object' && price !== null) {
+      // Prisma Decimal object
+      return parseFloat(price.toString()) || 0;
+    }
+    return 0;
+  }
+
+  /**
+   * Transform ad object to convert Decimal price to number
+   */
+  private transformAd(ad: any): any {
+    if (!ad) return ad;
+    return {
+      ...ad,
+      price: this.convertPriceToNumber(ad.price),
+    };
+  }
+
   async create(createAdDto: CreateAdDto) {
     const startDate = new Date(createAdDto.startDate);
     const endDate = new Date(startDate);
@@ -39,7 +64,7 @@ export class AdsService {
     this.eventEmitter.emit('ad.created', ad);
     this.logger.log(`✅ Ad created: ${ad.id}`);
 
-    return ad;
+    return this.transformAd(ad);
   }
 
   async findAll(activeOnly: boolean = false, page: number = 1, limit: number = 50) {
@@ -67,8 +92,11 @@ export class AdsService {
       this.prisma.ad.count({ where }),
     ]);
 
+    // Convert Decimal price to number for JSON serialization
+    const transformedData = data.map(ad => this.transformAd(ad));
+
     return {
-      data,
+      data: transformedData,
       pagination: {
         page,
         limit: take,
@@ -105,8 +133,11 @@ export class AdsService {
       }),
     ]);
 
+    // Convert Decimal price to number for JSON serialization
+    const transformedData = data.map(ad => this.transformAd(ad));
+
     return {
-      data,
+      data: transformedData,
       pagination: {
         page,
         limit: take,
@@ -125,7 +156,7 @@ export class AdsService {
       throw new NotFoundException(`Ad with ID ${id} not found`);
     }
 
-    return ad;
+    return this.transformAd(ad);
   }
 
   async update(id: string, updateAdDto: UpdateAdDto) {
@@ -167,7 +198,7 @@ export class AdsService {
     this.eventEmitter.emit('ad.updated', ad);
     this.logger.log(`✅ Ad updated: ${ad.id}`);
 
-    return ad;
+    return this.transformAd(ad);
   }
 
   async remove(id: string) {
@@ -219,9 +250,10 @@ export class AdsService {
       if (ad) {
         // Emit event for realtime update with minimal data
         this.eventEmitter.emit('ad.clicked', ad);
+        return this.transformAd(ad);
       }
       
-      return ad || { id, success: true };
+      return { id, success: true };
     } catch (error) {
       this.logger.error(`Failed to increment click count for ad ${id}:`, error);
       throw error;

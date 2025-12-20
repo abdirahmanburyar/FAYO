@@ -42,7 +42,9 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
       setError(null);
       // Ensure range and price are valid
       const range = ad.range && typeof ad.range === 'number' ? ad.range : 7;
-      const price = ad.price && typeof ad.price === 'number' && ad.price > 0 ? ad.price : 0.1; // Default $0.10/day
+      // Convert price to number if it's a string/Decimal from Prisma
+      const priceValue = ad.price ? (typeof ad.price === 'number' ? ad.price : parseFloat(String(ad.price))) : 0.1;
+      const price = priceValue > 0 ? priceValue : 0.1; // Default $0.10/day
       
       const result = await adsApi.calculateFee(range, price);
       
@@ -161,7 +163,7 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
                 <div className="text-right">
                   <p className="text-xs text-gray-500 mb-1">Calculation</p>
                   <p className="text-sm text-gray-700">
-                    ${ad.price ? ad.price.toFixed(2) : '0.00'}/day × {ad.range || 0} days
+                    ${ad.price ? (typeof ad.price === 'number' ? ad.price : parseFloat(String(ad.price))).toFixed(2) : '0.00'}/day × {ad.range || 0} days
                   </p>
                   <p className="text-sm text-gray-700 font-semibold">
                     = ${feeInDollars}
