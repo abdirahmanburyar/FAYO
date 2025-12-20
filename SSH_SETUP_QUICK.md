@@ -1,6 +1,8 @@
 # ⚡ Quick SSH Key Setup
 
-The GitHub Actions deployment requires an SSH key to access your VPS. Follow these steps:
+The Git Mirror deployment requires an SSH key to access your VPS. Follow these steps:
+
+> **Note:** This is for Git Mirror setup. If you're using GitHub Actions (deprecated), the process is similar.
 
 ## 🎯 Step-by-Step Setup
 

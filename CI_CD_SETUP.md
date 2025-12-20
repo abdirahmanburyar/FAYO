@@ -1,6 +1,18 @@
 # CI/CD Setup Guide
 
-This guide explains how to set up automated deployment to your VPS using GitHub Actions and Docker Compose.
+> ⚠️ **Note:** GitHub Actions deployment has been replaced with Git Mirror setup for faster, direct deployment.
+> 
+> **👉 Use the new [Git Mirror Setup](./GIT_MIRROR_SETUP.md) instead!**
+> 
+> This file is kept for reference only.
+
+---
+
+## Deprecated: GitHub Actions Setup
+
+This guide explains the old automated deployment to your VPS using GitHub Actions and Docker Compose.
+
+**This method is no longer recommended.** Use Git Mirror instead.
 
 ## Prerequisites
 
