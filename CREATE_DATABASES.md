@@ -1,54 +1,63 @@
 # Create Databases for FAYO Healthcare Services
 
-## Quick Command (Run on VPS)
+## Quick Command (Recommended)
 
-Run this command on your VPS to create all required databases:
-
-```bash
-docker exec -i postgres psql -U postgres << 'EOF'
--- Create databases
-CREATE DATABASE user_service;
-CREATE DATABASE hospital_service;
-CREATE DATABASE doctor_service;
-CREATE DATABASE specialty_service;
-CREATE DATABASE appointment_service;
-CREATE DATABASE payment_service;
-EOF
-
-# Create hospitals schema for hospital-service
-docker exec -i postgres psql -U postgres -d hospital_service -c 'CREATE SCHEMA IF NOT EXISTS "hospitals";'
-```
-
-## Or Use the Script
+### Option 1: Safe Version (Creates only if doesn't exist)
+This version won't drop existing databases or terminate active connections:
 
 ```bash
-cd /root/fayo
-bash scripts/create-databases.sh
+cat create-databases-safe.sql | docker exec -i postgres psql -U postgres
 ```
 
-## Manual Step-by-Step
+### Option 2: Full Recreate (Drops and recreates all databases)
+⚠️ **Warning**: This will terminate all active connections and drop existing databases!
+
+```bash
+cat create-databases.sql | docker exec -i postgres psql -U postgres
+```
+
+## Databases Created
+
+The scripts create the following databases:
+- `fayo` - Default database
+- `user_service` - User management service
+- `hospital_service` - Hospital management service
+- `doctor_service` - Doctor management service
+- `specialty_service` - Specialty management service
+- `appointment_service` - Appointment management service
+- `ads_service` - Advertisement service
+- `payment_service` - Payment processing service
+
+## Manual Step-by-Step (Alternative)
 
 If you prefer to create databases one by one:
 
 ```bash
-# Create each database
-docker exec -i postgres psql -U postgres -c "CREATE DATABASE user_service;"
-docker exec -i postgres psql -U postgres -c "CREATE DATABASE hospital_service;"
-docker exec -i postgres psql -U postgres -c "CREATE DATABASE doctor_service;"
-docker exec -i postgres psql -U postgres -c "CREATE DATABASE specialty_service;"
-docker exec -i postgres psql -U postgres -c "CREATE DATABASE appointment_service;"
-docker exec -i postgres psql -U postgres -c "CREATE DATABASE payment_service;"
-
-# Create hospitals schema for hospital-service (uses multi-schema)
-docker exec -i postgres psql -U postgres -d hospital_service -c 'CREATE SCHEMA IF NOT EXISTS "hospitals";'
+# Create each database (only if doesn't exist)
+docker exec -i postgres psql -U postgres -c "CREATE DATABASE IF NOT EXISTS fayo;"
+docker exec -i postgres psql -U postgres -c "CREATE DATABASE IF NOT EXISTS user_service;"
+docker exec -i postgres psql -U postgres -c "CREATE DATABASE IF NOT EXISTS hospital_service;"
+docker exec -i postgres psql -U postgres -c "CREATE DATABASE IF NOT EXISTS doctor_service;"
+docker exec -i postgres psql -U postgres -c "CREATE DATABASE IF NOT EXISTS specialty_service;"
+docker exec -i postgres psql -U postgres -c "CREATE DATABASE IF NOT EXISTS appointment_service;"
+docker exec -i postgres psql -U postgres -c "CREATE DATABASE IF NOT EXISTS ads_service;"
+docker exec -i postgres psql -U postgres -c "CREATE DATABASE IF NOT EXISTS payment_service;"
 ```
 
 ## After Creating Databases
 
-1. Run Prisma migrations for each service (generate client first, then migrate):
-```bash
-cd /root/fayo
+### 1. Set up database schemas
 
+For services that use SQL files instead of Prisma migrations:
+
+```bash
+# Ads Service (uses SQL file)
+cat services/ads-service/ads-service.sql | docker exec -i postgres psql -U postgres -d ads_service
+```
+
+For services that use Prisma migrations:
+
+```bash
 # User Service
 docker compose -f docker-compose.prod.yml exec user-service sh -c "npx prisma generate && npx prisma migrate deploy"
 
@@ -68,41 +77,41 @@ docker compose -f docker-compose.prod.yml exec appointment-service sh -c "npx pr
 docker compose -f docker-compose.prod.yml exec payment-service sh -c "npx prisma generate && npx prisma migrate deploy"
 ```
 
-**OR run them separately (recommended if one fails):**
+### 2. Verify databases were created
+
 ```bash
-cd /root/fayo
-
-# User Service
-docker compose -f docker-compose.prod.yml exec user-service npx prisma generate
-docker compose -f docker-compose.prod.yml exec user-service npx prisma migrate deploy
-
-# Hospital Service
-docker compose -f docker-compose.prod.yml exec hospital-service npx prisma generate
-docker compose -f docker-compose.prod.yml exec hospital-service npx prisma migrate deploy
-
-# Doctor Service
-docker compose -f docker-compose.prod.yml exec doctor-service npx prisma generate
-docker compose -f docker-compose.prod.yml exec doctor-service npx prisma migrate deploy
-
-# Specialty Service
-docker compose -f docker-compose.prod.yml exec specialty-service npx prisma generate
-docker compose -f docker-compose.prod.yml exec specialty-service npx prisma migrate deploy
-
-# Appointment Service
-docker compose -f docker-compose.prod.yml exec appointment-service npx prisma generate
-docker compose -f docker-compose.prod.yml exec appointment-service npx prisma migrate deploy
-
-# Payment Service
-docker compose -f docker-compose.prod.yml exec payment-service npx prisma generate
-docker compose -f docker-compose.prod.yml exec payment-service npx prisma migrate deploy
+docker exec -i postgres psql -U postgres -c "\l" | grep -E "(fayo|user_service|hospital_service|doctor_service|specialty_service|appointment_service|ads_service|payment_service)"
 ```
 
-2. Restart services:
+### 3. Restart services (if needed)
+
 ```bash
 docker compose -f docker-compose.prod.yml restart
 ```
 
-## Note
+## Troubleshooting
 
-The CI/CD workflow now automatically creates databases during deployment, so you only need to do this manually if you're setting up for the first time or if something went wrong.
+### Error: "database is being accessed by other users"
 
+If you see this error, you have two options:
+
+1. **Use the safe version** (`create-databases-safe.sql`) which only creates databases that don't exist
+2. **Stop the services first**, then run the full recreate script:
+   ```bash
+   docker compose -f docker-compose.prod.yml stop
+   cat create-databases.sql | docker exec -i postgres psql -U postgres
+   docker compose -f docker-compose.prod.yml start
+   ```
+
+### Error: "database does not exist"
+
+This is normal for new databases. Just run the creation script:
+```bash
+cat create-databases-safe.sql | docker exec -i postgres psql -U postgres
+```
+
+## Notes
+
+- The safe version (`create-databases-safe.sql`) is idempotent - you can run it multiple times safely
+- The full recreate version (`create-databases.sql`) will drop and recreate databases, so use with caution
+- Always backup your databases before running the full recreate script if you have important data

@@ -75,6 +75,16 @@ docker exec -i postgres psql -U postgres -c "\d ads.ads" | grep -i index
 docker exec -i postgres psql -U postgres -c "SELECT * FROM ads.ads LIMIT 5;"
 ```
 
+## Updating Existing Schema
+
+If you have an existing `ads.ads` table that's missing the `company` or `price` columns, run:
+
+```bash
+cat services/ads-service/add-missing-columns.sql | docker exec -i postgres psql -U postgres -d ads_service
+```
+
+This will add the missing columns without affecting existing data.
+
 ## Notes
 
 - The SQL file is **idempotent** - it uses `IF NOT EXISTS` checks, so it's safe to run multiple times
