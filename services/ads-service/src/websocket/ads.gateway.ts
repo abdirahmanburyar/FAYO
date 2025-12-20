@@ -11,7 +11,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger, OnModuleInit } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { Ad } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
 @WebSocketGateway({
   path: '/ws/ads',
@@ -111,7 +111,7 @@ export class AdsGateway
 
   // Listen to ad.created event
   @OnEvent('ad.created')
-  handleAdCreated(ad: Ad) {
+  handleAdCreated(ad: Prisma.AdGetPayload<{}>) {
     // Only log in development to reduce overhead
     if (process.env.NODE_ENV !== 'production') {
       this.logger.log(`📢 Broadcasting ad.created event for ad: ${ad.id}`);
@@ -125,7 +125,7 @@ export class AdsGateway
 
   // Listen to ad.updated event
   @OnEvent('ad.updated')
-  handleAdUpdated(ad: Ad) {
+  handleAdUpdated(ad: Prisma.AdGetPayload<{}>) {
     // Only log in development to reduce overhead
     if (process.env.NODE_ENV !== 'production') {
       this.logger.log(`📢 Broadcasting ad.updated event for ad: ${ad.id}`);
@@ -153,7 +153,7 @@ export class AdsGateway
 
   // Listen to ad.clicked event
   @OnEvent('ad.clicked')
-  handleAdClicked(ad: Ad) {
+  handleAdClicked(ad: Prisma.AdGetPayload<{}>) {
     // Only log in development to reduce overhead
     if (process.env.NODE_ENV !== 'production') {
       this.logger.log(`📢 Broadcasting ad.clicked event for ad: ${ad.id}`);
