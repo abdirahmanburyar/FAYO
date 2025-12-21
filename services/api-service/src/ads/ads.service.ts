@@ -31,13 +31,25 @@ export class AdsService {
   }
 
   /**
-   * Transform ad object to convert Decimal price to number
+   * Transform ad object to convert Decimal price to number and calculate range from dates
    */
   private transformAd(ad: any): any {
     if (!ad) return ad;
+    
+    // Calculate range from startDate and endDate
+    let range = 0;
+    if (ad.startDate && ad.endDate) {
+      const start = new Date(ad.startDate);
+      const end = new Date(ad.endDate);
+      const diffTime = end.getTime() - start.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+      range = Math.max(0, diffDays);
+    }
+    
     return {
       ...ad,
       price: this.convertPriceToNumber(ad.price),
+      range, // Calculate range from dates
     };
   }
 

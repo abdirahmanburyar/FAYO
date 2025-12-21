@@ -42,13 +42,35 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
     try {
       setCalculatingFee(true);
       setError(null);
-      // Get actual range and price from ad - don't use defaults
-      const range = ad.range !== undefined && ad.range !== null ? Number(ad.range) : 0;
+      
+      // Calculate range from dates if not provided
+      let range = 0;
+      if (ad.range !== undefined && ad.range !== null) {
+        range = Number(ad.range);
+      } else if (ad.startDate && ad.endDate) {
+        // Calculate range from dates if range is not in the ad object
+        const start = new Date(ad.startDate);
+        const end = new Date(ad.endDate);
+        const diffTime = end.getTime() - start.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        range = Math.max(0, diffDays);
+      }
+      
       // Convert price to number if it's a string/Decimal from Prisma
       const priceValue = ad.price !== undefined && ad.price !== null 
         ? (typeof ad.price === 'number' ? ad.price : parseFloat(String(ad.price))) 
         : 0;
       const price = priceValue >= 0 ? priceValue : 0;
+      
+      // Debug logging
+      console.log('Ad data:', { 
+        range: ad.range, 
+        calculatedRange: range,
+        startDate: ad.startDate, 
+        endDate: ad.endDate,
+        price: ad.price,
+        finalPrice: price 
+      });
       
       // Validate: range and price must be valid numbers
       if (isNaN(range) || isNaN(price)) {
