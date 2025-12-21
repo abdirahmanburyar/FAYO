@@ -90,6 +90,7 @@ model Specialty {
   updatedAt   DateTime @updatedAt
 
   @@map("specialties")
+  @@schema("public")
 }
 
 model Doctor {
@@ -115,6 +116,7 @@ model Doctor {
   doctorSpecialties DoctorSpecialty[]
 
   @@map("doctors")
+  @@schema("public")
 }
 
 // Note: Hospital and HospitalDoctor models are in hospitals schema below
@@ -131,6 +133,7 @@ model DoctorSpecialty {
 
   @@unique([doctorId, specialtyId])
   @@map("doctor_specialties")
+  @@schema("public")
 }
 
 // ============================================
