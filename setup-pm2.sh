@@ -58,6 +58,12 @@ else
     npm install --legacy-peer-deps --no-audit --no-fund
 fi
 
+# Install critters if not already installed (needed for optimizeCss)
+if ! npm list critters &>/dev/null; then
+    echo "📦 Installing critters (required for CSS optimization)..."
+    npm install --save-dev critters --legacy-peer-deps --no-audit --no-fund
+fi
+
 # Build admin-panel
 echo "🔨 Building admin-panel..."
 NODE_OPTIONS="--max-old-space-size=3072" npm run build

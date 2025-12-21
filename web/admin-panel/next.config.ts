@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
   experimental: {
     // Enable parallel webpack builds for faster compilation
     webpackBuildWorker: true,
-    // Optimize CSS handling
+    // Optimize CSS handling (requires critters package)
     optimizeCss: true,
     // Enable aggressive tree-shaking for package imports
     optimizePackageImports: [
@@ -21,9 +21,9 @@ const nextConfig: NextConfig = {
       '@mui/x-date-pickers',
       'framer-motion',
     ],
-    // Reduce bundle size by optimizing server components
-    serverComponentsExternalPackages: ['@prisma/client'],
   },
+  // Reduce bundle size by optimizing server components (moved from experimental)
+  serverExternalPackages: ['@prisma/client'],
   // Webpack optimizations for smaller bundle
   webpack: (config, { isServer, dev }) => {
     if (!dev && !isServer) {
@@ -97,8 +97,6 @@ const nextConfig: NextConfig = {
   // Production optimizations
   productionBrowserSourceMaps: false, // Disable source maps for smaller bundle
   compress: true, // Enable gzip compression
-  // Optimize fonts
-  optimizeFonts: true,
   // Reduce build output verbosity
   logging: {
     fetches: {
