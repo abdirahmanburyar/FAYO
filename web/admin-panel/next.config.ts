@@ -8,17 +8,102 @@ const nextConfig: NextConfig = {
     removeConsole: process.env.NODE_ENV === 'production',
   },
   experimental: {
-    // Reduce build memory usage
-    webpackBuildWorker: false,
+    // Enable parallel webpack builds for faster compilation
+    webpackBuildWorker: true,
+    // Optimize CSS handling
+    optimizeCss: true,
+    // Enable aggressive tree-shaking for package imports
+    optimizePackageImports: [
+      '@mui/material',
+      '@mui/icons-material',
+      'lucide-react',
+      '@mui/x-data-grid',
+      '@mui/x-date-pickers',
+      'framer-motion',
+    ],
+    // Reduce bundle size by optimizing server components
+    serverComponentsExternalPackages: ['@prisma/client'],
   },
-  // Image optimization settings to prevent network timeouts during build
+  // Webpack optimizations for smaller bundle
+  webpack: (config, { isServer, dev }) => {
+    if (!dev && !isServer) {
+      // Production client-side optimizations
+      config.optimization = {
+        ...config.optimization,
+        // Aggressive code splitting
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            default: false,
+            vendors: false,
+            // Vendor chunks
+            framework: {
+              name: 'framework',
+              chunks: 'all',
+              test: /(?<!node_modules.*)[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
+              priority: 40,
+              enforce: true,
+            },
+            lib: {
+              test(module: any) {
+                return module.size() > 160000 && /node_modules[/\\]/.test(module.identifier());
+              },
+              name(module: any) {
+                const hash = require('crypto').createHash('sha1');
+                hash.update(module.identifier());
+                return hash.digest('hex').substring(0, 8);
+              },
+              priority: 30,
+              minChunks: 1,
+              reuseExistingChunk: true,
+            },
+            commons: {
+              name: 'commons',
+              minChunks: 2,
+              priority: 20,
+            },
+            shared: {
+              name(module: any, chunks: any) {
+                return require('crypto')
+                  .createHash('sha1')
+                  .update(chunks.reduce((acc: string, chunk: any) => acc + chunk.name, ''))
+                  .digest('hex')
+                  .substring(0, 8);
+              },
+              priority: 10,
+              minChunks: 2,
+              reuseExistingChunk: true,
+            },
+          },
+        },
+      };
+    }
+    return config;
+  },
+  // Image optimization settings - lightweight mode
   images: {
-    // Disable image optimization during build to prevent network requests
-    unoptimized: false,
+    // Use unoptimized images to reduce build time and bundle size
+    // Images will still work, just not optimized by Next.js
+    unoptimized: true, // Disable Next.js image optimization for smaller bundle
     // Add remote patterns if needed, but avoid external fetches during build
     remotePatterns: [],
     // Increase timeout for image optimization
     minimumCacheTTL: 60,
+    // Use default loader (no optimization)
+    loader: 'default',
+    // Reduce image formats for smaller bundle
+    formats: ['image/webp'],
+  },
+  // Production optimizations
+  productionBrowserSourceMaps: false, // Disable source maps for smaller bundle
+  compress: true, // Enable gzip compression
+  // Optimize fonts
+  optimizeFonts: true,
+  // Reduce build output verbosity
+  logging: {
+    fetches: {
+      fullUrl: false,
+    },
   },
   eslint: {
     // Warning: This allows production builds to successfully complete even if

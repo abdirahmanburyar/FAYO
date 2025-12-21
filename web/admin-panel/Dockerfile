@@ -26,11 +26,15 @@ RUN mkdir -p ./public || true
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Increase Node.js memory limit for build process (Next.js 15 requires more memory)
-# Reduced to 2GB to save memory during build (only affects build time, not runtime)
-ENV NODE_OPTIONS="--max-old-space-size=2048"
+# Set to 3GB for faster builds (only affects build time, not runtime)
+# If you have limited RAM, reduce this to 2048
+ENV NODE_OPTIONS="--max-old-space-size=3072"
 
-# Build with cache mount for .next directory
+# Build with cache mounts for faster builds
+# Cache .next directory, node_modules/.cache, and npm cache
 RUN --mount=type=cache,target=/app/.next/cache \
+    --mount=type=cache,target=/app/node_modules/.cache \
+    --mount=type=cache,target=/root/.npm \
     npm run build
 
 # Production image, copy all the files and run next
