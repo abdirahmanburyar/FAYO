@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as amqp from 'amqplib';
+import { Connection, Channel } from 'amqplib';
 
 /**
  * Unified RabbitMQ Service for Monolithic API
@@ -13,8 +14,8 @@ import * as amqp from 'amqplib';
 @Injectable()
 export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RabbitMQService.name);
-  private connection: amqp.Connection | null = null;
-  private channel: amqp.Channel | null = null;
+  private connection: Connection | null = null;
+  private channel: Channel | null = null;
   private isConnecting = false;
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private readonly reconnectDelay = 5000; // 5 seconds
@@ -64,8 +65,8 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
     try {
       this.logger.log(`🔌 Attempting to connect to RabbitMQ at ${this.url.replace(/:[^:@]+@/, ':****@')}`);
       
-      this.connection = await amqp.connect(this.url);
-      this.channel = await this.connection.createChannel();
+      this.connection = await amqp.connect(this.url) as Connection;
+      this.channel = await this.connection.createChannel() as Channel;
       
       // Set up error handlers
       this.connection.on('error', (err) => {
@@ -132,7 +133,7 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
     // Try to recreate channel
     this.connection.createChannel()
       .then((newChannel) => {
-        this.channel = newChannel;
+        this.channel = newChannel as Channel;
         this.logger.log('✅ RabbitMQ channel recreated');
         
         // Re-setup channel error handlers

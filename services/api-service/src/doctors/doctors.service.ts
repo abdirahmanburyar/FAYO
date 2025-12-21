@@ -425,7 +425,7 @@ export class DoctorsService {
 
   async assignToHospital(doctorId: string, hospitalId: string, assignHospitalDto: any) {
     try {
-      const { workingDays, startTime, endTime, consultationFee } = assignHospitalDto;
+      const { startTime, endTime, consultationFee } = assignHospitalDto;
       
       const doctor = await this.prisma.doctor.findUnique({
         where: { id: doctorId },
@@ -455,7 +455,6 @@ export class DoctorsService {
             },
           },
           data: {
-            workingDays: workingDays ? JSON.stringify(workingDays) : null,
             startTime: startTime || null,
             endTime: endTime || null,
             consultationFee: consultationFee || null,
@@ -473,7 +472,6 @@ export class DoctorsService {
         data: {
           doctorId,
           hospitalId,
-          workingDays: workingDays ? JSON.stringify(workingDays) : null,
           startTime: startTime || null,
           endTime: endTime || null,
           consultationFee: consultationFee || null,
@@ -541,10 +539,7 @@ export class DoctorsService {
         },
       });
       
-      return assignments.map(assignment => ({
-        ...assignment,
-        workingDays: assignment.workingDays ? JSON.parse(assignment.workingDays) : null,
-      }));
+      return assignments;
     } catch (error) {
       throw error;
     }
@@ -554,9 +549,6 @@ export class DoctorsService {
     try {
       const assignments = await this.prisma.hospitalDoctor.findMany({
         where: { hospitalId },
-        include: {
-          doctor: true,
-        },
       });
       
       return assignments;
