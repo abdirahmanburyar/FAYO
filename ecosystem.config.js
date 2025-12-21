@@ -5,7 +5,7 @@ module.exports = {
   apps: [
     {
       name: 'fayo-api-service',
-      script: './services/api-service/dist/main.js',
+      script: './dist/main.js',
       cwd: './services/api-service',
       instances: 1, // Single instance for now (can increase if needed)
       exec_mode: 'fork',
@@ -14,8 +14,9 @@ module.exports = {
         NODE_OPTIONS: '--max-old-space-size=384',
         PORT: 3001,
         HOST: '0.0.0.0',
-        // Database
-        DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/fayo',
+        // Database - Direct PostgreSQL installation (no Docker)
+        // Include all schemas in the connection string
+        DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/fayo?schema=public&schema=users&schema=hospitals&schema=appointments&schema=payments&schema=ads',
         // Redis
         REDIS_HOST: process.env.REDIS_HOST || 'localhost',
         REDIS_PORT: process.env.REDIS_PORT || 6379,

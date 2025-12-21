@@ -39,6 +39,50 @@ else
     npm install --legacy-peer-deps --no-audit --no-fund
 fi
 
+# Create .env file if it doesn't exist
+if [ ! -f .env ]; then
+    echo "📝 Creating .env file for api-service..."
+    cat > .env << 'EOF'
+# Database Configuration - Direct PostgreSQL installation
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/fayo?schema=public&schema=users&schema=hospitals&schema=appointments&schema=payments&schema=ads"
+
+# Redis Configuration - Direct Redis installation
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+
+# RabbitMQ Configuration - Direct RabbitMQ installation
+RABBITMQ_URL=amqp://guest:guest@localhost:5672
+
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+JWT_EXPIRES_IN=7d
+
+# OTP Configuration
+OTP_EXPIRES_IN=300000
+OTP_LENGTH=6
+
+# Email Configuration
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME=buryar313@gmail.com
+MAIL_PASSWORD=fjmnakpupnytzsah
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS=buryar313@gmail.com
+MAIL_FROM_NAME=FAYO Healthcare
+DEFAULT_EMAIL=buryar313@gmail.com
+
+# Server Configuration
+PORT=3001
+HOST=0.0.0.0
+NODE_ENV=production
+EOF
+    echo "✅ Created .env file"
+else
+    echo "✅ .env file already exists"
+fi
+
 # Generate Prisma client
 echo "🔧 Generating Prisma client..."
 npx prisma generate

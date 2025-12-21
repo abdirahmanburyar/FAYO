@@ -78,7 +78,15 @@ npx prisma migrate deploy
 cd ../..
 ```
 
-### Step 4: Start Services with PM2
+### Step 4: Run Database Migrations
+
+```bash
+cd services/api-service
+npx prisma migrate deploy
+cd ../..
+```
+
+### Step 5: Start Services with PM2
 
 ```bash
 # Start all services
@@ -95,7 +103,9 @@ pm2 logs fayo-api-service
 pm2 logs fayo-admin-panel
 ```
 
-### Step 5: Save PM2 Configuration
+**See `START_SERVERS.md` for detailed startup instructions.**
+
+### Step 6: Save PM2 Configuration
 
 ```bash
 # Save current process list
