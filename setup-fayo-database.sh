@@ -21,12 +21,22 @@ echo ""
 
 # Step 1: Create the database
 echo "1️⃣  Creating fayo database..."
-cat create-fayo-db.sql | docker exec -i postgres psql -U postgres
 
-if [ $? -eq 0 ]; then
-    echo "✅ Database created successfully"
+# Check if database already exists
+DB_EXISTS=$(docker exec postgres psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname='fayo'" 2>/dev/null || echo "")
+
+if [ "$DB_EXISTS" = "1" ]; then
+    echo "✅ Database 'fayo' already exists"
 else
-    echo "⚠️  Database might already exist (this is okay)"
+    echo "📝 Creating database 'fayo'..."
+    docker exec -i postgres psql -U postgres -c "CREATE DATABASE fayo;"
+    
+    if [ $? -eq 0 ]; then
+        echo "✅ Database 'fayo' created successfully"
+    else
+        echo "❌ Failed to create database"
+        exit 1
+    fi
 fi
 
 echo ""
