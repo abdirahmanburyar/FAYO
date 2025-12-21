@@ -155,15 +155,34 @@ if command -v rabbitmq-server &> /dev/null; then
     echo "✅ RabbitMQ is already installed"
     rabbitmq-server --version
 else
-    # Add RabbitMQ repository
-    curl -fsSL https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-erlang.E495BB49CC4BBE5B.key | sudo apt-key add -
-    curl -fsSL https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-rabbitmq-server.E495BB49CC4BBE5B.key | sudo apt-key add -
+    # Detect Ubuntu codename
+    UBUNTU_CODENAME=$(lsb_release -cs 2>/dev/null || echo "jammy")
+    echo "📋 Detected Ubuntu codename: $UBUNTU_CODENAME"
     
-    # Add repository (for Ubuntu 22.04)
-    echo "deb https://ppa1.novemberain.com/rabbitmq/rabbitmq-erlang/ubuntu jammy main" | sudo tee /etc/apt/sources.list.d/rabbitmq.list
-    echo "deb https://ppa1.novemberain.com/rabbitmq/rabbitmq-server/ubuntu jammy main" | sudo tee -a /etc/apt/sources.list.d/rabbitmq.list
+    # Add RabbitMQ repository using new GPG method
+    echo "📦 Adding RabbitMQ repository..."
     
+    # Create keyrings directory
+    sudo mkdir -p /etc/apt/keyrings
+    
+    # Download and add RabbitMQ Erlang GPG key
+    echo "🔑 Adding RabbitMQ Erlang GPG key..."
+    wget --quiet -O - https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-erlang.E495BB49CC4BBE5B.key | sudo gpg --dearmor -o /etc/apt/keyrings/rabbitmq-erlang.gpg
+    
+    # Download and add RabbitMQ Server GPG key
+    echo "🔑 Adding RabbitMQ Server GPG key..."
+    wget --quiet -O - https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-rabbitmq-server.E495BB49CC4BBE5B.key | sudo gpg --dearmor -o /etc/apt/keyrings/rabbitmq-server.gpg
+    
+    # Add repositories with signed-by
+    echo "deb [signed-by=/etc/apt/keyrings/rabbitmq-erlang.gpg] https://ppa1.novemberain.com/rabbitmq/rabbitmq-erlang/ubuntu ${UBUNTU_CODENAME} main" | sudo tee /etc/apt/sources.list.d/rabbitmq.list
+    echo "deb [signed-by=/etc/apt/keyrings/rabbitmq-server.gpg] https://ppa1.novemberain.com/rabbitmq/rabbitmq-server/ubuntu ${UBUNTU_CODENAME} main" | sudo tee -a /etc/apt/sources.list.d/rabbitmq.list
+    
+    # Update package list
+    echo "🔄 Updating package list..."
     sudo apt-get update
+    
+    # Install RabbitMQ
+    echo "📦 Installing RabbitMQ..."
     sudo apt-get install -y rabbitmq-server
     
     # Enable management plugin
