@@ -268,14 +268,11 @@ class AdsApiService {
    */
   async calculateFee(range: number, price: number): Promise<{ fee: number; feeInDollars: string; range: number; price: number }> {
     try {
-      // Validate inputs
-      const validRange = typeof range === 'number' && range > 0 ? range : 7;
-      const validPrice = typeof price === 'number' && price > 0 ? price : 0;
+      // Validate inputs - use actual values, don't default
+      const validRange = typeof range === 'number' && !isNaN(range) ? Math.max(0, range) : 0;
+      const validPrice = typeof price === 'number' && !isNaN(price) ? Math.max(0, price) : 0;
       
-      if (validPrice === 0) {
-        throw new Error('Price must be greater than 0');
-      }
-      
+      // Allow 0 for both - calculation will result in $0.00
       const queryParams = new URLSearchParams();
       queryParams.append('range', validRange.toString());
       queryParams.append('price', validPrice.toString());

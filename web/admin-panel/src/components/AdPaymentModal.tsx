@@ -22,6 +22,8 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
   const [error, setError] = useState<string | null>(null);
   const [fee, setFee] = useState<number | null>(null);
   const [feeInDollars, setFeeInDollars] = useState<string>('0.00');
+  const [calculatedRange, setCalculatedRange] = useState<number>(0);
+  const [calculatedPrice, setCalculatedPrice] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CARD');
   const [notes, setNotes] = useState('');
   const [transactionId, setTransactionId] = useState('');
@@ -59,6 +61,9 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
       if (result && typeof result === 'object') {
         setFee(result.fee || 0);
         setFeeInDollars(result.feeInDollars || (result.fee ? (result.fee / 100).toFixed(2) : '0.00'));
+        // Store the actual values used in calculation for display
+        setCalculatedRange(result.range !== undefined ? result.range : range);
+        setCalculatedPrice(result.price !== undefined ? result.price : price);
       } else {
         throw new Error('Invalid response from fee calculation');
       }
@@ -175,10 +180,9 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
                 <div className="text-right">
                   <p className="text-xs text-gray-500 mb-1">Calculation</p>
                   {(() => {
-                    const displayRange = ad.range !== undefined && ad.range !== null ? Number(ad.range) : 0;
-                    const displayPrice = ad.price !== undefined && ad.price !== null 
-                      ? (typeof ad.price === 'number' ? ad.price : parseFloat(String(ad.price))).toFixed(2)
-                      : '0.00';
+                    // Use the actual calculated values, not the ad values
+                    const displayRange = calculatedRange;
+                    const displayPrice = calculatedPrice.toFixed(2);
                     return (
                       <>
                         <p className="text-sm text-gray-700">
