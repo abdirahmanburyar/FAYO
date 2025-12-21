@@ -1,8 +1,10 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/database/prisma.service';
 import { CreateAdDto, AdStatusEnum } from './dto/create-ad.dto';
 import { UpdateAdDto } from './dto/update-ad.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { PaymentsService } from '../payments/payments.service';
+import { PaymentType } from '../payments/dto/create-payment.dto';
 
 @Injectable()
 export class AdsService {
@@ -11,6 +13,7 @@ export class AdsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   /**
@@ -263,16 +266,78 @@ export class AdsService {
   /**
    * Calculate ad fee based on price per day and duration
    * @param range Number of days
-   * @param price Price per day in cents
+   * @param price Price per day in dollars (will be converted to cents)
    * @returns Fee in cents (price × range)
    */
   calculateAdFee(range: number, price: number): number {
     // Validate inputs
     const validRange = Math.max(1, Math.floor(range || 1));
-    const validPrice = Math.max(1, Math.floor(price || 0));
+    // Price comes in as dollars, convert to cents
+    const validPriceInDollars = Math.max(0.1, parseFloat(String(price)) || 0.1);
+    const validPriceInCents = Math.floor(validPriceInDollars * 100);
     
-    // Calculate: price per day × number of days
-    return validPrice * validRange;
+    // Calculate: price per day (in cents) × number of days
+    return validPriceInCents * validRange;
+  }
+
+  /**
+   * Pay for an ad - creates payment and updates ad status to PUBLISHED
+   */
+  async payForAd(
+    id: string,
+    paymentData: {
+      paymentMethod: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'MOBILE_MONEY' | 'CHEQUE' | 'OTHER';
+      paidBy?: string;
+      processedBy?: string;
+      notes?: string;
+      transactionId?: string;
+    },
+  ) {
+    // Find the ad
+    const ad = await this.findOne(id);
+    
+    if (!ad) {
+      throw new NotFoundException(`Ad with ID ${id} not found`);
+    }
+
+    // Calculate the fee
+    const priceInDollars = this.convertPriceToNumber(ad.price);
+    const range = ad.range || 1;
+    const amountInCents = this.calculateAdFee(range, priceInDollars);
+
+    if (amountInCents <= 0) {
+      throw new BadRequestException('Invalid ad fee. Price and range must be valid.');
+    }
+
+    // Create payment
+    const payment = await this.paymentsService.create({
+      paymentType: PaymentType.AD,
+      adId: id,
+      amount: amountInCents,
+      currency: 'USD',
+      paymentMethod: paymentData.paymentMethod,
+      transactionId: paymentData.transactionId,
+      paidBy: paymentData.paidBy || 'ADMIN',
+      processedBy: paymentData.processedBy || 'ADMIN',
+      notes: paymentData.notes,
+    });
+
+    // Update ad status to PUBLISHED
+    const updatedAd = await this.prisma.ad.update({
+      where: { id },
+      data: {
+        status: AdStatusEnum.PUBLISHED,
+      },
+    });
+
+    // Emit event for realtime update
+    this.eventEmitter.emit('ad.updated', updatedAd);
+    this.logger.log(`✅ Payment processed for ad ${id}, status updated to PUBLISHED`);
+
+    return {
+      payment,
+      ad: this.transformAd(updatedAd),
+    };
   }
 }
 

@@ -146,6 +146,9 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
                   <Calendar className="w-4 h-4" />
                   <span>Duration: {ad.range || 0} day{(ad.range || 0) !== 1 ? 's' : ''}</span>
                 </div>
+                <div className="text-sm text-gray-600">
+                  <span className="font-medium">Price:</span> ${ad.price ? (typeof ad.price === 'number' ? ad.price : parseFloat(String(ad.price))).toFixed(2) : '0.00'}/day
+                </div>
               </div>
             </div>
 

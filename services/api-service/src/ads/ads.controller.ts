@@ -53,20 +53,20 @@ export class AdsController {
     @Query('price') price: string,
   ) {
     const rangeNum = parseInt(range, 10);
-    const priceNum = parseInt(price, 10);
+    const priceNum = parseFloat(price); // Price comes in as dollars
     
     if (isNaN(rangeNum) || rangeNum < 1) {
       throw new BadRequestException('Invalid range. Must be a positive number.');
     }
     
-    if (isNaN(priceNum) || priceNum < 1) {
-      throw new BadRequestException('Invalid price. Must be a positive number.');
+    if (isNaN(priceNum) || priceNum < 0.1) {
+      throw new BadRequestException('Invalid price. Must be at least $0.10 per day.');
     }
     
     const fee = this.adsService.calculateAdFee(rangeNum, priceNum);
     return {
       range: rangeNum,
-      price: priceNum, // price per day in cents
+      price: priceNum, // price per day in dollars
       fee, // total fee in cents (price × range)
       feeInDollars: (fee / 100).toFixed(2),
     };
@@ -100,6 +100,21 @@ export class AdsController {
   @Throttle({ default: { limit: 100, ttl: 60000 } })
   incrementClick(@Param('id') id: string) {
     return this.adsService.incrementClickCount(id);
+  }
+
+  @Post(':id/pay')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  async payForAd(
+    @Param('id') id: string,
+    @Body() paymentData: {
+      paymentMethod: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'MOBILE_MONEY' | 'CHEQUE' | 'OTHER';
+      paidBy?: string;
+      processedBy?: string;
+      notes?: string;
+      transactionId?: string;
+    },
+  ) {
+    return this.adsService.payForAd(id, paymentData);
   }
 }
 
