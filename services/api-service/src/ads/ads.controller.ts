@@ -56,12 +56,12 @@ export class AdsController {
     const rangeNum = parseInt(range, 10);
     const priceNum = parseFloat(price); // Price comes in as dollars
     
-    if (isNaN(rangeNum) || rangeNum < 1) {
-      throw new BadRequestException('Invalid range. Must be a positive number.');
+    if (isNaN(rangeNum) || rangeNum < 0) {
+      throw new BadRequestException('Invalid range. Must be 0 or a positive number.');
     }
     
-    if (isNaN(priceNum) || priceNum < 0.1) {
-      throw new BadRequestException('Invalid price. Must be at least $0.10 per day.');
+    if (isNaN(priceNum) || priceNum < 0) {
+      throw new BadRequestException('Invalid price. Must be 0 or a positive number.');
     }
     
     const fee = this.adsService.calculateAdFee(rangeNum, priceNum);

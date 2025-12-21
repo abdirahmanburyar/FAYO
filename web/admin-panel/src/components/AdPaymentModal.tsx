@@ -40,17 +40,24 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
     try {
       setCalculatingFee(true);
       setError(null);
-      // Ensure range and price are valid
-      const range = ad.range && typeof ad.range === 'number' ? ad.range : 7;
+      // Get actual range and price from ad - don't use defaults
+      const range = ad.range !== undefined && ad.range !== null ? Number(ad.range) : 0;
       // Convert price to number if it's a string/Decimal from Prisma
-      const priceValue = ad.price ? (typeof ad.price === 'number' ? ad.price : parseFloat(String(ad.price))) : 0.1;
-      const price = priceValue > 0 ? priceValue : 0.1; // Default $0.10/day
+      const priceValue = ad.price !== undefined && ad.price !== null 
+        ? (typeof ad.price === 'number' ? ad.price : parseFloat(String(ad.price))) 
+        : 0;
+      const price = priceValue >= 0 ? priceValue : 0;
+      
+      // Validate: range and price must be valid numbers
+      if (isNaN(range) || isNaN(price)) {
+        throw new Error('Invalid ad configuration: range and price must be valid numbers');
+      }
       
       const result = await adsApi.calculateFee(range, price);
       
       // Safely extract values with fallbacks
       if (result && typeof result === 'object') {
-        setFee(result.fee || null);
+        setFee(result.fee || 0);
         setFeeInDollars(result.feeInDollars || (result.fee ? (result.fee / 100).toFixed(2) : '0.00'));
       } else {
         throw new Error('Invalid response from fee calculation');
@@ -58,7 +65,7 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
     } catch (err) {
       console.error('Error calculating fee:', err);
       setError(err instanceof Error ? err.message : 'Failed to calculate fee');
-      setFee(null);
+      setFee(0);
       setFeeInDollars('0.00');
     } finally {
       setCalculatingFee(false);
@@ -144,10 +151,12 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <Calendar className="w-4 h-4" />
-                  <span>Duration: {ad.range || 0} day{(ad.range || 0) !== 1 ? 's' : ''}</span>
+                  <span>Duration: {ad.range !== undefined && ad.range !== null ? Number(ad.range) : 0} day{(ad.range !== undefined && ad.range !== null ? Number(ad.range) : 0) !== 1 ? 's' : ''}</span>
                 </div>
                 <div className="text-sm text-gray-600">
-                  <span className="font-medium">Price:</span> ${ad.price ? (typeof ad.price === 'number' ? ad.price : parseFloat(String(ad.price))).toFixed(2) : '0.00'}/day
+                  <span className="font-medium">Price:</span> ${ad.price !== undefined && ad.price !== null 
+                    ? (typeof ad.price === 'number' ? ad.price : parseFloat(String(ad.price))).toFixed(2) 
+                    : '0.00'}/day
                 </div>
               </div>
             </div>
@@ -165,12 +174,22 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-gray-500 mb-1">Calculation</p>
-                  <p className="text-sm text-gray-700">
-                    ${ad.price ? (typeof ad.price === 'number' ? ad.price : parseFloat(String(ad.price))).toFixed(2) : '0.00'}/day × {ad.range || 0} days
-                  </p>
-                  <p className="text-sm text-gray-700 font-semibold">
-                    = ${feeInDollars}
-                  </p>
+                  {(() => {
+                    const displayRange = ad.range !== undefined && ad.range !== null ? Number(ad.range) : 0;
+                    const displayPrice = ad.price !== undefined && ad.price !== null 
+                      ? (typeof ad.price === 'number' ? ad.price : parseFloat(String(ad.price))).toFixed(2)
+                      : '0.00';
+                    return (
+                      <>
+                        <p className="text-sm text-gray-700">
+                          ${displayPrice}/day × {displayRange} day{displayRange !== 1 ? 's' : ''}
+                        </p>
+                        <p className="text-sm text-gray-700 font-semibold">
+                          = ${feeInDollars}
+                        </p>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -290,7 +309,7 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
                   </button>
                   <button
                     type="submit"
-                    disabled={loading || !fee || calculatingFee || !feeInDollars || feeInDollars === '0.00'}
+                    disabled={loading || fee === null || calculatingFee || !feeInDollars || parseFloat(feeInDollars) <= 0}
                     className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
                   >
                     {loading ? (

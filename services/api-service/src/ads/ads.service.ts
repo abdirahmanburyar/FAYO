@@ -265,18 +265,20 @@ export class AdsService {
 
   /**
    * Calculate ad fee based on price per day and duration
-   * @param range Number of days
+   * Formula: amount × days
+   * @param range Number of days (can be 0, which results in $0)
    * @param price Price per day in dollars (will be converted to cents)
    * @returns Fee in cents (price × range)
    */
   calculateAdFee(range: number, price: number): number {
-    // Validate inputs
-    const validRange = Math.max(1, Math.floor(range || 1));
+    // Validate inputs - range can be 0 (which means $0 fee)
+    const validRange = Math.max(0, Math.floor(range || 0));
     // Price comes in as dollars, convert to cents
-    const validPriceInDollars = Math.max(0.1, parseFloat(String(price)) || 0.1);
+    const validPriceInDollars = Math.max(0, parseFloat(String(price)) || 0);
     const validPriceInCents = Math.floor(validPriceInDollars * 100);
     
     // Calculate: price per day (in cents) × number of days
+    // If range is 0, result will be 0 (no charge)
     return validPriceInCents * validRange;
   }
 
@@ -302,11 +304,11 @@ export class AdsService {
 
     // Calculate the fee
     const priceInDollars = this.convertPriceToNumber(ad.price);
-    const range = ad.range || 1;
+    const range = ad.range !== undefined && ad.range !== null ? Number(ad.range) : 0;
     const amountInCents = this.calculateAdFee(range, priceInDollars);
 
     if (amountInCents <= 0) {
-      throw new BadRequestException('Invalid ad fee. Price and range must be valid.');
+      throw new BadRequestException('Invalid ad fee. Price per day and duration must be greater than 0.');
     }
 
     // Create payment
