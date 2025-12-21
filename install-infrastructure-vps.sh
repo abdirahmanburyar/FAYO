@@ -74,14 +74,14 @@ fi
 # Configure PostgreSQL
 echo "⚙️  Configuring PostgreSQL..."
 
-# Set password for postgres user
-sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD 'postgres';" || echo "⚠️  Password already set or user doesn't exist"
+# Set password for postgres user (change to home directory first to avoid permission errors)
+sudo -u postgres sh -c "cd ~ && psql -c \"ALTER USER postgres WITH PASSWORD 'postgres';\"" || echo "⚠️  Password already set or user doesn't exist"
 
 # Create fayo database
-sudo -u postgres psql -c "CREATE DATABASE fayo;" 2>/dev/null || echo "⚠️  Database 'fayo' already exists"
+sudo -u postgres sh -c "cd ~ && psql -c 'CREATE DATABASE fayo;'" 2>/dev/null || echo "⚠️  Database 'fayo' already exists"
 
 # Configure PostgreSQL for better performance (edit postgresql.conf)
-PG_VERSION=$(sudo -u postgres psql -t -c "SHOW server_version_num;" | xargs)
+PG_VERSION=$(sudo -u postgres sh -c "cd ~ && psql -t -c 'SHOW server_version_num;'" | xargs)
 PG_MAJOR=$(echo $PG_VERSION | cut -c1-2)
 
 PG_CONF="/etc/postgresql/${PG_MAJOR}/main/postgresql.conf"
@@ -165,13 +165,52 @@ else
     # Create keyrings directory
     sudo mkdir -p /etc/apt/keyrings
     
-    # Download and add RabbitMQ Erlang GPG key
-    echo "🔑 Adding RabbitMQ Erlang GPG key..."
-    wget --quiet -O - https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-erlang.E495BB49CC4BBE5B.key | sudo gpg --dearmor -o /etc/apt/keyrings/rabbitmq-erlang.gpg
-    
-    # Download and add RabbitMQ Server GPG key
-    echo "🔑 Adding RabbitMQ Server GPG key..."
-    wget --quiet -O - https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-rabbitmq-server.E495BB49CC4BBE5B.key | sudo gpg --dearmor -o /etc/apt/keyrings/rabbitmq-server.gpg
+    # Try installing from default Ubuntu repositories first (simpler)
+    echo "📦 Attempting to install RabbitMQ from Ubuntu repositories..."
+    if sudo apt-get install -y rabbitmq-server 2>/dev/null; then
+        echo "✅ RabbitMQ installed from Ubuntu repositories"
+    else
+        echo "⚠️  RabbitMQ not in default repos, trying official repository..."
+        
+        # Download and add RabbitMQ GPG keys using official method
+        echo "🔑 Adding RabbitMQ GPG keys..."
+        
+        # Try downloading keys directly
+        sudo mkdir -p /etc/apt/keyrings
+        
+        # Download Erlang key
+        if curl -fsSL "https://keys.openpgp.org/vks/v1/by-fingerprint/0A9AF2115F4687BD29803A206B73A36E6026DFCA" -o /tmp/rabbitmq-key.asc 2>/dev/null || \
+           wget --quiet -O /tmp/rabbitmq-key.asc "https://keys.openpgp.org/vks/v1/by-fingerprint/0A9AF2115F4687BD29803A206B73A36E6026DFCA" 2>/dev/null; then
+            if grep -q "BEGIN PGP" /tmp/rabbitmq-key.asc 2>/dev/null; then
+                sudo gpg --dearmor < /tmp/rabbitmq-key.asc > /etc/apt/keyrings/rabbitmq.gpg
+                rm -f /tmp/rabbitmq-key.asc
+                echo "✅ RabbitMQ GPG key added"
+            else
+                echo "⚠️  Invalid GPG key format"
+                rm -f /tmp/rabbitmq-key.asc
+            fi
+        else
+            echo "⚠️  Could not download GPG key, trying alternative installation method..."
+            # Install Erlang first, then RabbitMQ
+            sudo apt-get install -y erlang erlang-nox
+            wget -O /tmp/rabbitmq-server.deb https://github.com/rabbitmq/rabbitmq-server/releases/download/v3.13.0/rabbitmq-server_3.13.0-1_all.deb 2>/dev/null || \
+            echo "⚠️  Could not download RabbitMQ package"
+            if [ -f /tmp/rabbitmq-server.deb ]; then
+                sudo dpkg -i /tmp/rabbitmq-server.deb
+                sudo apt-get install -f -y
+                rm -f /tmp/rabbitmq-server.deb
+                echo "✅ RabbitMQ installed from package"
+            fi
+        fi
+        
+        # Add repository if key was added successfully
+        if [ -f /etc/apt/keyrings/rabbitmq.gpg ]; then
+            echo "deb [signed-by=/etc/apt/keyrings/rabbitmq.gpg] https://ppa1.novemberain.com/rabbitmq/rabbitmq-erlang/ubuntu ${UBUNTU_CODENAME} main" | sudo tee /etc/apt/sources.list.d/rabbitmq.list
+            echo "deb [signed-by=/etc/apt/keyrings/rabbitmq.gpg] https://ppa1.novemberain.com/rabbitmq/rabbitmq-server/ubuntu ${UBUNTU_CODENAME} main" | sudo tee -a /etc/apt/sources.list.d/rabbitmq.list
+            sudo apt-get update
+            sudo apt-get install -y rabbitmq-server
+        fi
+    fi
     
     # Add repositories with signed-by
     echo "deb [signed-by=/etc/apt/keyrings/rabbitmq-erlang.gpg] https://ppa1.novemberain.com/rabbitmq/rabbitmq-erlang/ubuntu ${UBUNTU_CODENAME} main" | sudo tee /etc/apt/sources.list.d/rabbitmq.list
