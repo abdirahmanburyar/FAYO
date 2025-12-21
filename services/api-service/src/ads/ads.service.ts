@@ -277,7 +277,10 @@ export class AdsService {
 
   /**
    * Calculate ad fee based on price per day and duration
-   * Formula: amount × days
+   * Formula: price per day × number of days
+   * 
+   * Example: $20.00/day × 10 days = $200.00 = 20000 cents
+   * 
    * @param range Number of days (can be 0, which results in $0)
    * @param price Price per day in dollars (will be converted to cents)
    * @returns Fee in cents (price × range)
@@ -286,16 +289,22 @@ export class AdsService {
     // Validate inputs - range can be 0 (which means $0 fee)
     const validRange = Math.max(0, Math.floor(range || 0));
     // Price comes in as dollars, convert to cents
+    // Example: $20.00 → 2000 cents
     const validPriceInDollars = Math.max(0, parseFloat(String(price)) || 0);
     const validPriceInCents = Math.floor(validPriceInDollars * 100);
     
     // Calculate: price per day (in cents) × number of days
+    // Example: 2000 cents × 10 days = 20000 cents = $200.00
     // If range is 0, result will be 0 (no charge)
-    return validPriceInCents * validRange;
+    const totalInCents = validPriceInCents * validRange;
+    
+    return totalInCents;
   }
 
   /**
    * Pay for an ad - creates payment and updates ad status to PUBLISHED
+   * Payment amount = price per day × number of days (in cents)
+   * Example: $20.00/day × 10 days = $200.00 = 20000 cents
    */
   async payForAd(
     id: string,
@@ -314,14 +323,34 @@ export class AdsService {
       throw new NotFoundException(`Ad with ID ${id} not found`);
     }
 
-    // Calculate the fee
+    // Get price per day in dollars
     const priceInDollars = this.convertPriceToNumber(ad.price);
-    const range = ad.range !== undefined && ad.range !== null ? Number(ad.range) : 0;
+    
+    // Calculate range from dates if not already calculated
+    let range = 0;
+    if (ad.range !== undefined && ad.range !== null && ad.range > 0) {
+      range = Number(ad.range);
+    } else if (ad.startDate && ad.endDate) {
+      // Calculate range from startDate and endDate
+      const start = new Date(ad.startDate);
+      const end = new Date(ad.endDate);
+      const diffTime = end.getTime() - start.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+      range = Math.max(0, diffDays);
+    }
+    
+    // Calculate payment amount: price per day (in cents) × number of days
+    // Example: $20.00/day × 10 days = 2000 cents × 10 = 20000 cents = $200.00
     const amountInCents = this.calculateAdFee(range, priceInDollars);
 
     if (amountInCents <= 0) {
       throw new BadRequestException('Invalid ad fee. Price per day and duration must be greater than 0.');
     }
+    
+    // Log the calculation for debugging
+    this.logger.log(
+      `💰 Calculating payment for ad ${id}: $${priceInDollars.toFixed(2)}/day × ${range} days = $${(amountInCents / 100).toFixed(2)} (${amountInCents} cents)`
+    );
 
     // Create payment
     const payment = await this.paymentsService.create({

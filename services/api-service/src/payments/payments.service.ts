@@ -36,7 +36,7 @@ export class PaymentsService {
           paymentType: paymentType === PaymentType.AD ? PrismaPaymentType.AD : PrismaPaymentType.APPOINTMENT,
           appointmentId: createPaymentDto.appointmentId,
           adId: createPaymentDto.adId,
-          amount: createPaymentDto.amount,
+          amount: createPaymentDto.amount, // Amount in cents (e.g., $200.00 = 20000 cents)
           currency: createPaymentDto.currency || 'USD',
           paymentMethod: createPaymentDto.paymentMethod,
           paymentStatus: PaymentStatus.PAID,
@@ -49,7 +49,11 @@ export class PaymentsService {
         },
       });
 
-      this.logger.log(`✅ Payment created: ${payment.id}, Receipt: ${receiptNumber}, Type: ${paymentType}`);
+      // Log payment details with amount in both cents and dollars
+      const amountInDollars = (createPaymentDto.amount / 100).toFixed(2);
+      this.logger.log(
+        `✅ Payment created: ${payment.id}, Receipt: ${receiptNumber}, Type: ${paymentType}, Amount: $${amountInDollars} (${createPaymentDto.amount} cents)`
+      );
 
       return payment;
     } catch (error) {
