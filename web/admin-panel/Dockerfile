@@ -9,10 +9,23 @@ WORKDIR /app
 
 # Install dependencies based on the preferred package manager with BuildKit cache
 COPY package.json package-lock.json* ./
+
+# Configure npm for faster installs
+RUN npm config set fetch-timeout 300000 && \
+    npm config set fetch-retries 3 && \
+    npm config set fetch-retry-factor 2 && \
+    npm config set fetch-retry-mintimeout 10000 && \
+    npm config set fetch-retry-maxtimeout 60000 && \
+    npm config set maxsockets 15 && \
+    npm config set progress false
+
 # Use BuildKit cache mounts to speed up npm install
+# Use npm ci for faster, more reliable installs (requires package-lock.json)
+# Falls back to npm install if package-lock.json doesn't exist
 RUN --mount=type=cache,target=/root/.npm \
     --mount=type=cache,target=/app/node_modules/.cache \
-    npm install --legacy-peer-deps --no-audit --no-fund --prefer-offline
+    (test -f package-lock.json && npm ci --legacy-peer-deps --no-audit --no-fund --prefer-offline --silent) || \
+    npm install --legacy-peer-deps --no-audit --no-fund --prefer-offline --silent
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -32,10 +45,11 @@ ENV NODE_OPTIONS="--max-old-space-size=3072"
 
 # Build with cache mounts for faster builds
 # Cache .next directory, node_modules/.cache, and npm cache
+# Set NODE_ENV=production for faster builds (skips dev-only code)
 RUN --mount=type=cache,target=/app/.next/cache \
     --mount=type=cache,target=/app/node_modules/.cache \
     --mount=type=cache,target=/root/.npm \
-    npm run build
+    NODE_ENV=production npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
@@ -45,12 +59,11 @@ ENV NODE_ENV=production
 # Disable Next.js telemetry for security and privacy
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Set the correct permission for prerender cache
-RUN mkdir -p .next
-RUN chown nextjs:nodejs .next
+# Combine user creation and directory setup to reduce layers
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs && \
+    mkdir -p .next && \
+    chown nextjs:nodejs .next
 
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing
