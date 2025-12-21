@@ -18,9 +18,9 @@ export async function PATCH(
   try {
     const { id } = params;
     const body = await request.json();
-    // Hardcode VPS IP address for payment-service
-    const paymentServiceUrl = 'http://72.62.51.50:3006';
-    const url = `${paymentServiceUrl}/api/v1/payments/${id}/refund`;
+    // Use unified API service
+    const apiServiceUrl = process.env.API_SERVICE_URL || 'http://api-service:3001';
+    const url = `${apiServiceUrl}/api/v1/payments/${id}/refund`;
     
     console.log('Proxying PATCH payment refund request to:', url);
     

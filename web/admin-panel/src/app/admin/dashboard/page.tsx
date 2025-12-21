@@ -197,7 +197,9 @@ export default function AdminDashboard() {
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {ads.map((ad) => {
-              const baseUrl = process.env.NEXT_PUBLIC_ADS_SERVICE_URL || 'http://72.62.51.50:3007';
+              // Use unified API service URL
+              const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://72.62.51.50:3001/api/v1';
+              const baseUrl = apiUrl.replace('/api/v1', '');
               return (
                 <div
                   key={ad.id}

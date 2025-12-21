@@ -17,9 +17,9 @@ export async function GET(
 ) {
   try {
     const { appointmentId } = params;
-    // Hardcode VPS IP address for payment-service
-    const paymentServiceUrl = 'http://72.62.51.50:3006';
-    const url = `${paymentServiceUrl}/api/v1/payments/appointment/${appointmentId}`;
+    // Use unified API service
+    const apiServiceUrl = process.env.API_SERVICE_URL || 'http://api-service:3001';
+    const url = `${apiServiceUrl}/api/v1/payments/appointment/${appointmentId}`;
     
     console.log('Proxying GET payments by appointment request to:', url);
     

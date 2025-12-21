@@ -56,7 +56,19 @@ class AdsApiService {
   }
 
   private getBaseUrl(): string {
-    return process.env.NEXT_PUBLIC_ADS_SERVICE_URL || 'http://72.62.51.50:3007';
+    // Use unified API service URL
+    if (typeof window !== 'undefined') {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (apiUrl) {
+        return apiUrl.replace('/api/v1', '');
+      }
+      // Fallback: construct from current location
+      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        return `http://${window.location.hostname}:3001`;
+      }
+      return 'http://localhost:3001';
+    }
+    return 'http://api-service:3001';
   }
 
   async getAds(activeOnly?: boolean, page?: number, limit?: number): Promise<AdsListResponse> {

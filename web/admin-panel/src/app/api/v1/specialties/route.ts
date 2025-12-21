@@ -16,12 +16,12 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const queryString = searchParams.toString();
-    // Hardcode VPS IP address for specialty-service (always use external IP, not Docker service name)
-    const specialtyServiceUrl = 'http://72.62.51.50:3004';
-    const url = `${specialtyServiceUrl}${API_CONFIG.ENDPOINTS.SPECIALTIES}${queryString ? `?${queryString}` : ''}`;
+    // Use unified API service
+    const apiServiceUrl = process.env.API_SERVICE_URL || 'http://api-service:3001';
+    const url = `${apiServiceUrl}${API_CONFIG.ENDPOINTS.SPECIALTIES}${queryString ? `?${queryString}` : ''}`;
     
     console.log('Proxying GET specialties request to:', url);
-    console.log('SPECIALTY_SERVICE_URL:', specialtyServiceUrl);
+    console.log('API_SERVICE_URL:', apiServiceUrl);
     
     // Get authorization header from request
     const authHeader = request.headers.get('authorization');
@@ -59,15 +59,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('Error proxying specialties request:', error);
-    const specialtyServiceUrl = process.env.SPECIALTY_SERVICE_URL || 'http://72.62.51.50:3004';
+    const apiServiceUrl = process.env.API_SERVICE_URL || 'http://api-service:3001';
       const errorMessage = error.name === 'AbortError' 
-      ? 'Request timeout - specialty-service may be unreachable'
+      ? 'Request timeout - API service may be unreachable'
       : error.message || 'Internal server error';
     return NextResponse.json(
       { 
         message: errorMessage,
         error: error.message,
-        details: `Unable to reach ${specialtyServiceUrl}${API_CONFIG.ENDPOINTS.SPECIALTIES}`
+        details: `Unable to reach ${apiServiceUrl}${API_CONFIG.ENDPOINTS.SPECIALTIES}`
       },
       { status: 503 }
     );
@@ -77,9 +77,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    // Hardcode VPS IP address for specialty-service (always use external IP, not Docker service name)
-    const specialtyServiceUrl = 'http://72.62.51.50:3004';
-    const url = `${specialtyServiceUrl}${API_CONFIG.ENDPOINTS.SPECIALTIES}`;
+    // Use unified API service
+    const apiServiceUrl = process.env.API_SERVICE_URL || 'http://api-service:3001';
+    const url = `${apiServiceUrl}${API_CONFIG.ENDPOINTS.SPECIALTIES}`;
     
     console.log('Proxying POST specialties request to:', url);
     

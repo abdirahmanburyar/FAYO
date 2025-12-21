@@ -29,12 +29,18 @@ export class AppointmentWebSocketService {
   private getSocketUrl(): string {
     // Force HTTP for development - HTTPS disabled
     if (typeof window !== 'undefined') {
-      // Use HTTP base URL - Socket.IO will handle the path
-      // Always use VPS IP address for appointment-service WebSocket
-      const appointmentServiceUrl = process.env.NEXT_PUBLIC_APPOINTMENT_SERVICE_URL || 'http://72.62.51.50:3005';
-      return appointmentServiceUrl;
+      // Use unified API service URL
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      if (apiUrl) {
+        return apiUrl.replace('/api/v1', '');
+      }
+      // Fallback: construct from current location
+      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        return `http://${window.location.hostname}:3001`;
+      }
+      return 'http://localhost:3001';
     }
-    return 'http://72.62.51.50:3005';
+    return 'http://api-service:3001';
   }
 
   connect() {

@@ -56,9 +56,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('Error proxying payments request:', error);
-    const paymentServiceUrl = 'http://72.62.51.50:3006';
+    const apiServiceUrl = process.env.API_SERVICE_URL || 'http://api-service:3001';
     const errorMessage = error.name === 'AbortError' 
-      ? 'Request timeout - payment-service may be unreachable'
+      ? 'Request timeout - API service may be unreachable'
       : error.message || 'Internal server error';
     return NextResponse.json(
       { 

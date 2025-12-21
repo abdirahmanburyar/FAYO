@@ -66,7 +66,7 @@ class PaymentApiService {
 
   private createConnectionError(originalError: any): Error {
     return new Error(
-      `Cannot connect to payment-service. Please ensure it's running on port 3006. Original error: ${originalError.message || 'Failed to fetch'}`
+      `Cannot connect to API service. Please ensure it's running. Original error: ${originalError.message || 'Failed to fetch'}`
     );
   }
 

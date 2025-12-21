@@ -74,8 +74,10 @@ export default function CreateAdPage() {
       const uploadFormData = new FormData();
       uploadFormData.append('file', imageFile);
 
-      const adsServiceUrl = process.env.NEXT_PUBLIC_ADS_SERVICE_URL || 'http://72.62.51.50:3007';
-      const uploadResponse = await fetch(`${adsServiceUrl}/api/v1/uploads`, {
+      // Use unified API service URL
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://72.62.51.50:3001/api/v1';
+      const baseUrl = apiUrl.replace('/api/v1', '');
+      const uploadResponse = await fetch(`${baseUrl}/api/v1/uploads`, {
         method: 'POST',
         body: uploadFormData,
       });
@@ -83,7 +85,7 @@ export default function CreateAdPage() {
       if (!uploadResponse.ok) throw new Error('Failed to upload image');
 
       const uploadData = await uploadResponse.json();
-      const fullImageUrl = `${adsServiceUrl}${uploadData.url}`;
+      const fullImageUrl = `${baseUrl}${uploadData.url}`;
 
       // 2. Create ad with the image URL
       if (!formData.price || formData.price <= 0) {

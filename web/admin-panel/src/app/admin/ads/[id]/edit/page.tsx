@@ -44,8 +44,9 @@ export default function EditAdPage() {
           range: adData.range,
           status: adData.status,
         });
-        // Set preview to existing image
-        const baseUrl = process.env.NEXT_PUBLIC_ADS_SERVICE_URL || 'http://72.62.51.50:3007';
+        // Set preview to existing image - use unified API service
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://72.62.51.50:3001/api/v1';
+        const baseUrl = apiUrl.replace('/api/v1', '');
         setImagePreview(`${baseUrl}${adData.imageUrl}`);
       } catch (error) {
         console.error('Error fetching ad:', error);
@@ -101,8 +102,10 @@ export default function EditAdPage() {
         const uploadFormData = new FormData();
         uploadFormData.append('file', imageFile);
 
-        const adsServiceUrl = process.env.NEXT_PUBLIC_ADS_SERVICE_URL || 'http://72.62.51.50:3007';
-        const uploadResponse = await fetch(`${adsServiceUrl}/api/v1/uploads`, {
+        // Use unified API service URL
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://72.62.51.50:3001/api/v1';
+        const baseUrl = apiUrl.replace('/api/v1', '');
+        const uploadResponse = await fetch(`${baseUrl}/api/v1/uploads`, {
           method: 'POST',
           body: uploadFormData,
         });
@@ -110,7 +113,7 @@ export default function EditAdPage() {
         if (!uploadResponse.ok) throw new Error('Failed to upload image');
 
         const uploadData = await uploadResponse.json();
-        const fullImageUrl = `${adsServiceUrl}${uploadData.url}`;
+        const fullImageUrl = `${baseUrl}${uploadData.url}`;
         updateData.imageUrl = fullImageUrl;
       }
 

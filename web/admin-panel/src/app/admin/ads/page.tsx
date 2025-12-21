@@ -60,8 +60,9 @@ export default function AdsPage() {
   const [selectedAdForPayment, setSelectedAdForPayment] = useState<Ad | null>(null);
   const [adPayments, setAdPayments] = useState<Record<string, any[]>>({});
 
-  // Base URL for ad images
-  const adsServiceUrl = process.env.NEXT_PUBLIC_ADS_SERVICE_URL || 'http://72.62.51.50:3007';
+  // Base URL for ad images - use unified API service
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://72.62.51.50:3001/api/v1';
+  const adsServiceUrl = apiUrl.replace('/api/v1', '');
 
   // Load payments for ads
   const loadAdPayments = useCallback(async (adIds: string[]) => {
