@@ -26,8 +26,8 @@ const getApiServiceUrl = (): string => {
       return envValue;
     }
     
-    // Default to Docker service name for server-side calls
-    return 'http://api-service:3001';
+    // Default to localhost for server-side calls (PM2 deployment)
+    return 'http://localhost:3001';
   }
 };
 
