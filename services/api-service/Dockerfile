@@ -59,7 +59,9 @@ COPY --chown=nestjs:nodejs create-unified-schema.sql /app/create-unified-schema.
 # Copy startup and migration scripts
 COPY --chown=root:root start.sh /app/start.sh
 COPY --chown=root:root scripts/migrate.sh /app/scripts/migrate.sh
-RUN chmod +x /app/start.sh /app/scripts/migrate.sh
+COPY --chown=root:root scripts/create-admin.js /app/scripts/create-admin.js
+COPY --chown=root:root scripts/create-admin.sh /app/scripts/create-admin.sh
+RUN chmod +x /app/start.sh /app/scripts/migrate.sh /app/scripts/create-admin.sh
 
 # Note: We stay as root to run the entrypoint script which will switch to nestjs user
 # This allows the script to fix permissions on mounted volumes
