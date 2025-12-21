@@ -203,7 +203,7 @@ export default function CreateDoctorPage() {
           error: error,
           stack: error instanceof Error ? error.stack : undefined
         });
-        setError(`Failed to load specialties: ${errorMessage}. Please ensure specialty-service is running on port 3004 and check browser console for details.`);
+        setError(`Failed to load specialties: ${errorMessage}. Please check browser console for details.`);
         setSpecialties([]);
       } finally {
         setSpecialtiesLoading(false);

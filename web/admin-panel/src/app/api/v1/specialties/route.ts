@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         errorMessage = response.statusText || `HTTP ${response.status}`;
       }
       
-      console.error('Specialty service error:', response.status, errorMessage);
+      console.error('API service error:', response.status, errorMessage);
       return NextResponse.json(
         { message: errorMessage },
         { status: response.status }

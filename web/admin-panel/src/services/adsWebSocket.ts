@@ -26,15 +26,26 @@ export class AdsWebSocketService {
   private getSocketUrl(): string {
     if (typeof window !== 'undefined') {
       // Use unified API service URL
+      // Next.js bakes NEXT_PUBLIC_* vars into the bundle at build time
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
       if (apiUrl) {
-        return apiUrl.replace('/api/v1', '');
+        // Remove /api/v1 suffix if present for WebSocket URL
+        const baseUrl = apiUrl.replace('/api/v1', '').replace(/\/$/, '');
+        console.log('[AdsWebSocket] Using NEXT_PUBLIC_API_URL:', baseUrl);
+        return baseUrl;
       }
-      // Fallback: construct from current location
-      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-        return `http://${window.location.hostname}:3001`;
+      // Fallback: construct from current location (for production)
+      const hostname = window.location.hostname;
+      if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+        // Production: use same hostname with port 3001
+        const url = `http://${hostname}:3001`;
+        console.log('[AdsWebSocket] Using constructed URL (production):', url);
+        return url;
       }
-      return 'http://localhost:3001';
+      // Development: localhost
+      const url = 'http://localhost:3001';
+      console.log('[AdsWebSocket] Using constructed URL (development):', url);
+      return url;
     }
     return 'http://api-service:3001';
   }

@@ -39,12 +39,7 @@ export default function SpecialtiesPage() {
     } catch (error) {
       console.error('Error fetching specialties:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch specialties';
-      // Only add port info if the error message doesn't already mention it
-      if (errorMessage.includes('port 3004') || errorMessage.includes('Cannot connect')) {
-        setError(errorMessage);
-      } else {
-        setError(`${errorMessage}. Please ensure specialty-service is running on port 3004.`);
-      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -40,12 +40,8 @@ class SpecialtiesApiService {
   }
 
   private createConnectionError(serviceUrl: string, originalError: any): Error {
-    const url = new URL(serviceUrl);
-    const port = url.port || (url.protocol === 'https:' ? '443' : '80');
-    const serviceName = url.hostname.replace(/\./g, '-');
-    
     return new Error(
-      `Cannot connect to ${serviceName}. Please ensure it's running on port ${port}. Original error: ${originalError?.message || 'Failed to fetch'}`
+      `Cannot connect to API service. Please ensure it's running. Original error: ${originalError?.message || 'Failed to fetch'}`
     );
   }
 

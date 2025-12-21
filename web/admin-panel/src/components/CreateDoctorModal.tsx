@@ -123,7 +123,7 @@ export default function CreateDoctorModal({ isOpen, onClose, onSuccess }: Create
       console.error('Error loading specialties:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to load specialties';
       // Error message already includes connection details from specialtiesApi
-      if (errorMessage.includes('Cannot connect to') || errorMessage.includes('port 3004')) {
+      if (errorMessage.includes('Cannot connect to')) {
         setError(errorMessage);
       } else {
         setError(`Failed to load specialties: ${errorMessage}`);

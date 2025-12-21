@@ -206,7 +206,7 @@ export default function CreateDoctorPage() {
           stack: error instanceof Error ? error.stack : undefined
         });
         // Error message already includes connection details from specialtiesApi
-        if (errorMessage.includes('Cannot connect to') || errorMessage.includes('port 3004')) {
+        if (errorMessage.includes('Cannot connect to')) {
           setError(errorMessage);
         } else {
           setError(`Failed to load specialties: ${errorMessage}. Please check browser console for details.`);
