@@ -4,7 +4,7 @@ import { CreateAdDto, AdStatusEnum } from './dto/create-ad.dto';
 import { UpdateAdDto } from './dto/update-ad.dto';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PaymentsService } from '../payments/payments.service';
-import { PaymentType } from '../payments/dto/create-payment.dto';
+import { PaymentType, PaymentMethod } from '../payments/dto/create-payment.dto';
 
 @Injectable()
 export class AdsService {
@@ -286,7 +286,7 @@ export class AdsService {
   async payForAd(
     id: string,
     paymentData: {
-      paymentMethod: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'MOBILE_MONEY' | 'CHEQUE' | 'OTHER';
+      paymentMethod: PaymentMethod;
       paidBy?: string;
       processedBy?: string;
       notes?: string;

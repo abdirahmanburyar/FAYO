@@ -14,6 +14,7 @@ import { Throttle } from '@nestjs/throttler';
 import { AdsService } from './ads.service';
 import { CreateAdDto } from './dto/create-ad.dto';
 import { UpdateAdDto } from './dto/update-ad.dto';
+import { PaymentMethod } from '../payments/dto/create-payment.dto';
 
 @Controller('ads')
 export class AdsController {
@@ -107,7 +108,7 @@ export class AdsController {
   async payForAd(
     @Param('id') id: string,
     @Body() paymentData: {
-      paymentMethod: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'MOBILE_MONEY' | 'CHEQUE' | 'OTHER';
+      paymentMethod: PaymentMethod;
       paidBy?: string;
       processedBy?: string;
       notes?: string;
