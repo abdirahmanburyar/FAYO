@@ -32,6 +32,36 @@ if command -v psql &> /dev/null; then
     echo "✅ PostgreSQL is already installed"
     psql --version
 else
+    # Add PostgreSQL official APT repository
+    echo "📦 Adding PostgreSQL repository..."
+    
+    # Install prerequisites
+    sudo apt-get install -y wget ca-certificates lsb-release
+    
+    # Detect Ubuntu codename
+    UBUNTU_CODENAME=$(lsb_release -cs 2>/dev/null || echo "jammy")
+    echo "📋 Detected Ubuntu codename: $UBUNTU_CODENAME"
+    
+    # Add PostgreSQL signing key (new method for newer systems)
+    if command -v gpg &> /dev/null && [ -d /etc/apt/keyrings ] || mkdir -p /etc/apt/keyrings 2>/dev/null; then
+        # New method (Ubuntu 22.04+) - preferred
+        echo "🔑 Using new GPG key method..."
+        sudo mkdir -p /etc/apt/keyrings
+        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/keyrings/postgresql.gpg
+        sudo sh -c "echo 'deb [signed-by=/etc/apt/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt ${UBUNTU_CODENAME}-pgdg main' > /etc/apt/sources.list.d/pgdg.list"
+    else
+        # Fallback to old method (for older Ubuntu versions)
+        echo "🔑 Using legacy apt-key method..."
+        wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+        sudo sh -c "echo 'deb http://apt.postgresql.org/pub/repos/apt ${UBUNTU_CODENAME}-pgdg main' > /etc/apt/sources.list.d/pgdg.list"
+    fi
+    
+    # Update package list
+    echo "🔄 Updating package list..."
+    sudo apt-get update
+    
+    # Install PostgreSQL 15
+    echo "📦 Installing PostgreSQL 15..."
     sudo apt-get install -y postgresql-15 postgresql-contrib-15
     
     # Start and enable PostgreSQL
