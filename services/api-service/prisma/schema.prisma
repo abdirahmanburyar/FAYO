@@ -1,0 +1,425 @@
+// Unified Prisma Schema for Monolithic API
+// Single database with multiple schemas
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+  binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["users", "hospitals", "public", "appointments", "payments", "ads"]
+}
+
+// ============================================
+// USERS SCHEMA (from user-service)
+// ============================================
+
+model User {
+  id        String   @id @default(cuid())
+  username  String?   @unique
+  email     String?   @unique
+  phone     String?   @unique
+  password  String?
+  firstName String?
+  lastName  String?
+  role      UserRole  @default(PATIENT)
+  userType  UserType  @default(PATIENT)
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Profile information
+  dateOfBirth DateTime?
+  gender      Gender?
+  address     String?
+
+  @@map("users")
+  @@schema("users")
+}
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+  createdAt DateTime  @default(now())
+
+  @@map("otp_codes")
+  @@schema("users")
+}
+
+enum UserRole {
+  PATIENT
+  DOCTOR
+  ADMIN
+  HOSPITAL
+  CLINIC
+
+  @@schema("users")
+}
+
+enum UserType {
+  PATIENT
+  DOCTOR
+  HOSPITAL_MANAGER
+
+  @@schema("users")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+
+  @@schema("users")
+}
+
+// ============================================
+// PUBLIC SCHEMA (doctors, specialties)
+// ============================================
+
+model Specialty {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("specialties")
+}
+
+model Doctor {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  licenseNumber String   @unique
+  experience    Int
+  isVerified    Boolean  @default(false)
+  isAvailable   Boolean  @default(true)
+  selfEmployedConsultationFee Int?
+  bio           String?
+  imageUrl      String?
+  education     String?
+  certifications String?
+  languages     String?
+  awards        String?
+  publications  String?
+  memberships   String?
+  researchInterests String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  doctorSpecialties DoctorSpecialty[]
+
+  @@map("doctors")
+}
+
+// Note: Hospital and HospitalDoctor models are in hospitals schema below
+
+model DoctorSpecialty {
+  id          String   @id @default(cuid())
+  doctorId    String
+  specialtyId String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  doctor Doctor @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, specialtyId])
+  @@map("doctor_specialties")
+}
+
+// ============================================
+// HOSPITALS SCHEMA (from hospital-service)
+// ============================================
+
+model Hospital {
+  id        String       @id @default(cuid())
+  userId    String?      @unique
+  name      String
+  type      HospitalType @default(HOSPITAL)
+  address   String
+  city      String
+  phone     String?
+  email     String?
+  website   String?
+  logoUrl   String?
+  bookingPolicy BookingPolicy @default(DIRECT_DOCTOR)
+  isActive  Boolean      @default(true)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  specialties HospitalSpecialty[]
+  services    HospitalService[]
+  hospitalDoctors HospitalDoctor[]
+
+  @@map("hospitals")
+  @@schema("hospitals")
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  hospitalServices HospitalService[]
+
+  @@map("services")
+  @@schema("hospitals")
+}
+
+model HospitalSpecialty {
+  id          String   @id @default(cuid())
+  hospitalId  String
+  specialtyId String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@unique([hospitalId, specialtyId])
+  @@map("hospital_specialties")
+  @@schema("hospitals")
+}
+
+model HospitalService {
+  id         String   @id @default(cuid())
+  hospitalId String
+  serviceId  String
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  service  Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([hospitalId, serviceId])
+  @@map("hospital_services")
+  @@schema("hospitals")
+}
+
+// Note: Doctor model is in public schema above
+// HospitalDoctor junction table for hospitals schema
+// Note: Cross-schema foreign keys are not supported in Prisma multi-schema
+// Referential integrity is handled in application code
+model HospitalDoctor {
+  id              String    @id @default(cuid())
+  doctorId        String    // References Doctor.id in public schema (handled in app code)
+  hospitalId      String
+  role            String    @default("CONSULTANT")
+  shift           String?
+  startTime       String?
+  endTime         String?
+  consultationFee Int?
+  status          String    @default("ACTIVE")
+  joinedAt        DateTime  @default(now())
+  leftAt          DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, hospitalId])
+  @@map("hospital_doctors")
+  @@schema("hospitals")
+}
+
+enum HospitalType {
+  HOSPITAL
+  CLINIC
+
+  @@schema("hospitals")
+}
+
+enum BookingPolicy {
+  HOSPITAL_ASSIGNED
+  DIRECT_DOCTOR
+
+  @@schema("hospitals")
+}
+
+// ============================================
+// APPOINTMENTS SCHEMA (from appointment-service)
+// ============================================
+
+model Appointment {
+  id                   String            @id @default(cuid())
+  appointmentNumber    Int?              @unique
+  patientId            String
+  doctorId             String?
+  hospitalId           String?
+  specialtyId          String?
+  appointmentDate      DateTime
+  appointmentTime      String
+  duration             Int               @default(30)
+  status               AppointmentStatus @default(PENDING)
+  consultationType     ConsultationType  @default(IN_PERSON)
+  reason               String?
+  description          String?
+  consultationFee      Int
+  paymentStatus        String            @default("PENDING") // PENDING, PAID, REFUNDED
+  paymentMethod        String?
+  paymentTransactionId String?
+  createdBy            String
+  cancelledAt          DateTime?
+  cancelledBy          String?
+  cancellationReason   String?
+  completedAt          DateTime?
+  notes                String?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([hospitalId])
+  @@index([appointmentDate])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([appointmentNumber])
+  @@map("appointments")
+  @@schema("appointments")
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  RESCHEDULED
+
+  @@schema("appointments")
+}
+
+enum ConsultationType {
+  IN_PERSON
+  VIDEO
+  PHONE
+
+  @@schema("appointments")
+}
+
+// PaymentStatus enum is defined in payments schema below
+
+// ============================================
+// PAYMENTS SCHEMA (from payment-service)
+// ============================================
+
+model Payment {
+  id                String        @id @default(cuid())
+  paymentType       PaymentType   @default(APPOINTMENT)
+  appointmentId     String?
+  adId              String?
+  amount            Int
+  currency          String        @default("USD")
+  paymentMethod     PaymentMethod
+  paymentStatus     PaymentStatus @default(PAID)
+  transactionId     String?       @unique
+  receiptNumber     String?       @unique
+  paidBy            String?
+  processedBy       String?
+  notes             String?
+  paymentDate       DateTime?
+  processedAt       DateTime?
+  refundedAt        DateTime?
+  refundReason      String?
+  refundedBy        String?
+  metadata          Json?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([appointmentId])
+  @@index([adId])
+  @@index([paymentType])
+  @@index([paymentStatus])
+  @@index([paymentMethod])
+  @@index([transactionId])
+  @@index([receiptNumber])
+  @@index([paidBy])
+  @@index([processedBy])
+  @@index([paymentDate])
+  @@map("payments")
+  @@schema("payments")
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  MOBILE_MONEY
+  CHEQUE
+  OTHER
+
+  @@schema("payments")
+}
+
+enum PaymentType {
+  APPOINTMENT
+  AD
+
+  @@schema("payments")
+}
+
+enum PaymentStatus {
+  PAID
+  REFUNDED
+  CANCELLED
+
+  @@schema("payments")
+}
+
+// ============================================
+// ADS SCHEMA (from ads-service)
+// ============================================
+
+enum AdStatus {
+  INACTIVE
+  PENDING
+  ACTIVE
+  EXPIRED
+  PUBLISHED
+
+  @@schema("ads")
+}
+
+enum AdType {
+  BANNER
+  CAROUSEL
+  INTERSTITIAL
+
+  @@schema("ads")
+}
+
+model Ad {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  company     String
+  imageUrl    String    @map("imageUrl")
+  linkUrl     String?
+  type        AdType    @default(BANNER)
+  status      AdStatus  @default(PENDING)
+  price       Decimal   // Price per day in dollars
+  startDate   DateTime
+  endDate     DateTime
+  priority    Int       @default(0)
+  clickCount  Int       @default(0)
+  viewCount   Int       @default(0)
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("ads")
+  @@schema("ads")
+  @@index([status, startDate, endDate])
+  @@index([priority(sort: Desc), status])
+}
+

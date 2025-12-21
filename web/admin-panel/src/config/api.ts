@@ -1,67 +1,61 @@
 // API Configuration for Admin Panel
-// Force HTTP for development - HTTPS disabled
+// Unified API Service - All endpoints now use api-service on port 3001
 
-// Helper function to get service URL (reads env vars at runtime)
-const getServiceUrl = (servicePath: string, directPort: string): string => {
-  // Specialty-service always uses VPS IP address
-  if (servicePath === 'specialty-service') {
-    return `http://72.62.51.50:${directPort}`;
-  }
-  
+// Helper function to get unified API service URL
+const getApiServiceUrl = (): string => {
   // Check if we're in browser (client-side)
   if (typeof window !== 'undefined') {
-    // Client-side: use NEXT_PUBLIC_ env variable (available at build time)
-    const envKey = `NEXT_PUBLIC_${servicePath.toUpperCase().replace('-', '_')}_SERVICE_URL`;
-    const envValue = process.env[envKey];
-    
+    // Client-side: use NEXT_PUBLIC_API_URL env variable
+    const envValue = process.env.NEXT_PUBLIC_API_URL;
     if (envValue) {
-      return envValue;
+      // Remove /api/v1 suffix if present, we'll add it per endpoint
+      return envValue.replace('/api/v1', '');
     }
     
     // Fallback: construct URL from current window location
-    // This works in production when env vars might not be set at build time
     if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
       // Production: use same hostname as the current page
-      return `http://${window.location.hostname}:${directPort}`;
+      return `http://${window.location.hostname}:3001`;
     }
     
-    return `http://localhost:${directPort}`;
+    return 'http://localhost:3001';
   } else {
-    // Server-side: use environment variable (read at runtime)
-    const envKey = `${servicePath.toUpperCase().replace('-', '_')}_SERVICE_URL`;
-    // Read from process.env at runtime, not at module load time
-    const envValue = process.env[envKey];
+    // Server-side: use API_SERVICE_URL environment variable (read at runtime)
+    const envValue = process.env.API_SERVICE_URL;
     if (envValue) {
       return envValue;
     }
     
     // Default to Docker service name for server-side calls
-    // Use the servicePath as-is (e.g., 'user-service' -> 'user-service')
-    return `http://${servicePath}:${directPort}`;
+    return 'http://api-service:3001';
   }
 };
 
-// Call service and WebSocket functionality have been removed
+// Unified API service URL getter
+const API_SERVICE_URL = getApiServiceUrl();
 
-// Use getter functions to read env vars at runtime
+// Use getter functions for backward compatibility - all now point to unified api-service
 export const API_CONFIG = {
   get USER_SERVICE_URL() {
-    return getServiceUrl('user-service', '3001');
+    return API_SERVICE_URL;
   },
   get HOSPITAL_SERVICE_URL() {
-    return getServiceUrl('hospital-service', '3002');
+    return API_SERVICE_URL;
   },
   get DOCTOR_SERVICE_URL() {
-    return getServiceUrl('doctor-service', '3003');
+    return API_SERVICE_URL;
   },
   get APPOINTMENT_SERVICE_URL() {
-    return getServiceUrl('appointment-service', '3005');
+    return API_SERVICE_URL;
   },
   get SPECIALTY_SERVICE_URL() {
-    return getServiceUrl('specialty-service', '3004');
+    return API_SERVICE_URL;
   },
   get ADS_SERVICE_URL() {
-    return getServiceUrl('ads-service', '3007');
+    return API_SERVICE_URL;
+  },
+  get PAYMENT_SERVICE_URL() {
+    return API_SERVICE_URL;
   },
   ENDPOINTS: {
     ADMIN_LOGIN: '/api/v1/auth/admin-login',

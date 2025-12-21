@@ -15,9 +15,9 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const queryString = searchParams.toString();
-    // Hardcode VPS IP address for payment-service
-    const paymentServiceUrl = 'http://72.62.51.50:3006';
-    const url = `${paymentServiceUrl}/api/v1/payments${queryString ? `?${queryString}` : ''}`;
+    // Use unified api-service
+    const apiServiceUrl = process.env.API_SERVICE_URL || 'http://api-service:3001';
+    const url = `${apiServiceUrl}/api/v1/payments${queryString ? `?${queryString}` : ''}`;
     
     console.log('Proxying GET payments request to:', url);
     
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       { 
         message: errorMessage,
         error: error.message,
-        details: `Unable to reach ${paymentServiceUrl}/api/v1/payments`
+        details: `Unable to reach ${apiServiceUrl}/api/v1/payments`
       },
       { status: 503 }
     );
@@ -74,9 +74,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    // Hardcode VPS IP address for payment-service
-    const paymentServiceUrl = 'http://72.62.51.50:3006';
-    const url = `${paymentServiceUrl}/api/v1/payments`;
+    // Use unified api-service
+    const apiServiceUrl = process.env.API_SERVICE_URL || 'http://api-service:3001';
+    const url = `${apiServiceUrl}/api/v1/payments`;
     
     console.log('Proxying POST payments request to:', url);
     

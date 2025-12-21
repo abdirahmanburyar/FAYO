@@ -88,7 +88,6 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
-      RABBITMQ_VM_MEMORY_HIGH_WATERMARK: 0.3
     ports:
       - '5672:5672'
       - '15672:15672'
@@ -102,31 +101,58 @@ services:
     volumes:
       - rabbitmqdata:/var/lib/rabbitmq
 
-  # Application Services
-  user-service:
+  # Database Migration Service (runs once before api-service)
+  api-migration:
     build:
-      context: ./services/user-service
+      context: ./services/api-service
       dockerfile: Dockerfile
-    container_name: user-service
+    container_name: api-migration
+    environment:
+      NODE_ENV: production
+      # Unified database with multiple schemas
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/fayo}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fayo-network
+    restart: "no"
+    entrypoint: ["/bin/sh", "/app/scripts/migrate.sh"]
+    profiles:
+      - migration
+
+  # Application Services
+  api-service:
+    build:
+      context: ./services/api-service
+      dockerfile: Dockerfile
+    container_name: api-service
     ports:
       - '3001:3001'
-    mem_limit: 384m
-    mem_reservation: 192m
-    cpu_quota: 50000
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpu_quota: 75000
     cpu_period: 100000
     environment:
-      NODE_OPTIONS: "--max-old-space-size=256"
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/user_service?schema=users}
+      NODE_ENV: production
+      NODE_OPTIONS: "--max-old-space-size=384"
+      # Unified database with multiple schemas
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/fayo}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      # JWT Configuration
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      # Server Configuration
+      HOST: 0.0.0.0
       PORT: 3001
-      SERVICE_NAME: user-service
+      SERVICE_NAME: api-service
+      # OTP Configuration
       OTP_EXPIRES_IN: ${OTP_EXPIRES_IN:-300000}
       OTP_LENGTH: ${OTP_LENGTH:-6}
+      # Email Configuration
       MAIL_MAILER: ${MAIL_MAILER:-smtp}
       MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
@@ -136,240 +162,12 @@ services:
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-buryar313@gmail.com}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME:-FAYO Healthcare}
       DEFAULT_EMAIL: ${DEFAULT_EMAIL:-buryar313@gmail.com}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    networks:
-      - fayo-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
-      interval: 60s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
-
-  hospital-service:
-    build:
-      context: ./services/hospital-service
-      dockerfile: Dockerfile
-    container_name: hospital-service
-    ports:
-      - '3002:3002'
-    mem_limit: 384m
-    mem_reservation: 192m
-    cpu_quota: 50000
-    cpu_period: 100000
-    environment:
-      NODE_ENV: production
-      NODE_OPTIONS: "--max-old-space-size=256"
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/hospital_service?schema=hospitals}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
-      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
-      HOST: 0.0.0.0
-      PORT: 3002
-      SERVICE_NAME: hospital-service
-      SPECIALTY_SERVICE_URL: ${SPECIALTY_SERVICE_URL:-http://specialty-service:3004}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      specialty-service:
-        condition: service_started
-    networks:
-      - fayo-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
-      interval: 60s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
-    volumes:
-      - admin_uploads:/app/uploads
-
-  doctor-service:
-    build:
-      context: ./services/doctor-service
-      dockerfile: Dockerfile
-    container_name: doctor-service
-    ports:
-      - '3003:3003'
-    mem_limit: 384m
-    mem_reservation: 192m
-    cpu_quota: 50000
-    cpu_period: 100000
-    environment:
-      NODE_ENV: production
-      NODE_OPTIONS: "--max-old-space-size=256"
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/doctor_service?schema=public}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
-      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
-      HOST: 0.0.0.0
-      PORT: 3003
-      SERVICE_NAME: doctor-service
-      SPECIALTY_SERVICE_URL: ${SPECIALTY_SERVICE_URL:-http://specialty-service:3004}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      specialty-service:
-        condition: service_started
-    networks:
-      - fayo-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3003/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
-      interval: 60s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
-    volumes:
-      - admin_uploads:/app/uploads
-
-  specialty-service:
-    build:
-      context: ./services/specialty-service
-      dockerfile: Dockerfile
-    container_name: specialty-service
-    ports:
-      - '3004:3004'
-    mem_limit: 192m
-    mem_reservation: 96m
-    cpu_quota: 30000
-    cpu_period: 100000
-    environment:
-      NODE_ENV: production
-      NODE_OPTIONS: "--max-old-space-size=128"
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/specialty_service?schema=public}
-      HOST: 0.0.0.0
-      PORT: 3004
-      SERVICE_NAME: specialty-service
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - fayo-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3004/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
-      interval: 60s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
-
-  appointment-service:
-    build:
-      context: ./services/appointment-service
-      dockerfile: Dockerfile
-    container_name: appointment-service
-    ports:
-      - '3005:3005'
-    mem_limit: 384m
-    mem_reservation: 192m
-    cpu_quota: 50000
-    cpu_period: 100000
-    environment:
-      NODE_ENV: production
-      NODE_OPTIONS: "--max-old-space-size=256"
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/appointment_service?schema=appointments}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
-      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
-      HOST: 0.0.0.0
-      PORT: 3005
-      SERVICE_NAME: appointment-service
-      USER_SERVICE_URL: ${USER_SERVICE_URL:-http://user-service:3001}
-      HOSPITAL_SERVICE_URL: ${HOSPITAL_SERVICE_URL:-http://hospital-service:3002}
-      DOCTOR_SERVICE_URL: ${DOCTOR_SERVICE_URL:-http://doctor-service:3003}
+      # Zoom Configuration
       ZOOM_SDK_KEY: ${ZOOM_SDK_KEY:-}
       ZOOM_SDK_SECRET: ${ZOOM_SDK_SECRET:-}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      user-service:
-        condition: service_healthy
-      hospital-service:
-        condition: service_healthy
-      doctor-service:
-        condition: service_healthy
-    networks:
-      - fayo-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3005/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
-      interval: 60s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
-
-  ads-service:
-    build:
-      context: ./services/ads-service
-      dockerfile: Dockerfile
-    container_name: ads-service
-    ports:
-      - '3007:3007'
-    mem_limit: 192m
-    mem_reservation: 96m
-    cpu_quota: 30000
-    cpu_period: 100000
-    environment:
-      NODE_ENV: production
-      NODE_OPTIONS: "--max-old-space-size=128"
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/ads_service?schema=ads}
-      HOST: 0.0.0.0
-      PORT: 3007
-      SERVICE_NAME: ads-service
-    volumes:
-      - ads_uploads:/app/uploads
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - fayo-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3007/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
-      interval: 60s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
-
-  payment-service:
-    build:
-      context: ./services/payment-service
-      dockerfile: Dockerfile
-    container_name: payment-service
-    ports:
-      - '3006:3006'
-    mem_limit: 192m
-    mem_reservation: 96m
-    cpu_quota: 30000
-    cpu_period: 100000
-    environment:
-      NODE_ENV: production
-      NODE_OPTIONS: "--max-old-space-size=128"
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/payment_service?schema=payments}
-      PORT: 3006
-      HOST: 0.0.0.0
+      # Payment Configuration
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://72.62.51.50:3001}
       ADMIN_PANEL_URL: ${ADMIN_PANEL_URL:-http://localhost:3000}
-      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
       # Waafipay Configuration
       WAAFIPAY_ENV: ${WAAFIPAY_ENV:-sandbox}
       WAAFIPAY_API_URL: ${WAAFIPAY_API_URL:-https://api.waafipay.com/asm}
@@ -381,13 +179,17 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
       rabbitmq:
         condition: service_started
     networks:
       - fayo-network
     restart: unless-stopped
+    volumes:
+      - api_uploads:/app/uploads
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3006/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
       interval: 60s
       timeout: 5s
       retries: 3
@@ -407,31 +209,12 @@ services:
     environment:
       NODE_ENV: production
       NODE_OPTIONS: "--max-old-space-size=256"
-      # Server-side URLs (for API routes) - use Docker service names
-      USER_SERVICE_URL: ${USER_SERVICE_URL:-http://user-service:3001}
-      HOSPITAL_SERVICE_URL: ${HOSPITAL_SERVICE_URL:-http://hospital-service:3002}
-      DOCTOR_SERVICE_URL: ${DOCTOR_SERVICE_URL:-http://doctor-service:3003}
-      SPECIALTY_SERVICE_URL: ${SPECIALTY_SERVICE_URL:-http://specialty-service:3004}
-      APPOINTMENT_SERVICE_URL: ${APPOINTMENT_SERVICE_URL:-http://appointment-service:3005}
-      PAYMENT_SERVICE_URL: ${PAYMENT_SERVICE_URL:-http://payment-service:3006}
-      ADS_SERVICE_URL: ${ADS_SERVICE_URL:-http://ads-service:3007}
+      # Server-side URLs (for API routes) - use Docker service name
+      API_SERVICE_URL: ${API_SERVICE_URL:-http://api-service:3001}
       # Client-side URLs (for browser) - use external IP or domain
-      NEXT_PUBLIC_USER_SERVICE_URL: ${NEXT_PUBLIC_USER_SERVICE_URL:-http://72.62.51.50:3001}
-      NEXT_PUBLIC_HOSPITAL_SERVICE_URL: ${NEXT_PUBLIC_HOSPITAL_SERVICE_URL:-http://72.62.51.50:3002}
-      NEXT_PUBLIC_DOCTOR_SERVICE_URL: ${NEXT_PUBLIC_DOCTOR_SERVICE_URL:-http://72.62.51.50:3003}
-      NEXT_PUBLIC_SPECIALTY_SERVICE_URL: ${NEXT_PUBLIC_SPECIALTY_SERVICE_URL:-http://72.62.51.50:3004}
-      NEXT_PUBLIC_APPOINTMENT_SERVICE_URL: ${NEXT_PUBLIC_APPOINTMENT_SERVICE_URL:-http://72.62.51.50:3005}
-      NEXT_PUBLIC_PAYMENT_SERVICE_URL: ${NEXT_PUBLIC_PAYMENT_SERVICE_URL:-http://72.62.51.50:3006}
-      NEXT_PUBLIC_ADS_SERVICE_URL: ${NEXT_PUBLIC_ADS_SERVICE_URL:-http://72.62.51.50:3007}
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://72.62.51.50:3001/api/v1}
     depends_on:
-      - user-service
-      - hospital-service
-      - doctor-service
-      - specialty-service
-      - appointment-service
-      - payment-service
-      - ads-service
+      - api-service
     networks:
       - fayo-network
     restart: unless-stopped
@@ -450,6 +233,5 @@ volumes:
   pgdata:
   redisdata:
   rabbitmqdata:
-  admin_uploads:
-  ads_uploads:
+  api_uploads:
 
