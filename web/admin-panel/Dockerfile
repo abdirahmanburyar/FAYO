@@ -7,19 +7,12 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager with retry logic
+# Install dependencies based on the preferred package manager with BuildKit cache
 COPY package.json package-lock.json* ./
-# Configure npm with increased timeouts to handle network issues
-RUN npm config set fetch-timeout 600000 && \
-    npm config set fetch-retries 5 && \
-    npm config set fetch-retry-factor 2 && \
-    npm config set fetch-retry-mintimeout 20000 && \
-    npm config set fetch-retry-maxtimeout 120000
-# Add retry logic to handle network failures (Broken pipe errors)
-RUN for i in 1 2 3; do \
-      npm install --legacy-peer-deps --no-audit --no-fund && break || \
-      (echo "Attempt $i failed, retrying in $((i*10)) seconds..." && sleep $((i*10))); \
-    done
+# Use BuildKit cache mounts to speed up npm install
+RUN --mount=type=cache,target=/root/.npm \
+    --mount=type=cache,target=/app/node_modules/.cache \
+    npm install --legacy-peer-deps --no-audit --no-fund --prefer-offline
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -36,7 +29,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Reduced to 2GB to save memory during build (only affects build time, not runtime)
 ENV NODE_OPTIONS="--max-old-space-size=2048"
 
-RUN npm run build
+# Build with cache mount for .next directory
+RUN --mount=type=cache,target=/app/.next/cache \
+    npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner

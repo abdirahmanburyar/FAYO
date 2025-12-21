@@ -10,21 +10,22 @@ RUN apk add --no-cache openssl libc6-compat
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install all dependencies (including dev for build) with retry logic
-RUN for i in 1 2 3; do \
-      (npm ci --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || \
-       npm install --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 || \
-       npm install --force --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000) && break || \
-      (echo "Attempt $i failed, retrying in $((i*10)) seconds..." && sleep $((i*10))); \
-    done
+# Install all dependencies (including dev for build) with BuildKit cache mount
+# Cache npm packages to speed up subsequent builds
+RUN --mount=type=cache,target=/root/.npm \
+    --mount=type=cache,target=/app/node_modules/.cache \
+    npm ci --no-audit --no-fund --prefer-offline || \
+    npm install --legacy-peer-deps --no-audit --no-fund --prefer-offline || \
+    npm install --force --no-audit --no-fund --prefer-offline
 
-# Copy source code
+# Generate Prisma client (only when schema changes)
+RUN --mount=type=cache,target=/root/.npm \
+    npx prisma generate
+
+# Copy source code (this layer will be cached if source doesn't change)
 COPY . .
 
-# Generate Prisma client (unified schema with multiple schemas)
-RUN npx prisma generate
-
-# Build the application
+# Build the application (cached if source doesn't change)
 RUN npm run build
 
 # Production stage
@@ -42,12 +43,10 @@ RUN adduser -S nestjs -u 1001
 # Copy package files
 COPY package*.json ./
 
-# Install only production dependencies (including prisma for ORM) with retry logic
-RUN for i in 1 2 3; do \
-      npm install --omit=dev --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 && \
-      npm install prisma@^5.20.0 --save-prod --legacy-peer-deps --no-audit --no-fund --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 && break || \
-      (echo "Attempt $i failed, retrying in $((i*10)) seconds..." && sleep $((i*10))); \
-    done
+# Install only production dependencies (including prisma for ORM) with BuildKit cache
+RUN --mount=type=cache,target=/root/.npm \
+    npm install --omit=dev --legacy-peer-deps --no-audit --no-fund --prefer-offline && \
+    npm install prisma@^5.20.0 --save-prod --legacy-peer-deps --no-audit --no-fund --prefer-offline
 
 # Copy built application and Prisma client
 COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
