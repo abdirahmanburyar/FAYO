@@ -55,6 +55,28 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
         throw new Error('Invalid ad configuration: range and price must be valid numbers');
       }
       
+      // If range is 0, calculate locally without API call
+      if (range === 0) {
+        const feeInCents = 0;
+        setFee(feeInCents);
+        setFeeInDollars('0.00');
+        setCalculatedRange(0);
+        setCalculatedPrice(price);
+        setCalculatingFee(false);
+        return;
+      }
+      
+      // If price is 0, calculate locally without API call
+      if (price === 0) {
+        const feeInCents = 0;
+        setFee(feeInCents);
+        setFeeInDollars('0.00');
+        setCalculatedRange(range);
+        setCalculatedPrice(0);
+        setCalculatingFee(false);
+        return;
+      }
+      
       const result = await adsApi.calculateFee(range, price);
       
       // Safely extract values with fallbacks
@@ -69,9 +91,22 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
       }
     } catch (err) {
       console.error('Error calculating fee:', err);
-      setError(err instanceof Error ? err.message : 'Failed to calculate fee');
-      setFee(0);
-      setFeeInDollars('0.00');
+      // Only show error if it's not a validation error for 0 range/price
+      const errorMessage = err instanceof Error ? err.message : 'Failed to calculate fee';
+      if (!errorMessage.includes('Invalid range') && !errorMessage.includes('Invalid price')) {
+        setError(errorMessage);
+      }
+      // Calculate locally if API fails
+      const range = ad.range !== undefined && ad.range !== null ? Number(ad.range) : 0;
+      const priceValue = ad.price !== undefined && ad.price !== null 
+        ? (typeof ad.price === 'number' ? ad.price : parseFloat(String(ad.price))) 
+        : 0;
+      const price = priceValue >= 0 ? priceValue : 0;
+      const feeInCents = Math.floor(price * 100) * Math.max(0, range);
+      setFee(feeInCents);
+      setFeeInDollars((feeInCents / 100).toFixed(2));
+      setCalculatedRange(range);
+      setCalculatedPrice(price);
     } finally {
       setCalculatingFee(false);
     }
@@ -247,7 +282,17 @@ export default function AdPaymentModal({ ad, isOpen, onClose, onPaymentSuccess }
             {/* Payment Form */}
             {!hasPaid && (
               <form onSubmit={handleSubmit} className="space-y-4">
-                {error && (
+                {/* Show warning if fee is 0 */}
+                {parseFloat(feeInDollars) === 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center space-x-3">
+                    <AlertCircle className="w-5 h-5 text-amber-600" />
+                    <p className="text-sm text-amber-800">
+                      This ad has no cost (0 days or $0.00/day). Payment is not required.
+                    </p>
+                  </div>
+                )}
+                {/* Only show error if fee > 0 (real error, not validation) */}
+                {error && parseFloat(feeInDollars) > 0 && !error.includes('Invalid range') && !error.includes('Invalid price') && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3">
                     <AlertCircle className="w-5 h-5 text-red-600" />
                     <p className="text-sm text-red-800">{error}</p>
