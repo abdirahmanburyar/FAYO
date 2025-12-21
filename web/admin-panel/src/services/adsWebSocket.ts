@@ -61,7 +61,7 @@ export class AdsWebSocketService {
 
     try {
       this.socket = io(url, {
-        path: '/ws/ads',
+        path: '/api/v1/ws/ads',
         transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionAttempts: this.maxReconnectAttempts,

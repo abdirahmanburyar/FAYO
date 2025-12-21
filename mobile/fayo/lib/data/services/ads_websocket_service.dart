@@ -21,14 +21,15 @@ class AdsWebSocketService {
     
     try {
       _isConnecting = true;
-      final baseUrl = ApiConstants.adsBaseUrl.replaceFirst('/api/v1', '');
+      // Unified API service - use apiBaseUrl
+      final baseUrl = ApiConstants.apiBaseUrl.replaceFirst('/api/v1', '');
       print('🔌 Connecting to Ads WebSocket: $baseUrl');
       
       _socket = IO.io(
         baseUrl,
         IO.OptionBuilder()
             .setTransports(['websocket', 'polling'])
-            .setPath('/ws/ads')
+            .setPath('/api/v1/ws/ads')
             .enableAutoConnect()
             .enableReconnection()
             .setReconnectionDelay(5000)

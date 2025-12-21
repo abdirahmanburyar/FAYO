@@ -1055,9 +1055,9 @@ class ApiClient(
 
     // Real-time Ads Updates via WebSocket
     fun observeAdsUpdates(): Flow<AdUpdateEvent> = flow {
-        // adsBaseUrl is http://host:3007/api/v1, WebSocket is at /ws/ads (no /api/v1 prefix)
+        // Unified API service: WebSocket is at /api/v1/ws/ads
         val baseUrl = adsBaseUrl.replace("/api/v1", "")
-        val wsUrl = baseUrl.replace("http", "ws").replace("https", "wss") + "/ws/ads"
+        val wsUrl = baseUrl.replace("http", "ws").replace("https", "wss") + "/api/v1/ws/ads"
         println("🔌 [AdsWebSocket] Connecting to: $wsUrl")
         
         while (true) {

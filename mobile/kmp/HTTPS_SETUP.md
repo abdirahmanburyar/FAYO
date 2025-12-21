@@ -78,7 +78,7 @@ For production:
 
 1. **Verify Connection**:
    ```bash
-   curl -v https://your-server-domain.com:3005/api/v1/health
+   curl -v https://your-server-domain.com:3001/api/v1/health
    ```
 
 2. **Check Certificate**:

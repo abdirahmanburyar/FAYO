@@ -93,10 +93,8 @@ kmp/
 
 ## API Integration
 
-The app integrates with the following backend services:
-- **User Service** (Port 3001) - Authentication, user management
-- **Hospital Service** (Port 3002) - Hospital/clinic data
-- **Appointment Service** (Port 3005) - Appointment management
+The app integrates with the unified API service:
+- **Unified API Service** (Port 3001) - All services (Users, Hospitals, Doctors, Appointments, Payments, Ads)
 
 ## Next Steps
 

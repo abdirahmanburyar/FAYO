@@ -13,7 +13,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { Prisma } from '@prisma/client';
 
 @WebSocketGateway({
-  path: '/ws/ads',
+  path: '/api/v1/ws/ads',
   cors: {
     origin: '*',
     methods: ['GET', 'POST'],

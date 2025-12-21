@@ -17,7 +17,7 @@ Admin Panel → Backend → WebSocket → Mobile App → Dialog → Call Screen
 - Backend broadcasts `call.invitation` event via WebSocket
 
 ### 2. **WebSocket Connection (Already Set Up)**
-- Mobile app connects to: `ws://{server}:3005/api/v1/ws/appointments`
+- Mobile app connects to: `ws://{server}:3001/api/v1/ws/appointments`
 - On app start, `HomeViewModel` automatically starts observing call invitations
 - App joins patient-specific room: `patient_{patientId}`
 

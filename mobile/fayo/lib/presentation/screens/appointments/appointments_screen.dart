@@ -617,9 +617,8 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
   }
 
   Widget _buildLogo(String? imageUrl, {required bool isDoctor, double size = 60}) {
-    final baseUrl = isDoctor
-        ? ApiConstants.doctorBaseUrl.replaceFirst('/api/v1', '')
-        : ApiConstants.hospitalBaseUrl.replaceFirst('/api/v1', '');
+    // Unified API service - use same base URL for all
+    final baseUrl = ApiConstants.apiBaseUrl.replaceFirst('/api/v1', '');
     
     String fullUrl = '';
     if (imageUrl != null && imageUrl.isNotEmpty) {

@@ -66,6 +66,7 @@ dependencies:
   logger: ^2.0.2+1
   connectivity_plus: ^6.0.3
   package_info_plus: ^8.0.1
+  url_launcher: ^6.2.5
 
   # Animations
   animations: ^2.0.11

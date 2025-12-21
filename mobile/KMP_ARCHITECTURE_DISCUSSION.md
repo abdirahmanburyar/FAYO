@@ -7,7 +7,7 @@ This document outlines the proposed architecture for migrating from Flutter to *
 ## 📋 Current State
 
 - **Existing**: Flutter app in `mobile/flutter_app/`
-- **Backend**: NestJS microservices (user-service, hospital-service, doctor-service, appointment-service)
+- **Backend**: NestJS monolithic API service (unified service on port 3001)
 - **API**: RESTful APIs with JWT authentication
 - **Features**: OTP authentication, hospital search, appointments, video calls
 

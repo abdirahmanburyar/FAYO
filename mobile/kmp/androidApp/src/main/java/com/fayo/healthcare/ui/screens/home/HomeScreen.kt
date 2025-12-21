@@ -587,8 +587,8 @@ fun AdCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Ad Image - construct full URL
-            val baseUrl = "http://72.62.51.50:3007"
+            // Ad Image - construct full URL (unified API service on port 3001)
+            val baseUrl = "http://72.62.51.50:3001"
             val imageUrl = if (ad.image.startsWith("http")) ad.image else "$baseUrl${ad.image}"
             
             AsyncImage(

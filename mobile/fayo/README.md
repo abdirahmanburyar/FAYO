@@ -92,14 +92,9 @@ lib/
 
 ## 🔌 API Integration
 
-The app connects to the following microservices:
+The app connects to the unified API service:
 
-- **User Service** (Port 3001): Authentication, user management
-- **Hospital Service** (Port 3002): Hospitals, specialties
-- **Doctor Service** (Port 3003): Doctors, specialties
-- **Appointment Service** (Port 3005): Appointments, calls
-- **Payment Service** (Port 3006): Payments, Waafipay
-- **Ads Service** (Port 3007): Advertisements
+- **Unified API Service** (Port 3001): All services (Users, Hospitals, Doctors, Appointments, Payments, Ads)
 
 ## 🌐 WebSocket Connections
 

@@ -544,8 +544,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         imageUrl = ad.imageUrl;
       } else {
         // Relative path - construct full URL
-        // Images are served from /uploads/ads/ on the ads service (port 3007)
-        final baseUrl = ApiConstants.adsBaseUrl.replaceFirst('/api/v1', '');
+        // Images are served from /uploads/ads/ on the unified API service (port 3001)
+        final baseUrl = ApiConstants.apiBaseUrl.replaceFirst('/api/v1', '');
         String path = ad.imageUrl;
         
         // Normalize the path

@@ -32,15 +32,19 @@ val appModule = module {
         // For production with HTTPS, you might use a domain name instead of IP
         // Example: val baseHost = "api.yourdomain.com"
         
-        val userBaseUrl = "$protocol://$baseHost:3001/api/v1"
-        val hospitalBaseUrl = "$protocol://$baseHost:3002/api/v1"
-        val appointmentBaseUrl = "$protocol://$baseHost:3005/api/v1"
-        val doctorBaseUrl = "$protocol://$baseHost:3003"
-        val paymentBaseUrl = "$protocol://$baseHost:3006/api/v1"
-        val adsBaseUrl = "$protocol://$baseHost:3007/api/v1"
+        // Unified API Service URL (all services now on port 3001)
+        val apiBaseUrl = "$protocol://$baseHost:3001/api/v1"
+        
+        // All services now use the unified API service
+        val userBaseUrl = apiBaseUrl
+        val hospitalBaseUrl = apiBaseUrl
+        val appointmentBaseUrl = apiBaseUrl
+        val doctorBaseUrl = apiBaseUrl
+        val paymentBaseUrl = apiBaseUrl
+        val adsBaseUrl = apiBaseUrl
         
         println("🔐 [AppModule] Using ${if (useHttps) "HTTPS" else "HTTP"} for API connections")
-        println("🔐 [AppModule] Base URLs: user=$userBaseUrl, hospital=$hospitalBaseUrl, appointment=$appointmentBaseUrl, payment=$paymentBaseUrl, ads=$adsBaseUrl")
+        println("🔐 [AppModule] Unified API Service: $apiBaseUrl")
         
         ApiClient(
             userBaseUrl = userBaseUrl,
