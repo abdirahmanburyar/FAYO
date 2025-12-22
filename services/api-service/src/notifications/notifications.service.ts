@@ -20,7 +20,7 @@ export interface SendNotificationOptions {
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
-  private firebaseApp: admin.app.App;
+  private firebaseApp: admin.app.App | null = null;
 
   constructor(private readonly prisma: PrismaService) {
     // Initialize Firebase Admin SDK
@@ -97,6 +97,14 @@ export class NotificationsService {
       }
     } else {
       this.firebaseApp = admin.app();
+      this.logger.log('✅ [FCM] Using existing Firebase app instance');
+    }
+    
+    // Log final status
+    if (this.firebaseApp) {
+      this.logger.log('✅ [FCM] Firebase Admin SDK is ready to send notifications');
+    } else {
+      this.logger.error('❌ [FCM] Firebase Admin SDK is NOT initialized - notifications will fail');
     }
   }
 
@@ -471,6 +479,7 @@ export class NotificationsService {
   async notifyNewDoctorAtHospital(
     hospitalId: string,
     hospitalName: string,
+    doctorId: string,
     doctorName: string,
     specialty?: string
   ) {
@@ -529,6 +538,7 @@ export class NotificationsService {
             type: 'NEW_DOCTOR_AT_HOSPITAL',
             hospitalId,
             hospitalName,
+            doctorId,
             doctorName,
             specialty: specialty || '',
           },

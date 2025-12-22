@@ -16,6 +16,7 @@ import '../../widgets/call_invitation_dialog.dart';
 import '../../../core/navigation/nav_helper.dart';
 import '../hospitals/hospitals_screen.dart';
 import '../../../services/fcm_service.dart';
+import '../../../data/datasources/local_storage.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -28,20 +29,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final ApiClient _apiClient = ApiClient();
   final CallWebSocketService _callService = CallWebSocketService();
   final AdsWebSocketService _adsService = AdsWebSocketService();
+  final LocalStorage _localStorage = LocalStorage();
   
   List<AdDto> _ads = [];
   CallInvitationDto? _callInvitation;
   bool _isLoading = true;
   PageController? _adsPageController;
   Timer? _adsScrollTimer;
+  int _unreadNotificationCount = 0;
 
   @override
   void initState() {
     super.initState();
     _adsPageController = PageController();
+    _initializeStorage();
     _loadData();
     _setupWebSockets();
     _initializeFCM();
+    _loadNotificationCount();
+  }
+
+  Future<void> _initializeStorage() async {
+    await _localStorage.init();
+  }
+
+  Future<void> _loadNotificationCount() async {
+    final count = _localStorage.getUnreadNotificationCount();
+    if (mounted) {
+      setState(() {
+        _unreadNotificationCount = count;
+      });
+    }
   }
 
   /// Initialize FCM and request notification permission
@@ -313,12 +331,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined),
-                color: AppColors.gray700,
-                onPressed: () {
-                  // TODO: Implement notifications
-                },
+              Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_outlined),
+                    color: AppColors.gray700,
+                    onPressed: () async {
+                      await context.push('/notifications');
+                      // Reload notification count after returning from notifications screen
+                      _loadNotificationCount();
+                    },
+                  ),
+                  if (_unreadNotificationCount > 0)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
               ),
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert, color: Color(0xFF6B7280)),
@@ -595,9 +632,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         
         imageUrl = '$baseUrl$path';
       }
-      
-      // Debug: print the constructed URL (remove in production)
-      print('Ad image URL: $imageUrl (original: ${ad.imageUrl})');
     }
 
     return Container(
@@ -624,7 +658,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: const Center(child: CircularProgressIndicator()),
                 ),
                 errorWidget: (context, url, error) {
-                  print('Error loading ad image: $url, error: $error');
                   return Container(
                     color: AppColors.gray200,
                     child: Column(

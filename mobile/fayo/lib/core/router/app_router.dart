@@ -15,6 +15,7 @@ import '../../presentation/screens/appointments/book_appointment_screen.dart';
 import '../../presentation/screens/profile/profile_screen.dart';
 import '../../presentation/screens/telemedicine/telemedicine_screen.dart';
 import '../../presentation/screens/health_advices/health_advices_screen.dart';
+import '../../presentation/screens/notifications/notifications_screen.dart';
 
 class _AuthRefreshListenable extends ChangeNotifier {
   _AuthRefreshListenable(Stream<dynamic> stream) {
@@ -149,6 +150,11 @@ class AppRouter {
         path: '/health-advices',
         name: 'health-advices',
         builder: (context, state) => const HealthAdvicesScreen(),
+      ),
+      GoRoute(
+        path: '/notifications',
+        name: 'notifications',
+        builder: (context, state) => const NotificationsScreen(),
       ),
     ],
     redirect: (context, state) {

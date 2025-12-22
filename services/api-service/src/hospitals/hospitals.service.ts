@@ -720,6 +720,7 @@ export class HospitalsService {
         const notificationResult = await this.notificationsService.notifyNewDoctorAtHospital(
           hospitalId,
           hospital.name,
+          doctorId,
           doctorName,
           specialtyName
         );

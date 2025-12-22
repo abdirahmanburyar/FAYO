@@ -4,7 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../core/constants/api_constants.dart';
+import '../data/datasources/local_storage.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
@@ -17,9 +19,11 @@ class FcmService {
   FcmService._internal();
 
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
   String? _fcmToken;
   StreamSubscription<String>? _tokenSubscription;
   StreamSubscription<RemoteMessage>? _messageSubscription;
+  bool _localNotificationsInitialized = false;
 
   /// Initialize FCM service
   Future<void> initialize({String? userId}) async {
@@ -87,6 +91,9 @@ class FcmService {
         debugPrint('❌ [FCM] Unknown Firebase permission status: ${settings.authorizationStatus}');
         return;
       }
+
+      // Initialize local notifications for showing system notifications
+      await _initializeLocalNotifications();
 
       debugPrint('🔑 [FCM] Getting FCM token from Firebase...');
       
@@ -247,9 +254,34 @@ class FcmService {
     debugPrint('   Body: ${message.notification?.body}');
     debugPrint('   Data: ${message.data}');
 
+    // Save notification to local storage
+    _saveNotificationToLocalStorage(message);
+
     // Show local notification or in-app notification
-    // You can use flutter_local_notifications for this
     _showInAppNotification(message);
+  }
+
+  /// Save notification to local storage
+  Future<void> _saveNotificationToLocalStorage(RemoteMessage message) async {
+    try {
+      final localStorage = LocalStorage();
+      await localStorage.init();
+
+      final notificationData = {
+        'id': message.messageId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        'title': message.notification?.title ?? 'FAYO Healthcare',
+        'body': message.notification?.body ?? '',
+        'type': message.data['type'],
+        'data': message.data,
+        'timestamp': DateTime.now().toIso8601String(),
+        'isRead': false,
+      };
+
+      await localStorage.saveNotification(notificationData);
+      debugPrint('💾 [FCM] Notification saved to local storage');
+    } catch (e) {
+      debugPrint('❌ [FCM] Error saving notification to local storage: $e');
+    }
   }
 
   /// Handle message tap (when user taps notification)
@@ -313,15 +345,154 @@ class FcmService {
     }
   }
 
-  /// Show in-app notification (when app is in foreground)
-  void _showInAppNotification(RemoteMessage message) {
-    // You can use a snackbar, dialog, or custom notification widget
-    // This is a placeholder - implement based on your UI needs
-    final title = message.notification?.title ?? 'Notification';
+  /// Initialize local notifications plugin
+  Future<void> _initializeLocalNotifications() async {
+    if (_localNotificationsInitialized) {
+      return;
+    }
+
+    try {
+      debugPrint('🔔 [FCM] Initializing local notifications...');
+      
+      // Android initialization settings
+      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      
+      // iOS initialization settings
+      const iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
+      
+      // Initialization settings
+      const initSettings = InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+      );
+      
+      // Initialize the plugin
+      final initialized = await _localNotifications.initialize(
+        initSettings,
+        onDidReceiveNotificationResponse: (details) {
+          debugPrint('👆 [FCM] User tapped local notification: ${details.id}');
+          debugPrint('   Payload: ${details.payload}');
+          
+          // Handle notification tap - parse payload and navigate
+          if (details.payload != null && details.payload!.isNotEmpty) {
+            try {
+              final data = jsonDecode(details.payload!);
+              debugPrint('   📦 Parsed notification data: $data');
+              
+              // Create a RemoteMessage-like object for navigation
+              final message = RemoteMessage(
+                notification: RemoteNotification(
+                  title: data['title']?.toString(),
+                  body: data['body']?.toString(),
+                ),
+                data: Map<String, dynamic>.from(data),
+              );
+              
+              debugPrint('   🏥 Hospital ID from payload: ${data['hospitalId']}');
+              debugPrint('   📋 Type: ${data['type']}');
+              
+              // Trigger navigation using the callback
+              if (onNotificationTap != null) {
+                debugPrint('🧭 [FCM] Triggering navigation callback...');
+                onNotificationTap!(message);
+              } else {
+                debugPrint('⚠️ [FCM] onNotificationTap callback not set - navigation will not work');
+                debugPrint('   Make sure FcmNavigationHelper.initialize() is called in main.dart');
+              }
+            } catch (e, stackTrace) {
+              debugPrint('❌ [FCM] Error parsing notification payload: $e');
+              debugPrint('   Payload was: ${details.payload}');
+              debugPrint('   Stack trace: $stackTrace');
+            }
+          } else {
+            debugPrint('⚠️ [FCM] Notification payload is null or empty');
+            debugPrint('   Cannot navigate without payload data');
+          }
+        },
+      );
+      
+      if (initialized == true) {
+        _localNotificationsInitialized = true;
+        debugPrint('✅ [FCM] Local notifications initialized');
+        
+        // Create notification channel for Android
+        if (Platform.isAndroid) {
+          const androidChannel = AndroidNotificationChannel(
+            'fayo_healthcare', // id (must match AndroidManifest.xml)
+            'FAYO Healthcare Notifications', // name
+            description: 'Notifications for appointments, new doctors, and updates',
+            importance: Importance.high,
+            playSound: true,
+            enableVibration: true,
+          );
+          
+          await _localNotifications
+              .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+              ?.createNotificationChannel(androidChannel);
+          
+          debugPrint('✅ [FCM] Android notification channel created');
+        }
+      } else {
+        debugPrint('❌ [FCM] Failed to initialize local notifications');
+      }
+    } catch (e) {
+      debugPrint('❌ [FCM] Error initializing local notifications: $e');
+    }
+  }
+
+  /// Show system notification (when app is in foreground or background)
+  Future<void> _showInAppNotification(RemoteMessage message) async {
+    final title = message.notification?.title ?? 'FAYO Healthcare';
     final body = message.notification?.body ?? '';
+    final data = message.data;
     
-    debugPrint('🔔 Showing in-app notification: $title - $body');
-    // TODO: Implement in-app notification UI
+    debugPrint('🔔 [FCM] Showing system notification: $title - $body');
+    
+    // Ensure local notifications are initialized
+    if (!_localNotificationsInitialized) {
+      await _initializeLocalNotifications();
+    }
+    
+    // Prepare notification details
+    const androidDetails = AndroidNotificationDetails(
+      'fayo_healthcare', // channel id (must match AndroidManifest.xml)
+      'FAYO Healthcare Notifications', // channel name
+      channelDescription: 'Notifications for appointments, new doctors, and updates',
+      importance: Importance.high,
+      priority: Priority.high,
+      showWhen: true,
+      enableVibration: true,
+      playSound: true,
+    );
+    
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    
+    const notificationDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+    
+    // Show the notification
+    try {
+      await _localNotifications.show(
+        message.hashCode, // Use message hash as notification ID
+        title,
+        body,
+        notificationDetails,
+        payload: jsonEncode(data), // Store notification data for tap handling
+      );
+      debugPrint('✅ [FCM] System notification shown successfully');
+    } catch (e) {
+      debugPrint('❌ [FCM] Error showing notification: $e');
+    }
   }
 
   /// Register token when user logs in
@@ -381,12 +552,34 @@ class FcmService {
 /// Background message handler (must be top-level function)
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  debugPrint('📨 Background message received: ${message.messageId}');
+  // Import LocalStorage here since this is a top-level function
+  final localStorage = LocalStorage();
+  await localStorage.init();
+  
+  debugPrint('📨 [Background] Message received: ${message.messageId}');
   debugPrint('   Title: ${message.notification?.title}');
   debugPrint('   Body: ${message.notification?.body}');
   debugPrint('   Data: ${message.data}');
   
-  // Handle background message processing here
-  // Note: You cannot show UI in background handler
+  // Save notification to local storage
+  try {
+    final notificationData = {
+      'id': message.messageId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      'title': message.notification?.title ?? 'FAYO Healthcare',
+      'body': message.notification?.body ?? '',
+      'type': message.data['type'],
+      'data': message.data,
+      'timestamp': DateTime.now().toIso8601String(),
+      'isRead': false,
+    };
+
+    await localStorage.saveNotification(notificationData);
+    debugPrint('💾 [Background] Notification saved to local storage');
+  } catch (e) {
+    debugPrint('❌ [Background] Error saving notification: $e');
+  }
+  
+  // Note: In background handler, we can't show notifications directly
+  // The system will show the notification automatically if it has notification payload
 }
 
