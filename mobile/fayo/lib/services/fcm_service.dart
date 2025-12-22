@@ -3,9 +3,11 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../core/constants/api_constants.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
 
 /// Firebase Cloud Messaging Service
 /// Handles push notifications for the FAYO Healthcare app
@@ -21,8 +23,43 @@ class FcmService {
 
   /// Initialize FCM service
   Future<void> initialize({String? userId}) async {
+    debugPrint('🚀 [FCM] Starting FCM initialization...');
+    debugPrint('   User ID: ${userId ?? "null (not logged in)"}');
+    
     try {
-      // Request permission for notifications
+      debugPrint('🔔 [FCM] Requesting notification permission...');
+      
+      // On Android 13+, we need to request POST_NOTIFICATIONS permission first
+      if (Platform.isAndroid) {
+        debugPrint('🤖 [FCM] Android detected - checking POST_NOTIFICATIONS permission...');
+        final androidStatus = await Permission.notification.status;
+        debugPrint('📋 [FCM] Android notification permission status: $androidStatus');
+        
+        if (androidStatus.isDenied) {
+          debugPrint('🔔 [FCM] Requesting Android notification permission...');
+          final result = await Permission.notification.request();
+          debugPrint('📋 [FCM] Android permission request result: $result');
+          
+          if (result.isDenied || result.isPermanentlyDenied) {
+            debugPrint('❌ [FCM] Android notification permission denied');
+            debugPrint('   User needs to enable notifications in app settings');
+            if (result.isPermanentlyDenied) {
+              debugPrint('   ⚠️ Permission permanently denied - user must enable in Settings');
+            }
+            return;
+          }
+          debugPrint('✅ [FCM] Android notification permission granted');
+        } else if (androidStatus.isGranted) {
+          debugPrint('✅ [FCM] Android notification permission already granted');
+        } else if (androidStatus.isPermanentlyDenied) {
+          debugPrint('❌ [FCM] Android notification permission permanently denied');
+          debugPrint('   User must enable notifications in app settings');
+          return;
+        }
+      }
+      
+      // Request permission for notifications (Firebase Messaging)
+      debugPrint('🔔 [FCM] Requesting Firebase Messaging permission...');
       NotificationSettings settings = await _firebaseMessaging.requestPermission(
         alert: true,
         badge: true,
@@ -30,36 +67,68 @@ class FcmService {
         provisional: false,
       );
 
+      debugPrint('📋 [FCM] Firebase permission status: ${settings.authorizationStatus}');
+      debugPrint('   Alert: ${settings.alert}');
+      debugPrint('   Badge: ${settings.badge}');
+      debugPrint('   Sound: ${settings.sound}');
+
       if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-        debugPrint('✅ User granted notification permission');
+        debugPrint('✅ [FCM] User granted Firebase notification permission');
       } else if (settings.authorizationStatus == AuthorizationStatus.provisional) {
-        debugPrint('⚠️ User granted provisional notification permission');
+        debugPrint('⚠️ [FCM] User granted provisional Firebase notification permission');
+      } else if (settings.authorizationStatus == AuthorizationStatus.denied) {
+        debugPrint('❌ [FCM] User denied Firebase notification permission');
+        debugPrint('   Cannot proceed without permission');
+        return;
+      } else if (settings.authorizationStatus == AuthorizationStatus.notDetermined) {
+        debugPrint('⚠️ [FCM] Firebase permission not determined yet');
+        return;
       } else {
-        debugPrint('❌ User declined notification permission');
+        debugPrint('❌ [FCM] Unknown Firebase permission status: ${settings.authorizationStatus}');
         return;
       }
 
+      debugPrint('🔑 [FCM] Getting FCM token from Firebase...');
+      
       // Get FCM token
       _fcmToken = await _firebaseMessaging.getToken();
+      
       if (_fcmToken != null) {
-        debugPrint('📱 FCM Token: $_fcmToken');
+        debugPrint('📱 [FCM] ✅ FCM Token generated successfully!');
+        debugPrint('📱 [FCM] Token: $_fcmToken');
+        debugPrint('📱 [FCM] Token length: ${_fcmToken!.length} characters');
+        debugPrint('💾 [FCM] Saving token to backend...');
         await _saveTokenToBackend(_fcmToken!, userId);
+      } else {
+        debugPrint('❌ [FCM] Failed to get FCM token - token is null');
+        debugPrint('   This might happen if:');
+        debugPrint('   - Firebase is not properly configured');
+        debugPrint('   - google-services.json is missing or incorrect');
+        debugPrint('   - App is not registered with Firebase');
       }
 
+      debugPrint('🔄 [FCM] Setting up token refresh listener...');
+      
       // Listen for token refresh
       _tokenSubscription = _firebaseMessaging.onTokenRefresh.listen(
         (newToken) {
-          debugPrint('🔄 FCM Token refreshed: $newToken');
+          debugPrint('🔄 [FCM] Token refreshed!');
+          debugPrint('📱 [FCM] New token: $newToken');
           _fcmToken = newToken;
           _saveTokenToBackend(newToken, userId);
         },
       );
 
+      debugPrint('📨 [FCM] Setting up foreground message listener...');
+      
       // Handle foreground messages
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
+      debugPrint('👆 [FCM] Setting up notification tap listener...');
+      
       // Handle background message taps
       FirebaseMessaging.onMessageOpenedApp.listen((message) {
+        debugPrint('👆 [FCM] User tapped notification (app was in background)');
         if (onNotificationTap != null) {
           onNotificationTap!(message);
         } else {
@@ -67,61 +136,100 @@ class FcmService {
         }
       });
 
+      debugPrint('🔍 [FCM] Checking for initial message (app opened from notification)...');
+      
       // Check if app was opened from a notification
       RemoteMessage? initialMessage = await _firebaseMessaging.getInitialMessage();
       if (initialMessage != null) {
+        debugPrint('📨 [FCM] App was opened from a notification!');
         if (onNotificationTap != null) {
           onNotificationTap!(initialMessage);
         } else {
           _handleMessageTap(initialMessage);
         }
+      } else {
+        debugPrint('ℹ️ [FCM] No initial message (app opened normally)');
       }
 
-      debugPrint('✅ FCM Service initialized successfully');
-    } catch (e) {
-      debugPrint('❌ Error initializing FCM: $e');
+      debugPrint('✅ [FCM] FCM Service initialized successfully!');
+      debugPrint('   Token: ${_fcmToken ?? "null"}');
+      debugPrint('   User ID: ${userId ?? "null"}');
+    } catch (e, stackTrace) {
+      debugPrint('❌ [FCM] Error initializing FCM: $e');
+      debugPrint('❌ [FCM] Stack trace: $stackTrace');
     }
   }
 
   /// Save FCM token to backend
   Future<void> _saveTokenToBackend(String token, String? userId) async {
+    debugPrint('💾 [FCM] _saveTokenToBackend called');
+    debugPrint('   Token: ${token.substring(0, 20)}...');
+    debugPrint('   User ID: ${userId ?? "null"}');
+    
     if (userId == null) {
+      debugPrint('⚠️ [FCM] No user ID - saving token temporarily');
       // Save token temporarily, will register when user logs in
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('pending_fcm_token', token);
+      debugPrint('💾 [FCM] Token saved to SharedPreferences as pending_fcm_token');
+      debugPrint('   Token will be registered when user logs in');
       return;
     }
 
     try {
+      debugPrint('🌐 [FCM] Preparing to send token to backend...');
       final prefs = await SharedPreferences.getInstance();
       final authToken = prefs.getString('auth_token');
+      
+      final platform = defaultTargetPlatform == TargetPlatform.android
+          ? 'android'
+          : defaultTargetPlatform == TargetPlatform.iOS
+              ? 'ios'
+              : 'web';
+      
+      final deviceId = await _getDeviceId();
+      
+      final url = '${ApiConstants.apiBaseUrl}/notifications/register-token';
+      debugPrint('🌐 [FCM] API URL: $url');
+      debugPrint('🌐 [FCM] Platform: $platform');
+      debugPrint('🌐 [FCM] Device ID: ${deviceId ?? "null"}');
+      debugPrint('🌐 [FCM] Auth token: ${authToken != null ? "present" : "missing"}');
+
+      final requestBody = {
+        'token': token,
+        'deviceId': deviceId,
+        'platform': platform,
+      };
+      
+      debugPrint('📤 [FCM] Sending POST request...');
+      debugPrint('   Body: ${jsonEncode(requestBody)}');
 
       final response = await http.post(
-        Uri.parse('${ApiConstants.apiBaseUrl}/notifications/register-token'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
           if (authToken != null) 'Authorization': 'Bearer $authToken',
         },
-        body: jsonEncode({
-          'token': token,
-          'deviceId': await _getDeviceId(),
-          'platform': defaultTargetPlatform == TargetPlatform.android
-              ? 'android'
-              : defaultTargetPlatform == TargetPlatform.iOS
-                  ? 'ios'
-                  : 'web',
-        }),
+        body: jsonEncode(requestBody),
       );
 
+      debugPrint('📥 [FCM] Response received');
+      debugPrint('   Status code: ${response.statusCode}');
+      debugPrint('   Response body: ${response.body}');
+
       if (response.statusCode == 200 || response.statusCode == 201) {
-        debugPrint('✅ FCM token registered with backend');
+        debugPrint('✅ [FCM] ✅✅✅ FCM token registered with backend successfully! ✅✅✅');
         // Clear pending token if exists
         await prefs.remove('pending_fcm_token');
+        debugPrint('🧹 [FCM] Cleared pending token from SharedPreferences');
       } else {
-        debugPrint('❌ Failed to register FCM token: ${response.statusCode}');
+        debugPrint('❌ [FCM] Failed to register FCM token');
+        debugPrint('   Status code: ${response.statusCode}');
+        debugPrint('   Response: ${response.body}');
       }
-    } catch (e) {
-      debugPrint('❌ Error registering FCM token: $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌ [FCM] Error registering FCM token: $e');
+      debugPrint('❌ [FCM] Stack trace: $stackTrace');
     }
   }
 
@@ -218,13 +326,24 @@ class FcmService {
 
   /// Register token when user logs in
   Future<void> registerTokenForUser(String userId) async {
+    debugPrint('👤 [FCM] registerTokenForUser called');
+    debugPrint('   User ID: $userId');
+    
     final prefs = await SharedPreferences.getInstance();
     final pendingToken = prefs.getString('pending_fcm_token');
     
+    debugPrint('   Pending token: ${pendingToken != null ? "exists" : "null"}');
+    debugPrint('   Current token: ${_fcmToken != null ? "exists" : "null"}');
+    
     if (pendingToken != null) {
+      debugPrint('💾 [FCM] Registering pending token...');
       await _saveTokenToBackend(pendingToken, userId);
     } else if (_fcmToken != null) {
+      debugPrint('💾 [FCM] Registering current token...');
       await _saveTokenToBackend(_fcmToken!, userId);
+    } else {
+      debugPrint('⚠️ [FCM] No token available to register');
+      debugPrint('   This might happen if FCM was not initialized');
     }
   }
 

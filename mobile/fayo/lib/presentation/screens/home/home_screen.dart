@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +15,7 @@ import '../../../presentation/providers/auth_provider.dart';
 import '../../widgets/call_invitation_dialog.dart';
 import '../../../core/navigation/nav_helper.dart';
 import '../hospitals/hospitals_screen.dart';
+import '../../../services/fcm_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -39,6 +41,36 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _adsPageController = PageController();
     _loadData();
     _setupWebSockets();
+    _initializeFCM();
+  }
+
+  /// Initialize FCM and request notification permission
+  Future<void> _initializeFCM() async {
+    debugPrint('🏠 [Home] Initializing FCM on home screen...');
+    
+    // Get current user
+    final user = ref.read(authProvider);
+    final userId = user?.id;
+    
+    debugPrint('🏠 [Home] Current user: ${userId ?? "not logged in"}');
+    
+    // Initialize FCM (this will request permission and get token)
+    // This should be called regardless of login status to request permission
+    try {
+      await FcmService().initialize(userId: userId);
+      
+      // If user is already logged in, register the token immediately
+      if (userId != null) {
+        debugPrint('🏠 [Home] User is logged in, registering FCM token...');
+        await FcmService().registerTokenForUser(userId);
+      } else {
+        debugPrint('🏠 [Home] User not logged in, token will be saved as pending');
+        debugPrint('🏠 [Home] Token will be registered automatically when user logs in (handled by AuthProvider)');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ [Home] Error initializing FCM: $e');
+      debugPrint('❌ [Home] Stack trace: $stackTrace');
+    }
   }
 
   Future<void> _loadData() async {

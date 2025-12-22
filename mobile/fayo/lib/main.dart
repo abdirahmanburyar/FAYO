@@ -25,14 +25,25 @@ void main() async {
   
   // Initialize Firebase
   try {
+    debugPrint('🔥 [Main] Initializing Firebase...');
     await Firebase.initializeApp();
-    debugPrint('✅ Firebase initialized');
+    debugPrint('✅ [Main] Firebase initialized successfully');
     
     // Set up background message handler
+    debugPrint('📨 [Main] Registering FCM background message handler...');
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-    debugPrint('✅ FCM background handler registered');
-  } catch (e) {
-    debugPrint('❌ Error initializing Firebase: $e');
+    debugPrint('✅ [Main] FCM background handler registered');
+    
+    // Check current notification permission status
+    final messaging = FirebaseMessaging.instance;
+    final settings = await messaging.getNotificationSettings();
+    debugPrint('📋 [Main] Current notification permission status: ${settings.authorizationStatus}');
+    debugPrint('   Alert: ${settings.alert}');
+    debugPrint('   Badge: ${settings.badge}');
+    debugPrint('   Sound: ${settings.sound}');
+  } catch (e, stackTrace) {
+    debugPrint('❌ [Main] Error initializing Firebase: $e');
+    debugPrint('❌ [Main] Stack trace: $stackTrace');
     // Continue without Firebase if initialization fails
   }
   

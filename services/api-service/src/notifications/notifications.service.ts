@@ -31,19 +31,42 @@ export class NotificationsService {
         // Method 1: Try to load from file (for development/local)
         const fs = require('fs');
         const path = require('path');
-        const serviceAccountPath = path.join(
-          process.cwd(),
-          'firebase-service-account.json'
-        );
+        
+        // Try multiple possible paths
+        const possiblePaths = [
+          path.join(process.cwd(), 'firebase-service-account.json'),
+          path.join(__dirname, '../../firebase-service-account.json'),
+          path.join(__dirname, '../../../firebase-service-account.json'),
+          path.join(process.cwd(), 'services/api-service/firebase-service-account.json'),
+        ];
+        
+        this.logger.log('🔍 [FCM] Looking for Firebase service account file...');
+        this.logger.log(`   Current working directory: ${process.cwd()}`);
+        this.logger.log(`   __dirname: ${__dirname}`);
+        
+        let serviceAccountPath: string | null = null;
+        for (const filePath of possiblePaths) {
+          if (fs.existsSync(filePath)) {
+            serviceAccountPath = filePath;
+            this.logger.log(`✅ [FCM] Found Firebase service account at: ${filePath}`);
+            break;
+          } else {
+            this.logger.log(`   ❌ Not found: ${filePath}`);
+          }
+        }
 
-        if (fs.existsSync(serviceAccountPath)) {
+        if (serviceAccountPath) {
           try {
             const serviceAccountFile = fs.readFileSync(serviceAccountPath, 'utf8');
             serviceAccount = JSON.parse(serviceAccountFile);
-            this.logger.log('✅ Firebase service account loaded from file');
+            this.logger.log('✅ [FCM] Firebase service account loaded from file');
+            this.logger.log(`   Project ID: ${(serviceAccount as any).project_id || (serviceAccount as any).projectId}`);
+            this.logger.log(`   Client Email: ${(serviceAccount as any).client_email || (serviceAccount as any).clientEmail}`);
           } catch (fileError) {
-            this.logger.warn('⚠️ Failed to read Firebase service account file:', fileError);
+            this.logger.error('❌ [FCM] Failed to read Firebase service account file:', fileError);
           }
+        } else {
+          this.logger.warn('⚠️ [FCM] Firebase service account file not found in any of the checked paths');
         }
 
         // Method 2: Try environment variable (for production)
