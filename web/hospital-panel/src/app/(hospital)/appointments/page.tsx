@@ -447,8 +447,9 @@ export default function AppointmentsPage() {
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
-  const formatCurrency = (cents: number) => {
-    return `$${(cents / 100).toFixed(2)}`;
+  const formatCurrency = (amount: number) => {
+    // Fee is already in dollars from API (not cents)
+    return `$${amount.toFixed(2)}`;
   };
 
   const formatAppointmentNumber = (number: number | undefined): string => {
@@ -496,7 +497,7 @@ export default function AppointmentsPage() {
   const handleOpenPaymentModal = async (appointment: Appointment) => {
     console.log('💳 Opening payment modal for appointment:', appointment.id);
     setSelectedAppointment(appointment);
-    setPaymentAmount((appointment.consultationFee / 100).toFixed(2));
+    setPaymentAmount(appointment.consultationFee.toFixed(2));
     setPaymentMethod('CASH');
     setPaymentNotes('');
     
@@ -774,7 +775,7 @@ export default function AppointmentsPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Revenue</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {formatCurrency(stats.revenue || 0)}
+                  {formatCurrency(stats.revenueUSD || stats.revenue || 0)}
                 </p>
               </div>
               <DollarSign className="w-8 h-8 text-blue-600" />
@@ -1124,7 +1125,7 @@ export default function AppointmentsPage() {
                     Consultation Fee
                   </label>
                   <div className="text-lg font-semibold text-gray-900">
-                    ${(selectedAppointment.consultationFee / 100).toFixed(2)}
+                    ${selectedAppointment.consultationFee.toFixed(2)}
                   </div>
                 </div>
 
