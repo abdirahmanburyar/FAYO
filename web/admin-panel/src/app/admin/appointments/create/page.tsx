@@ -48,23 +48,6 @@ interface AppointmentFormData {
   description: string;
 }
 
-// Helper function to check if shift is ongoing
-const checkIfShiftOngoing = (startTime?: string, endTime?: string): boolean => {
-  if (!startTime || !endTime) return false;
-  
-  const now = new Date();
-  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  
-  const [startH, startM] = startTime.split(':').map(Number);
-  const [endH, endM] = endTime.split(':').map(Number);
-  const [currentH, currentM] = currentTime.split(':').map(Number);
-  
-  const startMinutes = startH * 60 + startM;
-  const endMinutes = endH * 60 + endM;
-  const currentMinutes = currentH * 60 + currentM;
-  
-  return currentMinutes >= startMinutes && currentMinutes < endMinutes;
-};
 
 export default function CreateAppointmentPage() {
   const router = useRouter();
@@ -95,30 +78,12 @@ export default function CreateAppointmentPage() {
   const [selectedHospitalDoctor, setSelectedHospitalDoctor] = useState<any>(null); // HospitalDoctor association
   const [consultationFee, setConsultationFee] = useState<number>(0);
   const [isSelfEmployed, setIsSelfEmployed] = useState<boolean>(false);
-  const [isShiftOngoing, setIsShiftOngoing] = useState<boolean>(false);
   const [searchingPatient, setSearchingPatient] = useState(false);
   const [existingAppointments, setExistingAppointments] = useState<Appointment[]>([]);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
   const [loadingTimeSlots, setLoadingTimeSlots] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Helper function to check if shift is ongoing
-  const checkIfShiftOngoing = (startTime?: string, endTime?: string): boolean => {
-    if (!startTime || !endTime) return false;
-    
-    const now = new Date();
-    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    
-    const [startH, startM] = startTime.split(':').map(Number);
-    const [endH, endM] = endTime.split(':').map(Number);
-    const [currentH, currentM] = currentTime.split(':').map(Number);
-    
-    const startMinutes = startH * 60 + startM;
-    const endMinutes = endH * 60 + endM;
-    const currentMinutes = currentH * 60 + currentM;
-    
-    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
-  };
 
   // Loading states
   const [loadingDoctors, setLoadingDoctors] = useState(true);
@@ -246,7 +211,6 @@ export default function CreateAppointmentPage() {
           setFormData(prev => ({ ...prev, hospitalId: '' }));
           setSelectedHospital(null);
           setSelectedHospitalDoctor(null);
-          setIsShiftOngoing(false);
           // Use self-employed fee
           if (selectedDoctor) {
             setConsultationFee(selectedDoctor.selfEmployedConsultationFee || 0);
@@ -257,9 +221,6 @@ export default function CreateAppointmentPage() {
           setSelectedHospitalDoctor(association || null);
           
           if (association) {
-            // Check if shift is ongoing
-            const shiftOngoing = checkIfShiftOngoing(association.startTime, association.endTime);
-            setIsShiftOngoing(shiftOngoing);
             
             // IMPORTANT: Always use hospital-doctor association fee, never doctor's own fee
             // This ensures hospital pricing policies are followed
@@ -271,7 +232,6 @@ export default function CreateAppointmentPage() {
         } else {
           // Doctor has hospitals but none selected - still self-employed for this appointment
           setSelectedHospitalDoctor(null);
-          setIsShiftOngoing(false);
           if (selectedDoctor) {
             setConsultationFee(selectedDoctor.selfEmployedConsultationFee || 0);
           }
@@ -421,9 +381,6 @@ export default function CreateAppointmentPage() {
             setSelectedHospitalDoctor(association || null);
             
             if (association) {
-              // Check if shift is ongoing
-              const shiftOngoing = checkIfShiftOngoing(association.startTime, association.endTime);
-              setIsShiftOngoing(shiftOngoing);
               
               // IMPORTANT: Always use hospital-doctor association fee, never doctor's own fee
               // This ensures hospital pricing policies are followed
@@ -446,7 +403,6 @@ export default function CreateAppointmentPage() {
           const hospital = await hospitalApi.getHospitalById(formData.hospitalId);
           setSelectedHospital(hospital);
           setSelectedHospitalDoctor(null);
-          setIsShiftOngoing(false);
           setConsultationFee(0); // Wait for doctor assignment, then fee will be set from hospital-doctor association
         } catch (error) {
           console.error('Error loading hospital details:', error);
@@ -455,7 +411,6 @@ export default function CreateAppointmentPage() {
       } else {
         setSelectedHospital(null);
         setSelectedHospitalDoctor(null);
-        setIsShiftOngoing(false);
         // If self-employed or no hospital selected, use doctor's self-employed fee
         if (selectedDoctor && (isSelfEmployed || !formData.hospitalId)) {
           setConsultationFee(selectedDoctor.selfEmployedConsultationFee || 0);
@@ -502,24 +457,6 @@ export default function CreateAppointmentPage() {
     fetchExistingAppointments();
   }, [formData.hospitalId, formData.doctorId, formData.appointmentDate]);
 
-  // Periodically check if shift is ongoing (update every minute)
-  useEffect(() => {
-    if (!selectedHospitalDoctor || !selectedHospitalDoctor.startTime || !selectedHospitalDoctor.endTime) {
-      return;
-    }
-
-    // Check immediately
-    const shiftOngoing = checkIfShiftOngoing(selectedHospitalDoctor.startTime, selectedHospitalDoctor.endTime);
-    setIsShiftOngoing(shiftOngoing);
-
-    // Update every minute
-    const interval = setInterval(() => {
-      const ongoing = checkIfShiftOngoing(selectedHospitalDoctor.startTime, selectedHospitalDoctor.endTime);
-      setIsShiftOngoing(ongoing);
-    }, 60000); // Check every minute
-
-    return () => clearInterval(interval);
-  }, [selectedHospitalDoctor]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -700,88 +637,7 @@ export default function CreateAppointmentPage() {
     }
   };
 
-  // Generate smart time slots based on hospital shift or self-employed
-  const generateTimeSlots = () => {
-    let startHour = 8;
-    let endHour = 20;
-    let interval = 30; // minutes
-
-    // If hospital is selected, use hospital shift times
-    if (formData.hospitalId && selectedHospitalDoctor) {
-      if (selectedHospitalDoctor.startTime && selectedHospitalDoctor.endTime) {
-        const [startH, startM] = selectedHospitalDoctor.startTime.split(':').map(Number);
-        const [endH, endM] = selectedHospitalDoctor.endTime.split(':').map(Number);
-        startHour = startH;
-        const startMinute = startM;
-        endHour = endH;
-        const endMinute = endM;
-
-        // Generate slots within hospital shift
-        const slots = [];
-        let currentHour = startHour;
-        let currentMinute = startMinute;
-
-        while (
-          currentHour < endHour ||
-          (currentHour === endHour && currentMinute < endMinute)
-        ) {
-          const timeString = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
-          
-          // Check if this time slot conflicts with existing appointments (check by date AND time)
-          const isConflict = existingAppointments.some(apt => {
-            if (apt.status === 'CANCELLED' || apt.status === 'NO_SHOW' || apt.status === 'RESCHEDULED') {
-              return false;
-            }
-            const aptDate = new Date(apt.appointmentDate).toISOString().split('T')[0];
-            return aptDate === formData.appointmentDate && apt.appointmentTime === timeString;
-          });
-
-          if (!isConflict) {
-            slots.push(timeString);
-          }
-
-          // Move to next slot
-          currentMinute += interval;
-          if (currentMinute >= 60) {
-            currentMinute = 0;
-            currentHour++;
-          }
-        }
-
-        return slots;
-      }
-    } else if (formData.hospitalId && !selectedHospitalDoctor) {
-      // Hospital selected but no doctor assigned yet - use generic hours (e.g. 8-20)
-      // In real app, we might use hospital global hours
-      startHour = 8;
-      endHour = 20;
-    }
-
-    // Self-employed or no hospital shift defined - use default times (8 AM to 8 PM)
-    const slots = [];
-    for (let hour = startHour; hour < endHour; hour++) {
-      for (let minute = 0; minute < 60; minute += interval) {
-        const timeString = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-        
-        // Check if this time slot conflicts with existing appointments (check by date AND time)
-        const isConflict = existingAppointments.some(apt => {
-          if (apt.status === 'CANCELLED' || apt.status === 'NO_SHOW' || apt.status === 'RESCHEDULED') {
-            return false;
-          }
-          const aptDate = new Date(apt.appointmentDate).toISOString().split('T')[0];
-          return aptDate === formData.appointmentDate && apt.appointmentTime === timeString;
-        });
-
-        if (!isConflict) {
-          slots.push(timeString);
-        }
-      }
-    }
-
-    return slots;
-  };
-
-  const timeSlots = generateTimeSlots();
+  // Time slots are now fetched from the API via availableTimeSlots state
 
   return (
     <div className="space-y-6">
@@ -989,14 +845,6 @@ export default function CreateAppointmentPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Appointment Time <span className="text-red-500">*</span>
-                {formData.hospitalId && selectedHospitalDoctor && (
-                  <span className="ml-2 text-xs text-gray-500">
-                    (Hospital Shift: {selectedHospitalDoctor.startTime || 'N/A'} - {selectedHospitalDoctor.endTime || 'N/A'})
-                  </span>
-                )}
-                {formData.hospitalId && !selectedHospitalDoctor && (
-                  <span className="ml-2 text-xs text-gray-500">(General Hospital Hours: 8:00 AM - 8:00 PM)</span>
-                )}
               </label>
               {!formData.doctorId || !formData.appointmentDate ? (
                 <div className="text-sm text-gray-500">Please select a doctor and date first</div>
@@ -1018,28 +866,11 @@ export default function CreateAppointmentPage() {
                   required
                 >
                   <option value="">Select time</option>
-                  {timeSlots.map(time => {
-                    const isConflict = existingAppointments.some(apt => 
-                      apt.appointmentTime === time && 
-                      apt.status !== 'CANCELLED' && 
-                      apt.status !== 'NO_SHOW' && 
-                      apt.status !== 'RESCHEDULED'
-                    );
-                    return (
-                      <option 
-                        key={time} 
-                        value={time}
-                        disabled={isConflict}
-                      >
-                        {new Date(`2000-01-01T${time}`).toLocaleTimeString('en-US', { 
-                          hour: 'numeric', 
-                          minute: '2-digit',
-                          hour12: true 
-                        })}
-                        {isConflict ? ' (Booked)' : ''}
-                      </option>
-                    );
-                  })}
+                  {availableTimeSlots.map((time: string) => (
+                    <option key={time} value={time}>
+                      {time}
+                    </option>
+                  ))}
                 </select>
               )}
             </div>
@@ -1111,25 +942,19 @@ export default function CreateAppointmentPage() {
             <div className={`p-4 border rounded-lg ${
               isSelfEmployed 
                 ? 'bg-blue-50 border-blue-200' 
-                : isShiftOngoing 
-                  ? 'bg-green-50 border-green-200' 
-                  : 'bg-yellow-50 border-yellow-200'
+                : 'bg-green-50 border-green-200'
             }`}>
               <div className="flex items-center space-x-2">
                 <DollarSign className={`w-5 h-5 ${
                   isSelfEmployed 
                     ? 'text-blue-600' 
-                    : isShiftOngoing 
-                      ? 'text-green-600' 
-                      : 'text-yellow-600'
+                    : 'text-green-600'
                 }`} />
                 <div className="flex-1">
                   <p className={`text-sm font-medium ${
                     isSelfEmployed 
                       ? 'text-blue-800' 
-                      : isShiftOngoing 
-                        ? 'text-green-800' 
-                        : 'text-yellow-800'
+                      : 'text-green-800'
                   }`}>
                     {isSelfEmployed
                       ? 'Self-Employed Consultation Fee'
@@ -1138,34 +963,18 @@ export default function CreateAppointmentPage() {
                   <p className={`text-lg font-bold ${
                     isSelfEmployed 
                       ? 'text-blue-900' 
-                      : isShiftOngoing 
-                        ? 'text-green-900' 
-                        : 'text-yellow-900'
+                      : 'text-green-900'
                   }`}>
                     ${(consultationFee / 100).toFixed(2)}
                   </p>
                   {isSelfEmployed ? (
-                    <p className={`text-xs mt-1 ${
-                      isSelfEmployed ? 'text-blue-700' : 'text-yellow-700'
-                    }`}>
+                    <p className="text-xs mt-1 text-blue-700">
                       Doctor is self-employed (no hospital associations)
                     </p>
                   ) : formData.hospitalId && selectedHospitalDoctor ? (
-                    <div className="mt-1 space-y-1">
-                      <p className={`text-xs ${
-                        isShiftOngoing ? 'text-green-700' : 'text-yellow-700'
-                      }`}>
-                        Based on hospital association with {selectedHospital?.name}
-                      </p>
-                      {selectedHospitalDoctor.startTime && selectedHospitalDoctor.endTime && (
-                        <p className={`text-xs ${
-                          isShiftOngoing ? 'text-green-700' : 'text-yellow-700'
-                        }`}>
-                          Shift: {selectedHospitalDoctor.startTime} - {selectedHospitalDoctor.endTime}
-                          {isShiftOngoing ? ' (Currently Ongoing)' : ' (Not Currently Active)'}
-                        </p>
-                      )}
-                    </div>
+                    <p className="text-xs mt-1 text-green-700">
+                      Based on hospital association with {selectedHospital?.name}
+                    </p>
                   ) : null}
                 </div>
               </div>
