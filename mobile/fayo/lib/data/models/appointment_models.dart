@@ -12,7 +12,7 @@ class AppointmentDto {
   final String consultationType;
   final String? reason;
   final String? description;
-  final int consultationFee;
+  final num consultationFee;
   final String paymentStatus;
   final String createdAt;
   final String updatedAt;
@@ -52,7 +52,7 @@ class AppointmentDto {
       consultationType: json['consultationType'] ?? 'IN_PERSON',
       reason: json['reason'],
       description: json['description'],
-      consultationFee: json['consultationFee'] ?? 0,
+      consultationFee: (json['consultationFee'] ?? 0).toDouble(),
       paymentStatus: json['paymentStatus'] ?? 'PENDING',
       createdAt: json['createdAt'] ?? '',
       updatedAt: json['updatedAt'] ?? '',

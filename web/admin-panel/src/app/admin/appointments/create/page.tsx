@@ -422,6 +422,45 @@ export default function CreateAppointmentPage() {
     loadHospitalDetails();
   }, [formData.hospitalId, formData.doctorId, selectedDoctor, isSelfEmployed]);
 
+  // Fetch available time slots when doctor and date are selected
+  useEffect(() => {
+    const fetchAvailableTimeSlots = async () => {
+      if (!formData.doctorId || !formData.appointmentDate) {
+        setAvailableTimeSlots([]);
+        return;
+      }
+
+      try {
+        setLoadingTimeSlots(true);
+        // Ensure date is in YYYY-MM-DD format
+        let dateStr = formData.appointmentDate;
+        if (dateStr.includes('T')) {
+          dateStr = dateStr.split('T')[0];
+        }
+        // Normalize date format
+        const dateMatch = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (dateMatch) {
+          const year = dateMatch[1];
+          const month = dateMatch[2].padStart(2, '0');
+          const day = dateMatch[3].padStart(2, '0');
+          dateStr = `${year}-${month}-${day}`;
+        }
+        
+        console.log(`[APPOINTMENT] Fetching available time slots for doctor ${formData.doctorId} on ${dateStr}`);
+        const slots = await appointmentsApi.getAvailableTimeSlots(formData.doctorId, dateStr);
+        console.log(`[APPOINTMENT] Received ${slots.length} available time slots:`, slots);
+        setAvailableTimeSlots(slots);
+      } catch (error) {
+        console.error('[APPOINTMENT] Error fetching available time slots:', error);
+        setAvailableTimeSlots([]);
+      } finally {
+        setLoadingTimeSlots(false);
+      }
+    };
+
+    fetchAvailableTimeSlots();
+  }, [formData.doctorId, formData.appointmentDate]);
+
   // Fetch existing appointments for the selected hospital/doctor and date to check conflicts
   useEffect(() => {
     const fetchExistingAppointments = async () => {
@@ -752,11 +791,12 @@ export default function CreateAppointmentPage() {
               options={allHospitals}
               value={formData.hospitalId}
               onChange={async (value) => {
-                setFormData(prev => ({ ...prev, hospitalId: value, doctorId: '' }));
+                const hospitalId = Array.isArray(value) ? value[0] || '' : (value || '');
+                setFormData(prev => ({ ...prev, hospitalId, doctorId: '' }));
                 // Load hospital details to get booking policy
-                if (value) {
+                if (hospitalId) {
                   try {
-                    const hospital = await hospitalApi.getHospitalById(value);
+                    const hospital = await hospitalApi.getHospitalById(hospitalId);
                     setSelectedHospital(hospital);
                   } catch (err) {
                     console.error(err);
@@ -793,7 +833,10 @@ export default function CreateAppointmentPage() {
               <SearchableSelect
                 options={filteredDoctors}
                 value={formData.doctorId || ''}
-                onChange={(value) => setFormData({ ...formData, doctorId: value })}
+                onChange={(value) => {
+                  const doctorId = Array.isArray(value) ? value[0] || '' : (value || '');
+                  setFormData({ ...formData, doctorId });
+                }}
                 placeholder="Select a doctor from this hospital"
                 loading={loadingDoctors}
               />

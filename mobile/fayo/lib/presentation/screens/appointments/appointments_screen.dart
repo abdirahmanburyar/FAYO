@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../data/datasources/api_client.dart';
 import '../../../data/models/appointment_models.dart';
@@ -109,11 +108,17 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
 
   String _formatTime(String timeStr) {
     try {
-      // Handle both "HH:mm" and "HH:mm:ss" formats
+      // Handle both 12-hour format (e.g., "2:30 PM") and 24-hour format (e.g., "14:30")
+      if (timeStr.contains('AM') || timeStr.contains('PM')) {
+        // Already in 12-hour format, return as is
+        return timeStr;
+      }
+      
+      // Parse 24-hour format
       final parts = timeStr.split(':');
       if (parts.length >= 2) {
         final hour = int.parse(parts[0]);
-        final minute = parts[1];
+        final minute = parts[1].split(' ')[0]; // Remove seconds if present
         final period = hour >= 12 ? 'PM' : 'AM';
         final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
         return '$displayHour:$minute $period';
@@ -124,9 +129,9 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
     }
   }
 
-  String _formatFee(int fee) {
-    // Fee is already in dollars from API (not cents)
-    return '\$${fee.toStringAsFixed(2)}';
+  String _formatFee(num fee) {
+    // Display fee exactly as received from backend, no conversion or formatting
+    return fee.toString();
   }
 
   @override
@@ -370,17 +375,6 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: AppColors.gray600,
                 ),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: () => context.go('/doctors'),
-            icon: const Icon(Icons.add),
-            label: const Text('Find a Doctor'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.skyBlue600,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            ),
           ),
         ],
       ),

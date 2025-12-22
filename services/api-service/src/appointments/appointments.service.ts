@@ -506,6 +506,18 @@ export class AppointmentsService {
         appointmentDateStr = appointmentDateStr.split('T')[0];
       }
 
+      // Ensure date format is YYYY-MM-DD
+      const dateMatch = appointmentDateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (!dateMatch) {
+        throw new BadRequestException(`Invalid date format: ${date}. Expected format: YYYY-MM-DD`);
+      }
+      
+      // Normalize date format (ensure 2-digit month and day)
+      const year = dateMatch[1];
+      const month = dateMatch[2].padStart(2, '0');
+      const day = dateMatch[3].padStart(2, '0');
+      appointmentDateStr = `${year}-${month}-${day}`;
+
       // Get all appointments for this doctor on this date
       const appointments = await this.prisma.appointment.findMany({
         where: {
@@ -522,6 +534,8 @@ export class AppointmentsService {
           appointmentTime: true,
         },
       });
+
+      console.log(`[getAvailableTimeSlots] Found ${appointments.length} existing appointments for doctor ${doctorId} on ${appointmentDateStr}`);
 
       // Extract taken times (convert to 24-hour format for comparison)
       const takenTimes = new Set<string>();
@@ -565,8 +579,14 @@ export class AppointmentsService {
         }
       }
 
+      console.log(`[getAvailableTimeSlots] Generated ${allTimeSlots.length} available time slots for doctor ${doctorId} on ${appointmentDateStr}`);
+      if (takenTimes.size > 0) {
+        console.log(`[getAvailableTimeSlots] Taken times: ${Array.from(takenTimes).join(', ')}`);
+      }
+
       return allTimeSlots;
     } catch (error: any) {
+      console.error(`[getAvailableTimeSlots] Error:`, error);
       throw new Error(`Failed to get available time slots: ${error instanceof Error ? error.message : String(error)}`);
     }
   }

@@ -117,7 +117,6 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
           debugPrint('📋 Doctor ID: ${hospitalDoctor.doctorId}');
           debugPrint('📋 Hospital ID: ${hospitalDoctor.hospitalId}');
           debugPrint('📋 Role: ${hospitalDoctor.role}');
-          debugPrint('📋 Shift: ${hospitalDoctor.shift ?? "N/A"}');
           debugPrint('📋 Start Time: ${hospitalDoctor.startTime ?? "N/A"}');
           debugPrint('📋 End Time: ${hospitalDoctor.endTime ?? "N/A"}');
           debugPrint('📋 Consultation Fee: ${hospitalDoctor.consultationFee ?? "N/A"}');
@@ -720,6 +719,76 @@ class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
             },
           ),
         ),
+        const SizedBox(height: 16),
+        // Time slots display
+        if (_selectedDate == null)
+          Text(
+            'Please select a date to see available time slots',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.gray600,
+                ),
+          )
+        else if (_isLoadingTimeSlots)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else if (_availableTimeSlots.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.gray50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.gray200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: AppColors.gray600, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'No available time slots for this date',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.gray600,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _availableTimeSlots.map((time) {
+              final isSelected = _selectedTime == time;
+              
+              return GestureDetector(
+                onTap: () {
+                  setState(() => _selectedTime = time);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppColors.skyBlue600 : Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSelected ? AppColors.skyBlue600 : AppColors.gray200,
+                    ),
+                  ),
+                  child: Text(
+                    time,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : AppColors.gray700,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
       ],
     );
   }
