@@ -80,9 +80,26 @@ target 'Runner' do
 end
 ```
 
+### Update `android/app/src/main/AndroidManifest.xml`
+
+Add FCM permissions and metadata (already done):
+
+```xml
+<!-- Firebase Cloud Messaging Permissions -->
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+<uses-permission android:name="android.permission.VIBRATE"/>
+
+<!-- In <application> tag -->
+<meta-data
+    android:name="com.google.firebase.messaging.default_notification_channel_id"
+    android:value="fayo_healthcare" />
+```
+
+**Note**: For Flutter apps, you don't need to create a custom `MyFirebaseMessagingService` in Kotlin. FlutterFire (`firebase_messaging` package) handles this automatically.
+
 ### Update `ios/Runner/Info.plist`
 
-Add notification permissions (if not already present):
+Add notification permissions (already done):
 
 ```xml
 <key>UIBackgroundModes</key>

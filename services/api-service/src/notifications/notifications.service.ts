@@ -82,14 +82,17 @@ export class NotificationsService {
    */
   async registerToken(userId: string, token: string, deviceId?: string, platform?: string) {
     try {
+      this.logger.log(`📱 Registering FCM token for user ${userId} (platform: ${platform || 'unknown'})`);
+      
       // Check if token already exists
       const existing = await this.prisma.fcmToken.findUnique({
         where: { token },
       });
 
       if (existing) {
+        this.logger.log(`🔄 Updating existing FCM token for user ${userId}`);
         // Update existing token
-        return await this.prisma.fcmToken.update({
+        const updated = await this.prisma.fcmToken.update({
           where: { token },
           data: {
             userId,
@@ -99,10 +102,13 @@ export class NotificationsService {
             updatedAt: new Date(),
           },
         });
+        this.logger.log(`✅ FCM token updated successfully for user ${userId}`);
+        return updated;
       }
 
+      this.logger.log(`➕ Creating new FCM token for user ${userId}`);
       // Create new token
-      return await this.prisma.fcmToken.create({
+      const created = await this.prisma.fcmToken.create({
         data: {
           userId,
           token,
@@ -111,8 +117,10 @@ export class NotificationsService {
           isActive: true,
         },
       });
+      this.logger.log(`✅ FCM token registered successfully for user ${userId} (token ID: ${created.id})`);
+      return created;
     } catch (error) {
-      this.logger.error(`Error registering FCM token for user ${userId}:`, error);
+      this.logger.error(`❌ Error registering FCM token for user ${userId}:`, error);
       throw new BadRequestException('Failed to register FCM token');
     }
   }
@@ -122,12 +130,15 @@ export class NotificationsService {
    */
   async unregisterToken(token: string) {
     try {
-      return await this.prisma.fcmToken.updateMany({
+      this.logger.log(`🗑️ Unregistering FCM token: ${token.substring(0, 20)}...`);
+      const result = await this.prisma.fcmToken.updateMany({
         where: { token },
         data: { isActive: false },
       });
+      this.logger.log(`✅ FCM token unregistered (${result.count} token(s) deactivated)`);
+      return result;
     } catch (error) {
-      this.logger.error(`Error unregistering FCM token:`, error);
+      this.logger.error(`❌ Error unregistering FCM token:`, error);
     }
   }
 
@@ -135,6 +146,7 @@ export class NotificationsService {
    * Get all active FCM tokens for a user
    */
   async getUserTokens(userId: string): Promise<string[]> {
+    this.logger.log(`🔍 Fetching FCM tokens for user ${userId}`);
     const tokens = await this.prisma.fcmToken.findMany({
       where: {
         userId,
@@ -143,6 +155,7 @@ export class NotificationsService {
       select: { token: true },
     });
 
+    this.logger.log(`📱 Found ${tokens.length} active FCM token(s) for user ${userId}`);
     return tokens.map((t) => t.token);
   }
 
@@ -156,13 +169,19 @@ export class NotificationsService {
       throw new BadRequestException('userId is required');
     }
 
+    this.logger.log(`📤 Sending notification to user ${userId}: "${payload.title}"`);
+    this.logger.log(`   Body: "${payload.body}"`);
+    this.logger.log(`   Type: ${payload.data?.type || 'N/A'}`);
+    this.logger.log(`   Priority: ${priority}`);
+
     const tokens = await this.getUserTokens(userId);
     
     if (tokens.length === 0) {
-      this.logger.warn(`No FCM tokens found for user ${userId}`);
+      this.logger.warn(`⚠️ No FCM tokens found for user ${userId} - notification not sent`);
       return { success: false, message: 'No FCM tokens found' };
     }
 
+    this.logger.log(`📱 Sending to ${tokens.length} device(s) for user ${userId}`);
     return this.sendToTokens({ fcmTokens: tokens, payload, priority });
   }
 
@@ -219,11 +238,32 @@ export class NotificationsService {
     };
 
     try {
+      this.logger.log(`🚀 Sending FCM notification to ${tokens.length} token(s)`);
+      this.logger.log(`   Title: "${payload.title}"`);
+      this.logger.log(`   Body: "${payload.body}"`);
+      this.logger.log(`   Data: ${JSON.stringify(payload.data)}`);
+      
       const response = await admin.messaging().sendEachForMulticast(message);
       
       this.logger.log(
-        `✅ Sent ${response.successCount} notifications, ${response.failureCount} failed`
+        `✅ FCM Notification sent: ${response.successCount} successful, ${response.failureCount} failed`
       );
+
+      // Log detailed results
+      if (response.successCount > 0) {
+        this.logger.log(`   ✅ Successfully delivered to ${response.successCount} device(s)`);
+      }
+      
+      if (response.failureCount > 0) {
+        this.logger.warn(`   ⚠️ Failed to deliver to ${response.failureCount} device(s)`);
+        
+        // Log failure details
+        response.responses.forEach((resp, idx) => {
+          if (!resp.success) {
+            this.logger.warn(`   ❌ Token ${idx + 1} failed: ${resp.error?.code} - ${resp.error?.message}`);
+          }
+        });
+      }
 
       // Remove invalid tokens
       if (response.failureCount > 0) {
@@ -239,7 +279,7 @@ export class NotificationsService {
             where: { token: { in: invalidTokens } },
             data: { isActive: false },
           });
-          this.logger.log(`Removed ${invalidTokens.length} invalid FCM tokens`);
+          this.logger.log(`🗑️ Removed ${invalidTokens.length} invalid FCM token(s) from database`);
         }
       }
 
@@ -249,7 +289,9 @@ export class NotificationsService {
         failureCount: response.failureCount,
       };
     } catch (error) {
-      this.logger.error('Error sending FCM notification:', error);
+      this.logger.error('❌ Error sending FCM notification:', error);
+      this.logger.error(`   Payload: ${JSON.stringify(payload)}`);
+      this.logger.error(`   Token count: ${tokens.length}`);
       throw new BadRequestException('Failed to send notification');
     }
   }
@@ -266,6 +308,9 @@ export class NotificationsService {
     hoursBefore: number
   ) {
     const timeText = hoursBefore === 24 ? 'tomorrow' : `in ${hoursBefore} hours`;
+    
+    this.logger.log(`⏰ Sending appointment reminder to user ${userId}`);
+    this.logger.log(`   Appointment: ${appointmentId}, Doctor: ${doctorName}, ${hoursBefore}h before`);
     
     return this.sendToUser({
       userId,
@@ -293,6 +338,9 @@ export class NotificationsService {
     appointmentDate: Date,
     appointmentTime: string
   ) {
+    this.logger.log(`✅ Sending appointment confirmation to user ${userId}`);
+    this.logger.log(`   Appointment #${appointmentNumber} with ${doctorName} on ${appointmentDate.toLocaleDateString()}`);
+    
     return this.sendToUser({
       userId,
       payload: {
@@ -319,6 +367,9 @@ export class NotificationsService {
   ) {
     const amountInDollars = (amount / 100).toFixed(2);
     
+    this.logger.log(`💳 Sending payment confirmation to user ${userId}`);
+    this.logger.log(`   Payment: ${paymentId}, Amount: $${amountInDollars}`);
+    
     return this.sendToUser({
       userId,
       payload: {
@@ -344,6 +395,9 @@ export class NotificationsService {
     appointmentNumber: number,
     reason?: string
   ) {
+    this.logger.log(`❌ Sending appointment cancellation to user ${userId}`);
+    this.logger.log(`   Appointment #${appointmentNumber} cancelled${reason ? `: ${reason}` : ''}`);
+    
     return this.sendToUser({
       userId,
       payload: {
@@ -369,6 +423,9 @@ export class NotificationsService {
     appointmentDate: Date,
     appointmentTime: string
   ) {
+    this.logger.log(`👨‍⚕️ Sending new appointment notification to doctor ${doctorUserId}`);
+    this.logger.log(`   Patient: ${patientName}, Date: ${appointmentDate.toLocaleDateString()}, Time: ${appointmentTime}`);
+    
     return this.sendToUser({
       userId: doctorUserId,
       payload: {
@@ -395,6 +452,10 @@ export class NotificationsService {
     specialty?: string
   ) {
     try {
+      this.logger.log(`🏥 Notifying patients about new doctor at hospital`);
+      this.logger.log(`   Hospital: ${hospitalName} (${hospitalId})`);
+      this.logger.log(`   Doctor: ${doctorName}${specialty ? ` (${specialty})` : ''}`);
+      
       // Get all patient users (users who might be interested in new doctors)
       const patients = await this.prisma.user.findMany({
         where: {
@@ -407,8 +468,10 @@ export class NotificationsService {
         select: { id: true },
       });
 
+      this.logger.log(`👥 Found ${patients.length} active patient(s) to notify`);
+
       if (patients.length === 0) {
-        this.logger.warn('No patients found to notify about new doctor');
+        this.logger.warn('⚠️ No patients found to notify about new doctor');
         return { success: false, message: 'No patients found' };
       }
 
@@ -422,13 +485,17 @@ export class NotificationsService {
         select: { token: true },
       });
 
+      this.logger.log(`📱 Found ${tokens.length} active FCM token(s) across ${patients.length} patient(s)`);
+
       if (tokens.length === 0) {
-        this.logger.warn('No FCM tokens found for patients');
+        this.logger.warn('⚠️ No FCM tokens found for patients - notification not sent');
         return { success: false, message: 'No FCM tokens found' };
       }
 
       const fcmTokens = tokens.map(t => t.token);
       const specialtyText = specialty ? ` (${specialty})` : '';
+
+      this.logger.log(`📤 Broadcasting new doctor notification to ${fcmTokens.length} device(s)`);
 
       return this.sendToTokens({
         fcmTokens,
@@ -446,7 +513,9 @@ export class NotificationsService {
         priority: 'normal', // Normal priority for informational notifications
       });
     } catch (error) {
-      this.logger.error('Error notifying users about new doctor:', error);
+      this.logger.error('❌ Error notifying users about new doctor:', error);
+      this.logger.error(`   Hospital: ${hospitalName} (${hospitalId})`);
+      this.logger.error(`   Doctor: ${doctorName}`);
       throw new BadRequestException('Failed to send new doctor notification');
     }
   }

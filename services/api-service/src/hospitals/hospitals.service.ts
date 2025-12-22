@@ -705,6 +705,7 @@ export class HospitalsService {
 
       // Notify users about new doctor at hospital
       try {
+        this.logger.log(`📢 Triggering new doctor notification for hospital ${hospital.name} (${hospitalId})`);
         const doctor = await this.doctorsService.findOne(doctorId);
         const doctorName = doctor.user?.firstName && doctor.user?.lastName
           ? `${doctor.user.firstName} ${doctor.user.lastName}`
@@ -714,17 +715,25 @@ export class HospitalsService {
           ? doctor.specialties[0].name
           : undefined;
 
-        await this.notificationsService.notifyNewDoctorAtHospital(
+        this.logger.log(`   Doctor: ${doctorName}${specialtyName ? ` (${specialtyName})` : ''}`);
+
+        const notificationResult = await this.notificationsService.notifyNewDoctorAtHospital(
           hospitalId,
           hospital.name,
           doctorName,
           specialtyName
         );
 
-        this.logger.log(`✅ Sent notifications about new doctor ${doctorName} at ${hospital.name}`);
+        if (notificationResult?.success) {
+          this.logger.log(`✅ Successfully sent notifications about new doctor ${doctorName} at ${hospital.name}`);
+          this.logger.log(`   Delivered to ${notificationResult.successCount || 0} device(s)`);
+        } else {
+          this.logger.warn(`⚠️ Notification sent but may have failed: ${notificationResult?.message || 'Unknown error'}`);
+        }
       } catch (notificationError) {
         // Don't fail the operation if notification fails
-        this.logger.warn(`Failed to send new doctor notification: ${notificationError}`);
+        this.logger.error(`❌ Failed to send new doctor notification:`, notificationError);
+        this.logger.error(`   Hospital: ${hospital.name} (${hospitalId}), Doctor: ${doctorId}`);
       }
 
       return hospitalDoctor;

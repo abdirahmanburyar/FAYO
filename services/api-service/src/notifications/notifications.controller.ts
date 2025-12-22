@@ -6,6 +6,7 @@ import {
   Param,
   UseGuards,
   Delete,
+  Logger,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { NotificationsService } from './notifications.service';
@@ -31,6 +32,8 @@ interface SendNotificationDto {
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
 export class NotificationsController {
+  private readonly logger = new Logger(NotificationsController.name);
+
   constructor(private readonly notificationsService: NotificationsService) {}
 
   /**
@@ -42,12 +45,16 @@ export class NotificationsController {
     @CurrentUser() user: any,
     @Body() dto: RegisterTokenDto,
   ) {
-    return this.notificationsService.registerToken(
-      user.id || user.userId,
+    const userId = user.id || user.userId;
+    this.logger.log(`📱 POST /notifications/register-token - User: ${userId}, Platform: ${dto.platform || 'unknown'}`);
+    const result = await this.notificationsService.registerToken(
+      userId,
       dto.token,
       dto.deviceId,
       dto.platform,
     );
+    this.logger.log(`✅ Token registration completed for user ${userId}`);
+    return result;
   }
 
   /**
@@ -56,7 +63,10 @@ export class NotificationsController {
   @Delete('unregister-token/:token')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   async unregisterToken(@Param('token') token: string) {
-    return this.notificationsService.unregisterToken(token);
+    this.logger.log(`🗑️ DELETE /notifications/unregister-token - Token: ${token.substring(0, 20)}...`);
+    const result = await this.notificationsService.unregisterToken(token);
+    this.logger.log(`✅ Token unregistration completed`);
+    return result;
   }
 
   /**
@@ -65,8 +75,10 @@ export class NotificationsController {
   @Post('test')
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   async sendTestNotification(@CurrentUser() user: any) {
-    return this.notificationsService.sendToUser({
-      userId: user.id || user.userId,
+    const userId = user.id || user.userId;
+    this.logger.log(`🧪 POST /notifications/test - Sending test notification to user ${userId}`);
+    const result = await this.notificationsService.sendToUser({
+      userId,
       payload: {
         title: 'Test Notification',
         body: 'This is a test notification from FAYO Healthcare',
@@ -75,6 +87,8 @@ export class NotificationsController {
         },
       },
     });
+    this.logger.log(`✅ Test notification sent to user ${userId}`);
+    return result;
   }
 
   /**
@@ -83,7 +97,10 @@ export class NotificationsController {
   @Post('send')
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   async sendNotification(@Body() dto: SendNotificationDto) {
-    return this.notificationsService.sendToTokens({
+    this.logger.log(`📤 POST /notifications/send - Custom notification`);
+    this.logger.log(`   Title: "${dto.title}"`);
+    this.logger.log(`   Target: ${dto.userId ? `User ${dto.userId}` : dto.fcmTokens ? `${dto.fcmTokens.length} token(s)` : 'Single token'}`);
+    const result = await this.notificationsService.sendToTokens({
       userId: dto.userId,
       fcmToken: dto.fcmToken,
       fcmTokens: dto.fcmTokens,
@@ -94,6 +111,8 @@ export class NotificationsController {
         imageUrl: dto.imageUrl,
       },
     });
+    this.logger.log(`✅ Custom notification sent`);
+    return result;
   }
 
   /**
@@ -102,9 +121,10 @@ export class NotificationsController {
   @Get('tokens')
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   async getUserTokens(@CurrentUser() user: any) {
-    const tokens = await this.notificationsService.getUserTokens(
-      user.id || user.userId,
-    );
+    const userId = user.id || user.userId;
+    this.logger.log(`🔍 GET /notifications/tokens - Fetching tokens for user ${userId}`);
+    const tokens = await this.notificationsService.getUserTokens(userId);
+    this.logger.log(`✅ Found ${tokens.length} token(s) for user ${userId}`);
     return { tokens };
   }
 }
