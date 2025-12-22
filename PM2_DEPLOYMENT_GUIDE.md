@@ -57,8 +57,8 @@ chmod +x setup-pm2.sh
 ```
 
 This will:
-- Install dependencies for both services
-- Build both applications
+- Install dependencies for all services (api-service, admin-panel, hospital-panel)
+- Build all applications
 - Create necessary directories
 
 ### Step 2: Setup Infrastructure
@@ -101,6 +101,7 @@ pm2 logs
 # View specific service logs
 pm2 logs fayo-api-service
 pm2 logs fayo-admin-panel
+pm2 logs fayo-hospital-panel
 ```
 
 **See `START_SERVERS.md` for detailed startup instructions.**
@@ -126,14 +127,19 @@ pm2 start ecosystem.config.js
 pm2 stop all
 pm2 stop fayo-api-service
 pm2 stop fayo-admin-panel
+pm2 stop fayo-hospital-panel
 
 # Restart services
 pm2 restart all
 pm2 restart fayo-api-service
+pm2 restart fayo-admin-panel
+pm2 restart fayo-hospital-panel
 
 # Delete services
 pm2 delete all
 pm2 delete fayo-api-service
+pm2 delete fayo-admin-panel
+pm2 delete fayo-hospital-panel
 
 # View status
 pm2 status
@@ -142,12 +148,16 @@ pm2 list
 # View logs
 pm2 logs
 pm2 logs fayo-api-service --lines 100
+pm2 logs fayo-admin-panel --lines 100
+pm2 logs fayo-hospital-panel --lines 100
 
 # Monitor resources
 pm2 monit
 
 # Reload (zero-downtime restart)
 pm2 reload fayo-api-service
+pm2 reload fayo-admin-panel
+pm2 reload fayo-hospital-panel
 ```
 
 ## Environment Variables
@@ -168,8 +178,15 @@ NEXT_PUBLIC_API_URL=http://72.62.51.50:3001/api/v1
 
 ### Update API Service URL
 
-Since we're not using Docker, update `web/admin-panel/src/config/api.ts`:
+Since we're not using Docker, update the API service URLs in both panels:
 
+**Admin Panel** (`web/admin-panel/src/config/api.ts`):
+```typescript
+// Change from Docker service name to localhost
+return 'http://localhost:3001';  // Instead of 'http://api-service:3001'
+```
+
+**Hospital Panel** (`web/hospital-panel/src/config/api.ts`):
 ```typescript
 // Change from Docker service name to localhost
 return 'http://localhost:3001';  // Instead of 'http://api-service:3001'
@@ -210,6 +227,11 @@ npm run build
 cd ../../web/admin-panel
 npm ci --legacy-peer-deps --no-audit --no-fund
 npm run build
+
+# Hospital Panel
+cd ../hospital-panel
+npm ci --legacy-peer-deps --no-audit --no-fund
+npm run build
 ```
 
 ### 3. Run Migrations (if needed)
@@ -244,6 +266,7 @@ pm2 status
 # View detailed info
 pm2 describe fayo-api-service
 pm2 describe fayo-admin-panel
+pm2 describe fayo-hospital-panel
 ```
 
 ## Troubleshooting
@@ -255,8 +278,9 @@ pm2 describe fayo-admin-panel
 pm2 logs fayo-api-service --err
 
 # Check if port is in use
-netstat -tuln | grep 3001
-netstat -tuln | grep 3000
+netstat -tuln | grep 3001  # API Service
+netstat -tuln | grep 3000  # Admin Panel
+netstat -tuln | grep 8000  # Hospital Panel
 
 # Check environment variables
 pm2 env fayo-api-service
@@ -302,12 +326,18 @@ max_memory_restart: '300M'  # Instead of 500M
 
 **Best approach**: Hybrid
 - **Infrastructure** (PostgreSQL, Redis, RabbitMQ) → Docker
-- **Applications** (api-service, admin-panel) → PM2
+- **Applications** (api-service, admin-panel, hospital-panel) → PM2
 
 This gives you:
 - Easy infrastructure management (Docker)
 - Fast, efficient application runtime (PM2)
 - Best of both worlds
+
+## Application Ports
+
+- **API Service**: Port `3001` - Backend API service
+- **Admin Panel**: Port `3000` - Admin management interface
+- **Hospital Panel**: Port `8000` - Hospital management interface
 
 ## Quick Start
 

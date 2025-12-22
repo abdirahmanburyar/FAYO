@@ -102,6 +102,36 @@ module.exports = {
       watch: false,
       ignore_watch: ['node_modules', '.next', 'logs', '.git'],
     },
+    {
+      name: 'fayo-hospital-panel',
+      script: 'npm',
+      args: 'start',
+      cwd: './web/hospital-panel',
+      instances: 1,
+      exec_mode: 'fork',
+      env: {
+        NODE_ENV: 'production',
+        NODE_OPTIONS: '--max-old-space-size=256',
+        PORT: 8000,
+        HOSTNAME: '0.0.0.0',
+        // Server-side URLs (for API routes)
+        API_SERVICE_URL: process.env.API_SERVICE_URL || 'http://localhost:3001',
+        // Client-side URLs (for browser)
+        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://72.62.51.50:3001/api/v1',
+        NEXT_TELEMETRY_DISABLED: '1',
+      },
+      error_file: './logs/hospital-panel-error.log',
+      out_file: './logs/hospital-panel-out.log',
+      log_file: './logs/hospital-panel.log',
+      time: true,
+      merge_logs: true,
+      autorestart: true,
+      max_restarts: 10,
+      min_uptime: '10s',
+      max_memory_restart: '400M',
+      watch: false,
+      ignore_watch: ['node_modules', '.next', 'logs', '.git'],
+    },
   ],
 };
 

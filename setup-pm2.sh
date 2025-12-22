@@ -114,6 +114,27 @@ NODE_OPTIONS="--max-old-space-size=3072" npm run build
 
 cd ../..
 
+# Install dependencies for hospital-panel
+echo "📦 Installing hospital-panel dependencies..."
+cd web/hospital-panel
+if [ -f package-lock.json ]; then
+    npm ci --legacy-peer-deps --no-audit --no-fund
+else
+    npm install --legacy-peer-deps --no-audit --no-fund
+fi
+
+# Install critters if not already installed (needed for optimizeCss)
+if ! npm list critters &>/dev/null; then
+    echo "📦 Installing critters (required for CSS optimization)..."
+    npm install --save-dev critters --legacy-peer-deps --no-audit --no-fund
+fi
+
+# Build hospital-panel
+echo "🔨 Building hospital-panel..."
+NODE_OPTIONS="--max-old-space-size=3072" npm run build
+
+cd ../..
+
 # Create uploads directories
 echo "📁 Creating upload directories..."
 mkdir -p services/api-service/uploads/{ads,doctors,hospitals,users}
