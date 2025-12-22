@@ -23,6 +23,7 @@ import { DoctorsModule } from './doctors/doctors.module';
 import { PaymentsModule } from './payments/payments.module';
 import { HospitalsModule } from './hospitals/hospitals.module';
 import { AppointmentsModule } from './appointments/appointments.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { AppointmentsModule } from './appointments/appointments.module';
     PaymentsModule,
     HospitalsModule,
     AppointmentsModule,
+    NotificationsModule,
   ],
   controllers: [HealthController],
   providers: [

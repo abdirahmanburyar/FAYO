@@ -78,6 +78,14 @@ class AppRouter {
         },
       ),
       GoRoute(
+        path: '/hospitals/:hospitalId',
+        name: 'hospital-details-by-id',
+        builder: (context, state) {
+          final hospitalId = state.pathParameters['hospitalId'] ?? '';
+          return HospitalDetailsScreen(hospitalId: hospitalId);
+        },
+      ),
+      GoRoute(
         path: '/doctors',
         name: 'doctors',
         builder: (context, state) => const DoctorsScreen(),

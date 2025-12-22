@@ -48,6 +48,11 @@ module.exports = {
         // Waafipay
         WAAFIPAY_ENV: process.env.WAAFIPAY_ENV || 'sandbox',
         WAAFIPAY_API_URL: process.env.WAAFIPAY_API_URL || 'https://api.waafipay.com/asm',
+        // Firebase Cloud Messaging (FCM)
+        // Option 1: Place firebase-service-account.json in services/api-service/ directory
+        // Option 2: Set FIREBASE_SERVICE_ACCOUNT as JSON string (recommended for production)
+        // Get from Firebase Console > Project Settings > Service Accounts > Generate New Private Key
+        FIREBASE_SERVICE_ACCOUNT: process.env.FIREBASE_SERVICE_ACCOUNT || '',
         WAAFIPAY_MERCHANT_UID: process.env.WAAFIPAY_MERCHANT_UID || 'M0913664',
         WAAFIPAY_API_USER_ID: process.env.WAAFIPAY_API_USER_ID || '1007468',
         WAAFIPAY_API_KEY: process.env.WAAFIPAY_API_KEY || 'API-1101188487AHX',

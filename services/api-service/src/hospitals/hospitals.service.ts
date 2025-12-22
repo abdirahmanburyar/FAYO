@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { PrismaService } from '../common/database/prisma.service';
 import { SpecialtiesService } from '../specialties/specialties.service';
 import { UsersService } from '../users/users.service';
 import { DoctorsService } from '../doctors/doctors.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CreateHospitalDto } from './dto/create-hospital.dto';
 import { UpdateHospitalDto } from './dto/update-hospital.dto';
 import { AddDoctorDto } from './dto/add-doctor.dto';
@@ -10,12 +11,15 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 
 @Injectable()
 export class HospitalsService {
+  private readonly logger = new Logger(HospitalsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
     private readonly specialtiesService: SpecialtiesService,
     private readonly usersService: UsersService,
     private readonly doctorsService: DoctorsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(createHospitalDto: CreateHospitalDto) {
@@ -698,6 +702,30 @@ export class HospitalsService {
           status: status || 'ACTIVE',
         },
       });
+
+      // Notify users about new doctor at hospital
+      try {
+        const doctor = await this.doctorsService.findOne(doctorId);
+        const doctorName = doctor.user?.firstName && doctor.user?.lastName
+          ? `${doctor.user.firstName} ${doctor.user.lastName}`
+          : doctor.user?.firstName || doctor.user?.email || 'New Doctor';
+        
+        const specialtyName = doctor.specialties && doctor.specialties.length > 0
+          ? doctor.specialties[0].name
+          : undefined;
+
+        await this.notificationsService.notifyNewDoctorAtHospital(
+          hospitalId,
+          hospital.name,
+          doctorName,
+          specialtyName
+        );
+
+        this.logger.log(`✅ Sent notifications about new doctor ${doctorName} at ${hospital.name}`);
+      } catch (notificationError) {
+        // Don't fail the operation if notification fails
+        this.logger.warn(`Failed to send new doctor notification: ${notificationError}`);
+      }
 
       return hospitalDoctor;
     } catch (error) {
