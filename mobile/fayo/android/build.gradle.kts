@@ -4,8 +4,8 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        // Google Services plugin for Firebase
-        classpath("com.google.gms:google-services:4.4.0")
+        // Add the dependency for the Google services Gradle plugin
+        classpath("com.google.gms:google-services:4.4.4")
     }
 }
 

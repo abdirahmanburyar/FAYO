@@ -3,9 +3,15 @@
  * 
  * Add this to your appointments.service.ts to send notifications
  * when appointments are created, updated, or cancelled.
+ * 
+ * NOTE: This is an example file - copy the code into your actual service file.
+ * This file is excluded from TypeScript compilation.
  */
 
+/*
 import { NotificationsService } from '../notifications/notifications.service';
+import { PrismaService } from '../common/database/prisma.service';
+import { CreateAppointmentDto } from './dto/create-appointment.dto';
 
 // In your AppointmentsService constructor, inject NotificationsService:
 // constructor(
@@ -126,4 +132,4 @@ async cancelAppointment(id: string, reason?: string) {
   
   return appointment;
 }
-
+*/

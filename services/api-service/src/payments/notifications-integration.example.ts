@@ -3,9 +3,15 @@
  * 
  * Add this to your payments.service.ts to send notifications
  * when payments are processed.
+ * 
+ * NOTE: This is an example file - copy the code into your actual service file.
+ * This file is excluded from TypeScript compilation.
  */
 
+/*
 import { NotificationsService } from '../notifications/notifications.service';
+import { PrismaService } from '../common/database/prisma.service';
+import { CreatePaymentDto } from './dto/create-payment.dto';
 
 // In your PaymentsService constructor, inject NotificationsService:
 // constructor(
@@ -49,4 +55,4 @@ async createPayment(dto: CreatePaymentDto) {
   
   return payment;
 }
-
+*/

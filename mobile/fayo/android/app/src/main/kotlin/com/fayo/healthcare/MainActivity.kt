@@ -1,4 +1,4 @@
-package com.example.fayo
+package com.fayo.healthcare
 
 import io.flutter.embedding.android.FlutterActivity
 
