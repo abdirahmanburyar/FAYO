@@ -226,7 +226,8 @@ npm run build
 # Admin Panel
 cd ../../web/admin-panel
 npm ci --legacy-peer-deps --no-audit --no-fund
-npm run build
+# Use increased memory for build to prevent hanging
+NODE_OPTIONS='--max-old-space-size=4096' npm run build
 
 # Hospital Panel
 cd ../hospital-panel

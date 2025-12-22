@@ -110,7 +110,7 @@ fi
 
 # Build admin-panel
 echo "🔨 Building admin-panel..."
-NODE_OPTIONS="--max-old-space-size=3072" npm run build
+NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
 cd ../..
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/constants/api_constants.dart';
 import '../../../data/datasources/api_client.dart';
 import '../../../data/models/hospital_models.dart';
 
@@ -82,15 +83,11 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
                           )
                         : ListView.builder(
                             physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.only(bottom: 16),
+                            padding: const EdgeInsets.only(top: 12, bottom: 16),
                             itemCount: _hospitals.length,
                             itemBuilder: (context, index) {
                               final hospital = _hospitals[index];
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                child: _buildHospitalCard(context, hospital),
-                              );
+                              return _buildHospitalCard(context, hospital);
                             },
                           ),
               ),
@@ -236,39 +233,251 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
   }
 
   Widget _buildHospitalCard(BuildContext context, HospitalDto hospital) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 3,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
+    final imageUrl = _getHospitalImageUrl(hospital.logoUrl);
+    
+    return InkWell(
+      onTap: () => context.push('/hospital-details?id=${hospital.id}'),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildLogo(hospital.logoUrl),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    hospital.name,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
+            // Hospital Image/Logo - Prefix (Left Side)
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    bottomLeft: Radius.circular(16),
+                  ),
+                  child: Container(
+                    width: 120,
+                    height: 140,
+                    color: AppColors.gray100,
+                    child: imageUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                            imageUrl: imageUrl,
+                            fit: BoxFit.cover,
+                            width: 120,
+                            height: 140,
+                            placeholder: (context, url) => Container(
+                              width: 120,
+                              height: 140,
+                              color: AppColors.gray100,
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.skyBlue600,
+                                ),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => _buildImagePlaceholder(),
+                          )
+                        : _buildImagePlaceholder(),
+                  ),
+                ),
+                // Type Badge
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: hospital.type == 'HOSPITAL'
+                          ? AppColors.skyBlue600
+                          : Colors.green.shade600,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
                         ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          hospital.type == 'HOSPITAL'
+                              ? Icons.local_hospital
+                              : Icons.medical_services,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          hospital.type == 'HOSPITAL' ? 'Hospital' : 'Clinic',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      _infoPill(Icons.public, hospital.city ?? 'Unknown'),
-                    ],
+                ),
+                // Active Status Badge
+                if (hospital.isActive)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.check_circle,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                    ),
                   ),
-                ],
-              ),
+              ],
             ),
-            IconButton(
-              onPressed: () =>
-                  context.push('/hospital-details?id=${hospital.id}'),
-              icon: const Icon(Icons.chevron_right, color: AppColors.gray500),
+            // Hospital Info Section - Right Side
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Hospital Name
+                    Text(
+                      hospital.name,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.gray900,
+                            fontSize: 16,
+                          ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    // Location Info
+                    if (hospital.city != null || hospital.address != null)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            size: 16,
+                            color: AppColors.gray600,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              hospital.address != null && hospital.city != null
+                                  ? '${hospital.address}, ${hospital.city}'
+                                  : hospital.city ?? hospital.address ?? 'Location not available',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppColors.gray600,
+                                    fontSize: 12,
+                                  ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    // Specialties Section
+                    if (hospital.specialties.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: hospital.specialties
+                            .take(2)
+                            .map((specialty) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.skyBlue50,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: AppColors.skyBlue200,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    specialty.name,
+                                    style: const TextStyle(
+                                      color: AppColors.skyBlue700,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ))
+                            .toList(),
+                      ),
+                      if (hospital.specialties.length > 2)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            '+${hospital.specialties.length - 2} more',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppColors.skyBlue600,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 10,
+                                ),
+                          ),
+                        ),
+                    ],
+                    const Spacer(),
+                    // View Details Button
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.skyBlue600,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'View Details',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.arrow_forward,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -276,59 +485,43 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
     );
   }
 
-  Widget _buildLogo(String? logoUrl) {
+  Widget _buildImagePlaceholder() {
+    return Container(
+      width: 120,
+      height: 140,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.skyBlue100,
+            AppColors.skyBlue200,
+          ],
+        ),
+      ),
+      child: const Center(
+        child: Icon(
+          Icons.local_hospital,
+          size: 48,
+          color: AppColors.skyBlue600,
+        ),
+      ),
+    );
+  }
+
+  String _getHospitalImageUrl(String? logoUrl) {
     if (logoUrl == null || logoUrl.isEmpty) {
-      return _logoPlaceholder();
+      return '';
     }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: CachedNetworkImage(
-        imageUrl: logoUrl,
-        width: 80,
-        height: 80,
-        fit: BoxFit.cover,
-        placeholder: (_, __) => _logoPlaceholder(),
-        errorWidget: (_, __, ___) => _logoPlaceholder(),
-      ),
-    );
+    if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
+      return logoUrl;
+    }
+    final baseUrl = ApiConstants.apiBaseUrl.replaceFirst('/api/v1', '');
+    final path = logoUrl.startsWith('/') ? logoUrl : '/$logoUrl';
+    return '$baseUrl$path';
   }
 
-  Widget _logoPlaceholder() {
-    return Container(
-      width: 80,
-      height: 80,
-      decoration: BoxDecoration(
-        color: AppColors.gray100,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Icon(Icons.local_hospital, color: AppColors.skyBlue600),
-    );
-  }
 
-  Widget _infoPill(IconData icon, String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.gray100,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: AppColors.gray600),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: const TextStyle(
-              color: AppColors.gray700,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildSkeletonList() {
     return Column(
@@ -342,39 +535,50 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
     );
   }
   Widget _skeletonCard() {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _shimmerBox(width: 80, height: 80, radius: 12),
-            const SizedBox(width: 12),
-            Expanded(
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image skeleton
+          _shimmerBox(width: 120, height: 140, radius: 16),
+          // Content skeleton
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _shimmerBox(width: 140, height: 16),
+                  _shimmerBox(width: 150, height: 18),
                   const SizedBox(height: 8),
-                  _shimmerBox(width: 200, height: 14),
-                  const SizedBox(height: 12),
+                  _shimmerBox(width: 120, height: 14),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
-                      _shimmerBox(width: 70, height: 26, radius: 999),
-                      const SizedBox(width: 8),
-                      _shimmerBox(width: 60, height: 26, radius: 999),
-                      const SizedBox(width: 8),
-                      _shimmerBox(width: 50, height: 26, radius: 999),
+                      _shimmerBox(width: 60, height: 20, radius: 8),
+                      const SizedBox(width: 6),
+                      _shimmerBox(width: 50, height: 20, radius: 8),
                     ],
                   ),
+                  const Spacer(),
+                  const SizedBox(height: 8),
+                  _shimmerBox(width: double.infinity, height: 32, radius: 10),
                 ],
               ),
             ),
-            _shimmerBox(width: 20, height: 20, radius: 6),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

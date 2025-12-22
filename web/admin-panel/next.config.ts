@@ -10,8 +10,8 @@ const nextConfig: NextConfig = {
   experimental: {
     // Enable parallel webpack builds for faster compilation
     webpackBuildWorker: true,
-    // Optimize CSS handling (requires critters package)
-    optimizeCss: true,
+    // Optimize CSS handling (requires critters package) - Disable if causing slow builds
+    optimizeCss: false, // Disabled to speed up builds
     // Enable aggressive tree-shaking for package imports
     optimizePackageImports: [
       '@mui/material',
@@ -21,22 +21,26 @@ const nextConfig: NextConfig = {
       '@mui/x-date-pickers',
       'framer-motion',
     ],
+    // Disable some experimental features that might slow down builds
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
   },
   // Reduce bundle size by optimizing server components (moved from experimental)
   serverExternalPackages: ['@prisma/client'],
-  // Webpack optimizations for smaller bundle
+  // Webpack optimizations - Simplified to speed up builds
   webpack: (config, { isServer, dev }) => {
+    // Only apply complex optimizations in production and for client builds
     if (!dev && !isServer) {
-      // Production client-side optimizations
+      // Simplified code splitting - less aggressive to speed up builds
       config.optimization = {
         ...config.optimization,
-        // Aggressive code splitting
         splitChunks: {
           chunks: 'all',
           cacheGroups: {
             default: false,
             vendors: false,
-            // Vendor chunks
+            // Framework chunk
             framework: {
               name: 'framework',
               chunks: 'all',
@@ -44,9 +48,10 @@ const nextConfig: NextConfig = {
               priority: 40,
               enforce: true,
             },
+            // Large libraries chunk
             lib: {
               test(module: any) {
-                return module.size() > 160000 && /node_modules[/\\]/.test(module.identifier());
+                return module.size() > 200000 && /node_modules[/\\]/.test(module.identifier());
               },
               name(module: any) {
                 const hash = require('crypto').createHash('sha1');
@@ -57,22 +62,11 @@ const nextConfig: NextConfig = {
               minChunks: 1,
               reuseExistingChunk: true,
             },
+            // Common chunks
             commons: {
               name: 'commons',
-              minChunks: 2,
+              minChunks: 3, // Increased from 2 to reduce chunks
               priority: 20,
-            },
-            shared: {
-              name(module: any, chunks: any) {
-                return require('crypto')
-                  .createHash('sha1')
-                  .update(chunks.reduce((acc: string, chunk: any) => acc + chunk.name, ''))
-                  .digest('hex')
-                  .substring(0, 8);
-              },
-              priority: 10,
-              minChunks: 2,
-              reuseExistingChunk: true,
             },
           },
         },
