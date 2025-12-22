@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
@@ -17,46 +16,17 @@ class HospitalDetailsScreen extends StatefulWidget {
   State<HospitalDetailsScreen> createState() => _HospitalDetailsScreenState();
 }
 
-class _HospitalDetailsScreenState extends State<HospitalDetailsScreen>
-    with SingleTickerProviderStateMixin {
+class _HospitalDetailsScreenState extends State<HospitalDetailsScreen> {
   final ApiClient _apiClient = ApiClient();
   HospitalDto? _hospital;
   List<HospitalDoctorDto> _doctors = [];
   bool _isLoading = true;
-  late TabController _tabController;
-  int _selectedTabIndex = 0;
   bool _isFavorite = false;
-  bool _isAboutExpanded = false;
-
-  // Mock data for features not in API yet
-  final double _rating = 4.8;
-  final int _reviewCount = 1204;
-  final String _distance = "1.2 miles away";
-  final String _hours = "Open 24 Hours";
-  final bool _isAccredited = true;
-  final String _accreditation = "JCI Accredited";
-  final Map<int, int> _ratingDistribution = {
-    5: 850,
-    4: 250,
-    3: 80,
-    2: 20,
-    1: 4,
-  };
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    _tabController.addListener(() {
-      setState(() => _selectedTabIndex = _tabController.index);
-    });
     _loadHospital();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadHospital() async {
@@ -64,11 +34,62 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen>
     try {
       final hospital = await _apiClient.getHospitalById(widget.hospitalId);
       final doctors = await _apiClient.getHospitalDoctors(widget.hospitalId);
+      
+      // Log hospital data for debugging
+      debugPrint('🏥 ========== HOSPITAL DATA FROM API ==========');
+      debugPrint('📋 Hospital ID: ${hospital.id}');
+      debugPrint('📋 Hospital Name: ${hospital.name}');
+      debugPrint('📋 Type: ${hospital.type}');
+      debugPrint('📋 Address: ${hospital.address ?? "N/A"}');
+      debugPrint('📋 City: ${hospital.city ?? "N/A"}');
+      debugPrint('📋 Phone: ${hospital.phone ?? "N/A"}');
+      debugPrint('📋 Email: ${hospital.email ?? "N/A"}');
+      debugPrint('📋 Website: ${hospital.website ?? "N/A"}');
+      debugPrint('📋 Logo URL: ${hospital.logoUrl ?? "N/A"}');
+      debugPrint('📋 Booking Policy: ${hospital.bookingPolicy ?? "N/A"}');
+      debugPrint('📋 Description: ${hospital.description ?? "N/A"}');
+      debugPrint('📋 Is Active: ${hospital.isActive}');
+      debugPrint('📋 Created At: ${hospital.createdAt}');
+      debugPrint('📋 Updated At: ${hospital.updatedAt}');
+      debugPrint('📋 Specialties Count: ${hospital.specialties.length}');
+      for (var i = 0; i < hospital.specialties.length; i++) {
+        final specialty = hospital.specialties[i];
+        debugPrint('   [${i + 1}] ${specialty.name} (ID: ${specialty.id}, Active: ${specialty.isActive})');
+        if (specialty.description != null) {
+          debugPrint('       Description: ${specialty.description}');
+        }
+      }
+      debugPrint('📋 Services Count: ${hospital.services.length}');
+      for (var i = 0; i < hospital.services.length; i++) {
+        final service = hospital.services[i];
+        debugPrint('   [${i + 1}] ${service.name} (ID: ${service.id}, Active: ${service.isActive})');
+        if (service.description != null) {
+          debugPrint('       Description: ${service.description}');
+        }
+      }
+      debugPrint('👨‍⚕️ Doctors Count: ${doctors.length}');
+      for (var i = 0; i < doctors.length; i++) {
+        final doctor = doctors[i];
+        debugPrint('   [${i + 1}] Doctor ID: ${doctor.doctorId}');
+        if (doctor.doctor != null) {
+          debugPrint('       Name: ${doctor.doctor!.displayName}');
+          debugPrint('       Specialty: ${doctor.doctor!.specialty}');
+          debugPrint('       Available: ${doctor.doctor!.isAvailable}');
+        }
+        debugPrint('       Role: ${doctor.role}');
+        debugPrint('       Status: ${doctor.status}');
+        if (doctor.consultationFee != null) {
+          debugPrint('       Consultation Fee: ${doctor.consultationFee}');
+        }
+      }
+      debugPrint('🏥 ============================================');
+      
       setState(() {
         _hospital = hospital;
         _doctors = doctors;
       });
     } catch (e) {
+      debugPrint('❌ Error loading hospital: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),
@@ -96,24 +117,54 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen>
     return '$baseUrl$path';
   }
 
+  bool _canBookDirectly() {
+    if (_hospital?.bookingPolicy == null) return true; // Default to allowing
+    return _hospital!.bookingPolicy!.toUpperCase() == 'DIRECT_DOCTOR';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.gray800),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
+          ),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     if (_hospital == null) {
       return Scaffold(
-        appBar: AppBar(title: Text('Hospital Not Found')),
-        body: Center(child: Text('Hospital not found')),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: AppColors.gray800),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
+          ),
+        ),
+        body: const Center(child: Text('Hospital not found')),
       );
     }
 
-    final bookingPolicy =
-        _hospital?.bookingPolicy?.toUpperCase() ?? 'DIRECT_DOCTOR';
-    final isDirectDoctor = bookingPolicy == 'DIRECT_DOCTOR';
+    final isDirectDoctor = _canBookDirectly();
 
     return Scaffold(
       body: CustomScrollView(
@@ -127,19 +178,18 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildHospitalInfo(context),
-                  const SizedBox(height: 20),
-                  _buildQuickActions(context),
                   const SizedBox(height: 24),
-                  _buildTabs(context),
-                  const SizedBox(height: 20),
-                  _buildTabContent(context, isDirectDoctor),
+                  _buildContactInfo(context),
+                  const SizedBox(height: 32),
+                  _buildDoctorsSection(context, isDirectDoctor),
+                  const SizedBox(height: 100), // Space for bottom button
                 ],
               ),
             ),
           ),
         ],
       ),
-      bottomNavigationBar: _buildBookButton(context, isDirectDoctor),
+      bottomNavigationBar: isDirectDoctor ? _buildBookButton(context) : null,
     );
   }
 
@@ -149,7 +199,7 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen>
       backgroundColor: Colors.white,
       elevation: 0,
       leading: IconButton(
-        icon: Icon(Icons.arrow_back, color: AppColors.gray800),
+        icon: const Icon(Icons.arrow_back, color: AppColors.gray800),
         onPressed: () {
           if (context.canPop()) {
             context.pop();
@@ -178,7 +228,7 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen>
       child: Stack(
         children: [
           Container(
-            height: 250,
+            height: 280,
             width: double.infinity,
             child: imageUrl.isNotEmpty
                 ? CachedNetworkImage(
@@ -189,54 +239,65 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen>
                   )
                 : _buildBannerPlaceholder(),
           ),
-          Positioned(
-            bottom: 20,
-            left: 20,
-            child: _isAccredited
-                ? Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.skyBlue600,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.white, size: 16),
-                        SizedBox(width: 6),
-                        Text(
-                          _accreditation,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : SizedBox.shrink(),
+          // Gradient overlay for better text readability
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.6),
+                  ],
+                ),
+              ),
+            ),
           ),
+          // Hospital name overlay
           Positioned(
-            bottom: 20,
+            bottom: 0,
             left: 0,
             right: 0,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text(
-                _hospital!.name,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  shadows: [
-                    Shadow(
-                      offset: Offset(0, 2),
-                      blurRadius: 4,
-                      color: Colors.black.withOpacity(0.3),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _hospital!.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      shadows: [
+                        Shadow(
+                          offset: Offset(0, 2),
+                          blurRadius: 8,
+                          color: Colors.black54,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_hospital!.type.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppColors.skyBlue600,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        _hospital!.type,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ],
-                ),
+                ],
               ),
             ),
           ),
@@ -247,7 +308,7 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen>
 
   Widget _buildBannerPlaceholder() {
     return Container(
-      height: 250,
+      height: 280,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -269,527 +330,239 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(Icons.location_on, size: 16, color: AppColors.gray600),
-            SizedBox(width: 4),
-            Text(
-              '$_distance • ${_hospital!.city ?? "Unknown"}',
-              style: TextStyle(
-                color: AppColors.gray600,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.green500.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                _hours,
-                style: TextStyle(
-                  color: AppColors.green500,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            SizedBox(width: 12),
-            Row(
-              children: [
-                Icon(Icons.star, color: Colors.amber, size: 18),
-                SizedBox(width: 4),
-                Text(
-                  '$_rating',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                SizedBox(width: 4),
-                Text(
-                  '($_reviewCount reviews)',
-                  style: TextStyle(
-                    color: AppColors.gray600,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickActions(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        _actionButton(
-          icon: Icons.directions,
-          label: 'Directions',
-          onTap: () {
-            // Open maps with hospital address
-            final address = Uri.encodeComponent(
-                '${_hospital!.address}, ${_hospital!.city}');
-            launchUrl(Uri.parse('https://www.google.com/maps/search/?api=1&query=$address'));
-          },
-        ),
-        _actionButton(
-          icon: Icons.language,
-          label: 'Website',
-          onTap: () {
-            if (_hospital?.website != null && _hospital!.website!.isNotEmpty) {
-              launchUrl(Uri.parse(_hospital!.website!));
-            }
-          },
-        ),
-        _actionButton(
-          icon: Icons.share,
-          label: 'Share',
-          onTap: () {
-            // Share functionality
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _actionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        child: Column(
-          children: [
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.skyBlue100,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: AppColors.skyBlue600, size: 24),
-            ),
-            SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.gray700,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTabs(BuildContext context) {
-    return TabBar(
-      controller: _tabController,
-      indicatorColor: AppColors.skyBlue600,
-      labelColor: AppColors.skyBlue600,
-      unselectedLabelColor: AppColors.gray600,
-      tabs: [
-        Tab(text: 'Overview'),
-        Tab(text: 'Doctors'),
-        Tab(text: 'Reviews'),
-      ],
-    );
-  }
-
-  Widget _buildTabContent(BuildContext context, bool isDirectDoctor) {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * 0.6,
-      child: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildOverviewTab(context),
-          _buildDoctorsTab(context, isDirectDoctor),
-          _buildReviewsTab(context),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOverviewTab(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildAboutSection(context),
-          const SizedBox(height: 24),
-          _buildDepartmentsSection(context),
-          const SizedBox(height: 24),
-          _buildTopDoctorsSection(context),
-          const SizedBox(height: 24),
-          _buildLocationSection(context),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAboutSection(BuildContext context) {
-    final description = _hospital?.description ??
-        'St. Mary\'s General Hospital is a leading medical facility renowned for its cardiac and neurological departments. With over 50 years of service, we provide compassionate care and trusted specialists.';
-    final isLong = description.length > 150;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'About',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppColors.gray800,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          _isAboutExpanded || !isLong
-              ? description
-              : '${description.substring(0, 150)}...',
-          style: TextStyle(
-            fontSize: 14,
-            color: AppColors.gray700,
-            height: 1.5,
-          ),
-        ),
-        if (isLong)
-          TextButton(
-            onPressed: () {
-              setState(() => _isAboutExpanded = !_isAboutExpanded);
-            },
-            child: Text(
-              _isAboutExpanded ? 'Read less' : 'Read more',
-              style: TextStyle(color: AppColors.skyBlue600),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildDepartmentsSection(BuildContext context) {
-    final departments = _hospital?.specialties ?? [];
-    final departmentIcons = {
-      'Cardiology': Icons.favorite,
-      'Neurology': Icons.psychology,
-      'Pediatrics': Icons.child_care,
-      'Dental': Icons.medical_services,
-    };
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Departments',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.gray800,
-              ),
-            ),
-            TextButton(
-              onPressed: () {},
-              child: Text(
-                'View all',
-                style: TextStyle(color: AppColors.skyBlue600),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 16,
-          runSpacing: 16,
-          children: departments.take(4).map((dept) {
-            final icon = departmentIcons[dept.name] ?? Icons.medical_services;
-            return _departmentChip(icon, dept.name);
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _departmentChip(IconData icon, String name) {
-    return Container(
-      width: 80,
-      child: Column(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: AppColors.skyBlue100,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: AppColors.skyBlue600, size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            name,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.gray700,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTopDoctorsSection(BuildContext context) {
-    if (_doctors.isEmpty) {
-      return SizedBox.shrink();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Top Doctors',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.gray800,
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                _tabController.animateTo(1);
-              },
-              child: Text(
-                'View all',
-                style: TextStyle(color: AppColors.skyBlue600),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 120,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: _doctors.take(5).length,
-            itemBuilder: (context, index) {
-              final doc = _doctors[index];
-              return _doctorCard(doc, context);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _doctorCard(HospitalDoctorDto doc, BuildContext context) {
-    final doctor = doc.doctor;
-    final name = doctor?.displayName ?? 'Dr. Unknown';
-    final specialty = doctor?.specialty ?? 'Specialist';
-    final imageUrl = doctor?.imageUrl;
-    final rating = 4.7 + (doc.doctorId.hashCode % 3) * 0.1; // Mock rating
-    final isAvailable = doctor?.isAvailable ?? false;
-
-    String imageFullUrl = '';
-    if (imageUrl != null && imageUrl.isNotEmpty) {
-      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-        imageFullUrl = imageUrl;
-      } else {
-        final baseUrl = ApiConstants.apiBaseUrl.replaceFirst('/api/v1', '');
-        final path = imageUrl.startsWith('/') ? imageUrl : '/$imageUrl';
-        imageFullUrl = '$baseUrl$path';
-      }
-    }
-
-    return Container(
-      width: 280,
-      margin: EdgeInsets.only(right: 12),
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.gray200),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: imageFullUrl.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: imageFullUrl,
-                    width: 60,
-                    height: 60,
-                    fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => _doctorPlaceholder(),
-                    placeholder: (_, __) => _doctorPlaceholder(),
-                  )
-                : _doctorPlaceholder(),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: 4),
-                Text(
-                  specialty,
-                  style: TextStyle(
-                    color: AppColors.gray600,
-                    fontSize: 12,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.star, color: Colors.amber, size: 14),
-                    SizedBox(width: 4),
-                    Text(
-                      rating.toStringAsFixed(1),
-                      style: TextStyle(
-                        fontSize: 12,
+        // Location
+        if (_hospital!.address != null || _hospital!.city != null) ...[
+          Row(
+            children: [
+              Icon(Icons.location_on, size: 20, color: AppColors.skyBlue600),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '${_hospital!.address ?? ""}${_hospital!.address != null && _hospital!.city != null ? ", " : ""}${_hospital!.city ?? ""}',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppColors.gray900,
                         fontWeight: FontWeight.w600,
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _doctorPlaceholder() {
-    return Container(
-      width: 60,
-      height: 60,
-      color: AppColors.gray100,
-      child: Icon(Icons.person, color: AppColors.gray400),
-    );
-  }
-
-  Widget _buildLocationSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Location',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppColors.gray800,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          height: 150,
-          decoration: BoxDecoration(
-            color: AppColors.gray200,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Stack(
-            children: [
-              Center(
-                child: Icon(
-                  Icons.map,
-                  size: 48,
-                  color: AppColors.gray400,
-                ),
-              ),
-              Positioned(
-                bottom: 12,
-                right: 12,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    final address = Uri.encodeComponent(
-                        '${_hospital!.address}, ${_hospital!.city}');
-                    launchUrl(Uri.parse(
-                        'https://www.google.com/maps/search/?api=1&query=$address'));
-                  },
-                  icon: Icon(Icons.map, size: 18),
-                  label: Text('Open in Maps'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.gray800,
-                  ),
                 ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '${_hospital!.address ?? ""}, ${_hospital!.city ?? ""}',
-          style: TextStyle(
-            fontSize: 14,
-            color: AppColors.gray700,
+          const SizedBox(height: 20),
+        ],
+        // Description
+        if (_hospital!.description != null && _hospital!.description!.isNotEmpty && _hospital!.description != 'N/A') ...[
+          Text(
+            'About',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.gray900,
+                ),
           ),
-        ),
+          const SizedBox(height: 12),
+          Text(
+            _hospital!.description!,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.gray700,
+                  height: 1.6,
+                ),
+          ),
+          const SizedBox(height: 24),
+        ],
       ],
     );
   }
 
-  Widget _buildDoctorsTab(BuildContext context, bool isDirectDoctor) {
-    if (_doctors.isEmpty) {
-      return Center(
-        child: Text(
-          'No doctors available',
-          style: TextStyle(color: AppColors.gray600),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: _doctors.length,
-      itemBuilder: (context, index) {
-        final doc = _doctors[index];
-        return _buildDoctorListItem(doc, context, isDirectDoctor);
-      },
+  Widget _buildContactInfo(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.skyBlue50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.skyBlue200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline, color: AppColors.skyBlue600, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Contact Information',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.gray900,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_hospital!.phone != null && _hospital!.phone!.isNotEmpty) ...[
+            _buildContactItem(
+              context,
+              icon: Icons.phone,
+              label: 'Phone',
+              value: _hospital!.phone!,
+              onTap: () {
+                launchUrl(Uri.parse('tel:${_hospital!.phone}'));
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (_hospital!.email != null && _hospital!.email!.isNotEmpty) ...[
+            _buildContactItem(
+              context,
+              icon: Icons.email,
+              label: 'Email',
+              value: _hospital!.email!,
+              onTap: () {
+                launchUrl(Uri.parse('mailto:${_hospital!.email}'));
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (_hospital!.website != null && _hospital!.website!.isNotEmpty) ...[
+            _buildContactItem(
+              context,
+              icon: Icons.language,
+              label: 'Website',
+              value: _hospital!.website!,
+              onTap: () {
+                launchUrl(Uri.parse(_hospital!.website!));
+              },
+            ),
+          ],
+        ],
+      ),
     );
   }
 
-  Widget _buildDoctorListItem(
-      HospitalDoctorDto doc, BuildContext context, bool isDirectDoctor) {
+  Widget _buildContactItem(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 18, color: AppColors.skyBlue600),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.gray600,
+                          fontSize: 11,
+                        ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppColors.gray900,
+                          fontWeight: FontWeight.w500,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: AppColors.gray400, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDoctorsSection(BuildContext context, bool isDirectDoctor) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Our Doctors',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.gray900,
+                  ),
+            ),
+            if (_doctors.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.skyBlue100,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${_doctors.length} ${_doctors.length == 1 ? 'doctor' : 'doctors'}',
+                  style: TextStyle(
+                    color: AppColors.skyBlue700,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (_doctors.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.gray200),
+            ),
+            child: Column(
+              children: [
+                Icon(Icons.person_off, size: 48, color: AppColors.gray400),
+                const SizedBox(height: 12),
+                Text(
+                  'No doctors available',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppColors.gray600,
+                      ),
+                ),
+              ],
+            ),
+          )
+        else
+          ..._doctors.map((doc) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _buildDoctorCard(doc, context, isDirectDoctor),
+              )),
+      ],
+    );
+  }
+
+  Widget _buildDoctorCard(
+    HospitalDoctorDto doc,
+    BuildContext context,
+    bool isDirectDoctor,
+  ) {
     final doctor = doc.doctor;
     final name = doctor?.displayName ?? 'Dr. Unknown';
     final specialty = doctor?.specialty ?? 'Specialist';
     final imageUrl = doctor?.imageUrl;
-    final rating = 4.7 + (doc.doctorId.hashCode % 3) * 0.1;
+    final consultationFee = doc.consultationFee;
+    final role = doc.role;
     final isAvailable = doctor?.isAvailable ?? false;
 
     String imageFullUrl = '';
@@ -804,71 +577,146 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen>
     }
 
     return Container(
-      margin: EdgeInsets.only(bottom: 12),
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.gray200),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isAvailable ? AppColors.skyBlue200 : AppColors.gray200,
+          width: isAvailable ? 1.5 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Doctor Image
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
             child: imageFullUrl.isNotEmpty
                 ? CachedNetworkImage(
                     imageUrl: imageFullUrl,
                     width: 80,
                     height: 80,
                     fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => _doctorPlaceholder(),
-                    placeholder: (_, __) => _doctorPlaceholder(),
+                    errorWidget: (_, __, ___) => _buildDoctorPlaceholder(),
+                    placeholder: (_, __) => _buildDoctorPlaceholder(),
                   )
-                : _doctorPlaceholder(),
+                : _buildDoctorPlaceholder(),
           ),
-          SizedBox(width: 16),
+          const SizedBox(width: 16),
+          // Doctor Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  specialty,
-                  style: TextStyle(
-                    color: AppColors.gray600,
-                    fontSize: 14,
-                  ),
-                ),
-                SizedBox(height: 4),
                 Row(
                   children: [
-                    Icon(Icons.star, color: Colors.amber, size: 16),
-                    SizedBox(width: 4),
-                    Text(
-                      rating.toStringAsFixed(1),
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  name,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.gray900,
+                                      ),
+                                ),
+                              ),
+                              if (doctor?.isVerified ?? false)
+                                Icon(
+                                  Icons.verified,
+                                  size: 18,
+                                  color: AppColors.skyBlue600,
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            specialty,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: AppColors.gray600,
+                                ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-                if (isDirectDoctor) ...[
-                  SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.push(
-                          '/book-appointment?hospitalId=${_hospital!.id}&doctorId=${doc.doctorId}');
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.skyBlue600,
-                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                const SizedBox(height: 8),
+                // Role Badge
+                if (role.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.skyBlue100,
+                      borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text('Book Appointment'),
+                    child: Text(
+                      role.replaceAll('_', ' '),
+                      style: TextStyle(
+                        color: AppColors.skyBlue700,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 8),
+                // Consultation Fee (convert from cents to dollars)
+                if (consultationFee != null)
+                  Row(
+                    children: [
+                      Icon(Icons.attach_money, size: 16, color: AppColors.gray600),
+                      const SizedBox(width: 4),
+                      Text(
+                        '\$${(consultationFee / 100).toStringAsFixed(2)} /consultation',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppColors.gray700,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ],
+                  ),
+                // Book Button (only if direct doctor booking is allowed)
+                if (isDirectDoctor) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        context.push(
+                          '/doctor-details?id=${doc.doctorId}',
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.skyBlue600,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'View Profile',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ],
@@ -879,171 +727,30 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen>
     );
   }
 
-  Widget _buildReviewsTab(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$_rating',
-                    style: TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Row(
-                    children: List.generate(5, (index) {
-                      return Icon(
-                        index < _rating.floor()
-                            ? Icons.star
-                            : Icons.star_border,
-                        color: Colors.amber,
-                        size: 24,
-                      );
-                    }),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    '$_reviewCount reviews',
-                    style: TextStyle(
-                      color: AppColors.gray600,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(
-                width: 150,
-                child: Column(
-                  children: _ratingDistribution.entries.map((entry) {
-                    final stars = entry.key;
-                    final count = entry.value;
-                    final percentage = (count / _reviewCount) * 100;
-                    return Padding(
-                      padding: EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        children: [
-                          Text('$stars', style: TextStyle(fontSize: 12)),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: LinearProgressIndicator(
-                              value: percentage / 100,
-                              backgroundColor: AppColors.gray200,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppColors.skyBlue600),
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            '$count',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 24),
-          Text(
-            'Recent Reviews',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 12),
-          // Mock review items
-          ...List.generate(3, (index) => _buildReviewItem(context)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReviewItem(BuildContext context) {
+  Widget _buildDoctorPlaceholder() {
     return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      padding: EdgeInsets.all(16),
+      width: 80,
+      height: 80,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.gray200,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.gray200),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                child: Icon(Icons.person),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Patient Name',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        ...List.generate(5, (i) => Icon(
-                              i < 4 ? Icons.star : Icons.star_border,
-                              color: Colors.amber,
-                              size: 14,
-                            )),
-                        SizedBox(width: 8),
-                        Text(
-                          '2 days ago',
-                          style: TextStyle(
-                            color: AppColors.gray600,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12),
-          Text(
-            'Great service and professional staff. The doctors were very helpful and the facilities are clean and modern.',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.gray700,
-              height: 1.5,
-            ),
-          ),
-        ],
-      ),
+      child: Icon(Icons.person, color: AppColors.gray400, size: 40),
     );
   }
 
-  Widget _buildBookButton(BuildContext context, bool isDirectDoctor) {
+  Widget _buildBookButton(BuildContext context) {
+    if (!_canBookDirectly()) return const SizedBox.shrink();
+
     return Container(
-      padding: EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: Offset(0, -2),
+            offset: const Offset(0, -2),
           ),
         ],
       ),
@@ -1052,26 +759,27 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen>
           width: double.infinity,
           child: ElevatedButton(
             onPressed: () {
-              if (isDirectDoctor && _doctors.isEmpty) {
+              if (_doctors.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text('Please select a doctor from the Doctors tab')),
+                  const SnackBar(
+                    content: Text('No doctors available for booking'),
+                  ),
                 );
-                _tabController.animateTo(1);
                 return;
               }
+              // Navigate to book appointment with hospital ID
               context.push(
-                '/book-appointment?hospitalId=${_hospital!.id}${isDirectDoctor && _doctors.isNotEmpty ? '&doctorId=${_doctors.first.doctorId}' : ''}',
+                '/book-appointment?hospitalId=${_hospital!.id}',
               );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.skyBlue600,
-              padding: EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: Text(
+            child: const Text(
               'Book Appointment',
               style: TextStyle(
                 fontSize: 16,

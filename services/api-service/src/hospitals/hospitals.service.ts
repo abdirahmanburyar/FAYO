@@ -639,10 +639,12 @@ export class HospitalsService {
       }
 
       // Map hospital doctors with enriched doctor data
+      // Convert consultationFee from cents to dollars for API response
       const enrichedHospitalDoctors = hospitalDoctors.map(hd => {
         const enrichedDoctor = doctorsMap.get(hd.doctorId);
         return {
           ...hd,
+          consultationFee: hd.consultationFee != null ? hd.consultationFee / 100 : null,
           doctor: enrichedDoctor || null,
         };
       });
@@ -690,6 +692,11 @@ export class HospitalsService {
       }
 
       // Create hospital-doctor association
+      // consultationFee is expected in dollars from the API, convert to cents for storage
+      const consultationFeeInCents = consultationFee 
+        ? Math.round(consultationFee * 100) 
+        : null;
+      
       const hospitalDoctor = await this.prisma.hospitalDoctor.create({
         data: {
           doctorId,
@@ -698,7 +705,7 @@ export class HospitalsService {
           shift: shift || null,
           startTime: startTime || null,
           endTime: endTime || null,
-          consultationFee: consultationFee ? Math.round(consultationFee) : null,
+          consultationFee: consultationFeeInCents,
           status: status || 'ACTIVE',
         },
       });
@@ -768,7 +775,10 @@ export class HospitalsService {
       if (shift !== undefined) updateData.shift = shift;
       if (startTime !== undefined) updateData.startTime = startTime;
       if (endTime !== undefined) updateData.endTime = endTime;
-      if (consultationFee !== undefined) updateData.consultationFee = consultationFee ? Math.round(consultationFee) : null;
+      // consultationFee is expected in dollars from the API, convert to cents for storage
+      if (consultationFee !== undefined) {
+        updateData.consultationFee = consultationFee ? Math.round(consultationFee * 100) : null;
+      }
       if (status !== undefined) updateData.status = status;
 
       const hospitalDoctor = await this.prisma.hospitalDoctor.update({
