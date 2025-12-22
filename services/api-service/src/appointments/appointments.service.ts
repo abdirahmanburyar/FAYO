@@ -544,9 +544,9 @@ export class AppointmentsService {
         takenTimes.add(time24h);
       });
 
-      // Generate all possible time slots (9:00 AM to 5:00 PM, 30-minute intervals)
+      // Generate all possible time slots (24 hours, 30-minute intervals)
       const allTimeSlots: string[] = [];
-      for (let hour = 9; hour <= 17; hour++) {
+      for (let hour = 0; hour < 24; hour++) {
         for (let minute = 0; minute < 60; minute += 30) {
           const time24h = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
           
