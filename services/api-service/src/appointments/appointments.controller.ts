@@ -63,6 +63,18 @@ export class AppointmentsController {
     return this.appointmentsService.findAll({ hospitalId });
   }
 
+  @Get('available-times')
+  @Throttle({ default: { limit: 50, ttl: 60000 } })
+  getAvailableTimeSlots(
+    @Query('doctorId') doctorId: string,
+    @Query('date') date: string,
+  ) {
+    if (!doctorId || !date) {
+      throw new BadRequestException('doctorId and date are required');
+    }
+    return this.appointmentsService.getAvailableTimeSlots(doctorId, date);
+  }
+
   @Get('stats')
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   getStats() {

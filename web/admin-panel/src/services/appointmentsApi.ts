@@ -201,6 +201,29 @@ class AppointmentsApiService {
     }
   }
 
+  async getAvailableTimeSlots(doctorId: string, date: string): Promise<string[]> {
+    try {
+      const response = await fetch(
+        `${API_CONFIG.APPOINTMENT_SERVICE_URL}/api/v1/appointments/available-times?doctorId=${encodeURIComponent(doctorId)}&date=${encodeURIComponent(date)}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to get available time slots: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('[AppointmentsApi] Error getting available time slots:', error);
+      throw error;
+    }
+  }
+
   async createAppointment(appointmentData: CreateAppointmentDto): Promise<Appointment> {
     try {
       console.log('[AppointmentsApi] Creating appointment:', appointmentData);

@@ -98,6 +98,8 @@ export default function CreateAppointmentPage() {
   const [isShiftOngoing, setIsShiftOngoing] = useState<boolean>(false);
   const [searchingPatient, setSearchingPatient] = useState(false);
   const [existingAppointments, setExistingAppointments] = useState<Appointment[]>([]);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
+  const [loadingTimeSlots, setLoadingTimeSlots] = useState(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Helper function to check if shift is ongoing
@@ -996,7 +998,11 @@ export default function CreateAppointmentPage() {
                   <span className="ml-2 text-xs text-gray-500">(General Hospital Hours: 8:00 AM - 8:00 PM)</span>
                 )}
               </label>
-              {timeSlots.length === 0 ? (
+              {!formData.doctorId || !formData.appointmentDate ? (
+                <div className="text-sm text-gray-500">Please select a doctor and date first</div>
+              ) : loadingTimeSlots ? (
+                <div className="text-sm text-gray-500">Loading available time slots...</div>
+              ) : availableTimeSlots.length === 0 ? (
                 <div className="w-full px-3 py-2 border border-red-300 rounded-lg bg-red-50">
                   <p className="text-sm text-red-700">
                     {formData.hospitalId 

@@ -125,9 +125,8 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
   }
 
   String _formatFee(int fee) {
-    // Fee is stored in cents, convert to dollars
-    final dollars = fee / 100.0;
-    return '\$${dollars.toStringAsFixed(2)}';
+    // Fee is already in dollars from API (not cents)
+    return '\$${fee.toStringAsFixed(2)}';
   }
 
   @override
@@ -374,9 +373,9 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
           ),
           const SizedBox(height: 32),
           ElevatedButton.icon(
-            onPressed: () => context.push('/book-appointment'),
+            onPressed: () => context.go('/doctors'),
             icon: const Icon(Icons.add),
-            label: const Text('Book Appointment'),
+            label: const Text('Find a Doctor'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.skyBlue600,
               foregroundColor: Colors.white,

@@ -200,6 +200,21 @@ class ApiClient {
     }
   }
 
+  Future<List<String>> getAvailableTimeSlots(String doctorId, String date) async {
+    try {
+      final response = await _dio.get(
+        ApiConstants.appointmentsEndpoint + '/available-times',
+        queryParameters: {
+          'doctorId': doctorId,
+          'date': date,
+        },
+      );
+      return List<String>.from(response.data);
+    } catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   Future<AppointmentDto> createAppointment(CreateAppointmentRequest request) async {
     try {
       final response = await _dio.post(

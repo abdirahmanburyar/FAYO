@@ -92,7 +92,9 @@ export class AppointmentsService {
                 );
               }
               
-              consultationFee = hospitalAssociation.consultationFee ?? 0;
+              // consultationFee from getDoctors is in dollars, convert to cents for storage
+              const feeInDollars = hospitalAssociation.consultationFee ?? 0;
+              consultationFee = Math.round(feeInDollars * 100);
               
               if (hospitalAssociation.status !== 'ACTIVE') {
                 throw new BadRequestException(
@@ -210,7 +212,11 @@ export class AppointmentsService {
           },
         });
 
-        return appointment;
+        // Convert consultationFee from cents to dollars for API response
+        return {
+          ...appointment,
+          consultationFee: appointment.consultationFee / 100,
+        };
       } catch (error) {
         if (error instanceof NotFoundException || 
             error instanceof ConflictException || 
@@ -284,7 +290,11 @@ export class AppointmentsService {
         },
       });
 
-      return appointments;
+      // Convert consultationFee from cents to dollars for API response
+      return appointments.map(appointment => ({
+        ...appointment,
+        consultationFee: appointment.consultationFee / 100,
+      }));
     } catch (error: any) {
       throw new Error(`Failed to fetch appointments: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -300,7 +310,11 @@ export class AppointmentsService {
         throw new NotFoundException(`Appointment with ID ${id} not found`);
       }
 
-      return appointment;
+      // Convert consultationFee from cents to dollars for API response
+      return {
+        ...appointment,
+        consultationFee: appointment.consultationFee / 100,
+      };
     } catch (error) {
       if (error instanceof NotFoundException) {
         throw error;
@@ -481,6 +495,79 @@ export class AppointmentsService {
         throw error;
       }
       throw new Error(`Failed to update appointment: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  async getAvailableTimeSlots(doctorId: string, date: string): Promise<string[]> {
+    try {
+      // Parse the date
+      let appointmentDateStr = date;
+      if (appointmentDateStr.includes('T')) {
+        appointmentDateStr = appointmentDateStr.split('T')[0];
+      }
+
+      // Get all appointments for this doctor on this date
+      const appointments = await this.prisma.appointment.findMany({
+        where: {
+          doctorId,
+          appointmentDate: {
+            gte: new Date(`${appointmentDateStr}T00:00:00`),
+            lte: new Date(`${appointmentDateStr}T23:59:59`),
+          },
+          status: {
+            notIn: ['CANCELLED', 'NO_SHOW', 'RESCHEDULED'],
+          },
+        },
+        select: {
+          appointmentTime: true,
+        },
+      });
+
+      // Extract taken times (convert to 24-hour format for comparison)
+      const takenTimes = new Set<string>();
+      appointments.forEach(apt => {
+        // Convert time to 24-hour format if needed
+        let time24h = apt.appointmentTime;
+        if (time24h.includes('AM') || time24h.includes('PM')) {
+          // Convert 12-hour to 24-hour
+          const parts = time24h.split(' ');
+          const timeParts = parts[0].split(':');
+          let hour = parseInt(timeParts[0]);
+          const minute = timeParts[1];
+          const period = parts[1].toUpperCase();
+          
+          if (period === 'PM' && hour !== 12) hour += 12;
+          if (period === 'AM' && hour === 12) hour = 0;
+          
+          time24h = `${hour.toString().padStart(2, '0')}:${minute}`;
+        }
+        takenTimes.add(time24h);
+      });
+
+      // Generate all possible time slots (9:00 AM to 5:00 PM, 30-minute intervals)
+      const allTimeSlots: string[] = [];
+      for (let hour = 9; hour <= 17; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+          const time24h = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          
+          // Convert to 12-hour format for display
+          let displayHour = hour;
+          const period = hour >= 12 ? 'PM' : 'AM';
+          if (hour > 12) displayHour = hour - 12;
+          if (hour === 0) displayHour = 12;
+          
+          const time12h = `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
+          
+          // Check if this time slot is available
+          if (!takenTimes.has(time24h)) {
+            allTimeSlots.push(time12h);
+          }
+        }
+      }
+
+      return allTimeSlots;
+    } catch (error: any) {
+      throw new Error(`Failed to get available time slots: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

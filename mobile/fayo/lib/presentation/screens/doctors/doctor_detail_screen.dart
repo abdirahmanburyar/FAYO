@@ -1,29 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../data/datasources/api_client.dart';
 import '../../../data/models/hospital_models.dart';
+import '../../../data/models/appointment_models.dart';
+import '../../../presentation/providers/auth_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 
-class DoctorDetailScreen extends StatefulWidget {
+class DoctorDetailScreen extends ConsumerStatefulWidget {
   final String doctorId;
 
   const DoctorDetailScreen({super.key, required this.doctorId});
 
   @override
-  State<DoctorDetailScreen> createState() => _DoctorDetailScreenState();
+  ConsumerState<DoctorDetailScreen> createState() => _DoctorDetailScreenState();
 }
 
-class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
+class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
   final ApiClient _apiClient = ApiClient();
   DoctorDto? _doctor;
   HospitalDto? _hospital;
+  HospitalDoctorDto? _hospitalDoctor;
   bool _isLoading = true;
   bool _isFavorite = false;
   bool _isAboutExpanded = false;
   String? _selectedDate;
   String? _selectedTime;
+  List<String> _availableTimeSlots = [];
+  bool _isLoadingTimeSlots = false;
 
   @override
   void initState() {
@@ -36,27 +43,103 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     try {
       final doctor = await _apiClient.getDoctorById(widget.doctorId);
       
+      // Log doctor data
+      debugPrint('👨‍⚕️ ========== DOCTOR DETAIL DATA FROM API ==========');
+      debugPrint('📋 Doctor ID: ${doctor.id}');
+      debugPrint('📋 User ID: ${doctor.userId}');
+      debugPrint('📋 Display Name: ${doctor.displayName}');
+      debugPrint('📋 License Number: ${doctor.licenseNumber}');
+      debugPrint('📋 Specialty: ${doctor.specialty}');
+      debugPrint('📋 Experience: ${doctor.experience} years');
+      debugPrint('📋 Is Verified: ${doctor.isVerified}');
+      debugPrint('📋 Is Available: ${doctor.isAvailable}');
+      debugPrint('📋 Consultation Fee (self-employed): ${doctor.consultationFee ?? "N/A"}');
+      debugPrint('📋 Bio: ${doctor.bio ?? "N/A"}');
+      debugPrint('📋 Image URL: ${doctor.imageUrl ?? "N/A"}');
+      debugPrint('📋 Education: ${doctor.education ?? "N/A"}');
+      debugPrint('📋 Certifications: ${doctor.certifications ?? "N/A"}');
+      debugPrint('📋 Languages: ${doctor.languages ?? "N/A"}');
+      debugPrint('📋 Awards: ${doctor.awards ?? "N/A"}');
+      debugPrint('📋 Publications: ${doctor.publications ?? "N/A"}');
+      debugPrint('📋 Memberships: ${doctor.memberships ?? "N/A"}');
+      debugPrint('📋 Research Interests: ${doctor.researchInterests ?? "N/A"}');
+      final user = doctor.user;
+      if (user != null) {
+        debugPrint('📋 User First Name: ${user.firstName}');
+        debugPrint('📋 User Last Name: ${user.lastName}');
+        debugPrint('📋 User Email: ${user.email}');
+        debugPrint('📋 User Phone: ${user.phone ?? "N/A"}');
+      } else {
+        debugPrint('📋 User: N/A');
+      }
+      
       // Try to get hospital from doctor's hospitals list or search
       HospitalDto? hospital;
+      HospitalDoctorDto? hospitalDoctor;
       try {
         // Get hospitals where this doctor works
         final hospitals = await _apiClient.getHospitals();
+        debugPrint('🏥 Searching through ${hospitals.length} hospital(s)...');
         for (final h in hospitals) {
           final hospitalDoctors = await _apiClient.getHospitalDoctors(h.id);
-          if (hospitalDoctors.any((hd) => hd.doctorId == doctor.id)) {
+          debugPrint('   Checking hospital: ${h.name} (${h.id})');
+          debugPrint('   Found ${hospitalDoctors.length} doctor(s) in this hospital');
+          final hd = hospitalDoctors.firstWhere(
+            (hd) => hd.doctorId == doctor.id,
+            orElse: () => hospitalDoctors.first,
+          );
+          if (hd.doctorId == doctor.id) {
             hospital = h;
+            hospitalDoctor = hd;
+            debugPrint('   ✅ Found doctor in hospital: ${h.name}');
             break;
           }
         }
+        
+        // Log hospital data
+        if (hospital != null) {
+          debugPrint('🏥 ========== HOSPITAL DATA ==========');
+          debugPrint('📋 Hospital ID: ${hospital.id}');
+          debugPrint('📋 Hospital Name: ${hospital.name}');
+          debugPrint('📋 Type: ${hospital.type}');
+          debugPrint('📋 Address: ${hospital.address ?? "N/A"}');
+          debugPrint('📋 City: ${hospital.city ?? "N/A"}');
+          debugPrint('📋 Booking Policy: ${hospital.bookingPolicy ?? "N/A"}');
+          debugPrint('📋 Is Active: ${hospital.isActive}');
+        } else {
+          debugPrint('⚠️ No hospital found for this doctor');
+        }
+        
+        // Log hospital-doctor relationship data
+        if (hospitalDoctor != null) {
+          debugPrint('🔗 ========== HOSPITAL-DOCTOR RELATIONSHIP DATA ==========');
+          debugPrint('📋 Hospital Doctor ID: ${hospitalDoctor.id}');
+          debugPrint('📋 Doctor ID: ${hospitalDoctor.doctorId}');
+          debugPrint('📋 Hospital ID: ${hospitalDoctor.hospitalId}');
+          debugPrint('📋 Role: ${hospitalDoctor.role}');
+          debugPrint('📋 Shift: ${hospitalDoctor.shift ?? "N/A"}');
+          debugPrint('📋 Start Time: ${hospitalDoctor.startTime ?? "N/A"}');
+          debugPrint('📋 End Time: ${hospitalDoctor.endTime ?? "N/A"}');
+          debugPrint('📋 Consultation Fee: ${hospitalDoctor.consultationFee ?? "N/A"}');
+          debugPrint('📋 Status: ${hospitalDoctor.status}');
+          debugPrint('📋 Joined At: ${hospitalDoctor.joinedAt}');
+          debugPrint('📋 Left At: ${hospitalDoctor.leftAt ?? "N/A"}');
+        } else {
+          debugPrint('⚠️ No hospital-doctor relationship found');
+        }
       } catch (e) {
-        debugPrint('Error loading hospital: $e');
+        debugPrint('❌ Error loading hospital: $e');
       }
+      
+      debugPrint('👨‍⚕️ ============================================');
       
       setState(() {
         _doctor = doctor;
         _hospital = hospital;
+        _hospitalDoctor = hospitalDoctor;
       });
     } catch (e) {
+      debugPrint('❌ Error loading doctor: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),
@@ -86,6 +169,195 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     // Check if hospital policy allows direct doctor selection
     if (_hospital?.bookingPolicy == null) return true; // Default to allowing
     return _hospital!.bookingPolicy!.toUpperCase() == 'DIRECT_DOCTOR';
+  }
+
+  Future<void> _bookAppointment(BuildContext context) async {
+    debugPrint('📅 ========== APPOINTMENT BOOKING STARTED ==========');
+    
+    // Validation: Check if date and time are selected
+    debugPrint('🔍 [Validation] Checking selected date and time...');
+    debugPrint('   Selected Date: ${_selectedDate ?? "NULL"}');
+    debugPrint('   Selected Time: ${_selectedTime ?? "NULL"}');
+    
+    if (_selectedDate == null || _selectedTime == null) {
+      debugPrint('❌ [Validation] Date or time is missing');
+      debugPrint('   Date: ${_selectedDate ?? "NULL"}');
+      debugPrint('   Time: ${_selectedTime ?? "NULL"}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select date and time')),
+        );
+      }
+      return;
+    }
+    debugPrint('✅ [Validation] Date and time are selected');
+
+    // Validation: Check if user is authenticated
+    debugPrint('🔍 [Validation] Checking user authentication...');
+    final user = ref.read(authProvider);
+    if (user == null) {
+      debugPrint('❌ [Validation] User is not authenticated');
+      if (mounted) {
+        context.go('/login');
+      }
+      return;
+    }
+    debugPrint('✅ [Validation] User is authenticated');
+    debugPrint('   User ID: ${user.id}');
+    debugPrint('   User Name: ${user.firstName} ${user.lastName}');
+
+    try {
+      // Parse the selected date and time
+      debugPrint('📅 [Parsing] Parsing selected date and time...');
+      debugPrint('   Raw Date String: $_selectedDate');
+      debugPrint('   Raw Time String: $_selectedTime');
+      
+      final dateParts = _selectedDate!.split('-');
+      debugPrint('   Date Parts: $dateParts');
+      
+      if (dateParts.length != 3) {
+        debugPrint('❌ [Validation] Invalid date format. Expected YYYY-MM-DD, got: $_selectedDate');
+        throw FormatException('Invalid date format: $_selectedDate');
+      }
+      
+      final year = int.parse(dateParts[0]);
+      final month = int.parse(dateParts[1]);
+      final day = int.parse(dateParts[2]);
+      debugPrint('   Parsed Date: Year=$year, Month=$month, Day=$day');
+      
+      final selectedDateTime = DateTime(year, month, day);
+      debugPrint('   DateTime Object: $selectedDateTime');
+      
+      // Parse time (format: "09:00 AM" or "01:00 PM")
+      final timeParts = _selectedTime!.split(' ');
+      debugPrint('   Time Parts: $timeParts');
+      
+      if (timeParts.length != 2) {
+        debugPrint('❌ [Validation] Invalid time format. Expected "HH:MM AM/PM", got: $_selectedTime');
+        throw FormatException('Invalid time format: $_selectedTime');
+      }
+      
+      final timeValue = timeParts[0].split(':');
+      debugPrint('   Time Value Parts: $timeValue');
+      
+      if (timeValue.length != 2) {
+        debugPrint('❌ [Validation] Invalid time format. Expected "HH:MM", got: ${timeParts[0]}');
+        throw FormatException('Invalid time format: ${timeParts[0]}');
+      }
+      
+      var hour = int.parse(timeValue[0]);
+      final minute = int.parse(timeValue[1]);
+      final period = timeParts[1].toUpperCase();
+      debugPrint('   Initial Hour: $hour, Minute: $minute, Period: $period');
+      
+      if (period == 'PM' && hour != 12) {
+        hour += 12;
+      } else if (period == 'AM' && hour == 12) {
+        hour = 0;
+      }
+      debugPrint('   Final Hour (24h): $hour');
+      
+      if (hour < 0 || hour > 23) {
+        debugPrint('❌ [Validation] Invalid hour: $hour (must be 0-23)');
+        throw FormatException('Invalid hour: $hour');
+      }
+      if (minute < 0 || minute > 59) {
+        debugPrint('❌ [Validation] Invalid minute: $minute (must be 0-59)');
+        throw FormatException('Invalid minute: $minute');
+      }
+      
+      final appointmentTime = TimeOfDay(hour: hour, minute: minute);
+      debugPrint('   TimeOfDay Object: $appointmentTime');
+      
+      final formattedDate = DateFormat('yyyy-MM-dd').format(selectedDateTime);
+      // Format time in 24-hour format (HH:mm) for API
+      final formattedTime = '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+      debugPrint('   Formatted Date: $formattedDate');
+      debugPrint('   Formatted Time (24h): $formattedTime');
+      debugPrint('   Formatted Time (12h for display): ${appointmentTime.format(context)}');
+
+      // Validation: Check if doctor exists
+      debugPrint('🔍 [Validation] Checking doctor data...');
+      if (_doctor == null) {
+        debugPrint('❌ [Validation] Doctor is null');
+        throw Exception('Doctor information is missing');
+      }
+      debugPrint('✅ [Validation] Doctor data is available');
+      debugPrint('   Doctor ID: ${_doctor!.id}');
+      debugPrint('   Doctor Name: ${_doctor!.displayName}');
+
+      // Build request
+      debugPrint('📦 [Request] Building appointment request...');
+      final request = CreateAppointmentRequest(
+        patientId: user.id,
+        doctorId: _doctor!.id,
+        hospitalId: _hospital?.id,
+        appointmentDate: formattedDate,
+        appointmentTime: formattedTime,
+        reason: null,
+        createdBy: user.id,
+      );
+
+      // Log request body
+      debugPrint('📤 [Request] Request Body:');
+      debugPrint('   patientId: ${request.patientId}');
+      debugPrint('   doctorId: ${request.doctorId}');
+      debugPrint('   hospitalId: ${request.hospitalId ?? "NULL"}');
+      debugPrint('   appointmentDate: ${request.appointmentDate}');
+      debugPrint('   appointmentTime: ${request.appointmentTime}');
+      debugPrint('   reason: ${request.reason ?? "NULL"}');
+      debugPrint('   createdBy: ${request.createdBy}');
+
+      // Send request
+      debugPrint('🌐 [API] Sending appointment creation request...');
+      final response = await _apiClient.createAppointment(request);
+      
+      // Log response
+      debugPrint('📥 [Response] Appointment created successfully!');
+      debugPrint('   Response Type: ${response.runtimeType}');
+      debugPrint('📋 [Response] Appointment Details:');
+      debugPrint('   Appointment ID: ${response.id}');
+      debugPrint('   Patient ID: ${response.patientId}');
+      debugPrint('   Doctor ID: ${response.doctorId}');
+      debugPrint('   Hospital ID: ${response.hospitalId ?? "NULL"}');
+      debugPrint('   Appointment Date: ${response.appointmentDate}');
+      debugPrint('   Appointment Time: ${response.appointmentTime}');
+      debugPrint('   Status: ${response.status}');
+      debugPrint('   Consultation Fee: ${response.consultationFee}');
+      debugPrint('   Reason: ${response.reason ?? "NULL"}');
+      debugPrint('   Created At: ${response.createdAt}');
+      debugPrint('   Updated At: ${response.updatedAt}');
+      debugPrint('   Full Response Object: $response');
+      
+      debugPrint('✅ [Success] Appointment booking completed successfully');
+      debugPrint('📅 ============================================');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Appointment booked successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Navigate to appointments screen
+        context.go('/appointments');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ [Error] Appointment booking failed');
+      debugPrint('   Error Type: ${e.runtimeType}');
+      debugPrint('   Error Message: $e');
+      debugPrint('   Stack Trace: $stackTrace');
+      debugPrint('📅 ============================================');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error booking appointment: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -381,11 +653,37 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
               final isSelected = _selectedDate == '${date.year}-${date.month}-${date.day}';
               
               return GestureDetector(
-                onTap: () {
+                onTap: () async {
+                  final selectedDateStr = '${date.year}-${date.month}-${date.day}';
                   setState(() {
-                    _selectedDate = '${date.year}-${date.month}-${date.day}';
+                    _selectedDate = selectedDateStr;
                     _selectedTime = null;
+                    _availableTimeSlots = [];
+                    _isLoadingTimeSlots = true;
                   });
+                  
+                  // Fetch available time slots for the selected date
+                  if (_doctor != null) {
+                    try {
+                      final availableSlots = await _apiClient.getAvailableTimeSlots(
+                        _doctor!.id,
+                        selectedDateStr,
+                      );
+                      if (mounted) {
+                        setState(() {
+                          _availableTimeSlots = availableSlots;
+                          _isLoadingTimeSlots = false;
+                        });
+                      }
+                    } catch (e) {
+                      debugPrint('Error fetching available time slots: $e');
+                      if (mounted) {
+                        setState(() {
+                          _isLoadingTimeSlots = false;
+                        });
+                      }
+                    }
+                  }
                 },
                 child: Container(
                   width: 60,
@@ -421,52 +719,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
               );
             },
           ),
-        ),
-        const SizedBox(height: 16),
-        // Time slots
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            '09:00 AM',
-            '10:00 AM',
-            '11:00 AM',
-            '01:00 PM',
-            '02:30 PM',
-            '04:00 PM',
-          ].map((time) {
-            final isSelected = _selectedTime == time;
-            final isDisabled = time == '04:00 PM'; // Mock disabled slot
-            
-            return GestureDetector(
-              onTap: isDisabled ? null : () {
-                setState(() => _selectedTime = time);
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: isDisabled
-                      ? AppColors.gray100
-                      : (isSelected ? AppColors.skyBlue600 : Colors.white),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isDisabled
-                        ? AppColors.gray200
-                        : (isSelected ? AppColors.skyBlue600 : AppColors.gray200),
-                  ),
-                ),
-                child: Text(
-                  time,
-                  style: TextStyle(
-                    color: isDisabled
-                        ? AppColors.gray400
-                        : (isSelected ? Colors.white : AppColors.gray700),
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
         ),
       ],
     );
@@ -566,7 +818,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),
@@ -587,7 +839,9 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                         ),
                   ),
                   Text(
-                    '\$80 /visit',
+                    _hospitalDoctor?.consultationFee != null
+                        ? '\$${_hospitalDoctor!.consultationFee!.toStringAsFixed(2)}'
+                        : 'N/A',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: AppColors.gray900,
@@ -598,11 +852,15 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
             ),
             const SizedBox(width: 16),
             ElevatedButton(
-              onPressed: () {
-                context.push(
-                  '/book-appointment?doctorId=${_doctor!.id}${_hospital != null ? '&hospitalId=${_hospital!.id}' : ''}',
-                );
-              },
+              onPressed: _selectedDate != null && _selectedTime != null
+                  ? () => _bookAppointment(context)
+                  : () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please select a date and time'),
+                        ),
+                      );
+                    },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.skyBlue600,
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),

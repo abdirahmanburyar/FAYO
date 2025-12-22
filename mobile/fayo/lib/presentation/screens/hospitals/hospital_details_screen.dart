@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_constants.dart';
 import '../../../data/datasources/api_client.dart';
@@ -169,7 +168,6 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen> {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          _buildAppBar(context),
           _buildBanner(context),
           SliverToBoxAdapter(
             child: Padding(
@@ -177,9 +175,7 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildHospitalInfo(context),
-                  const SizedBox(height: 24),
-                  _buildContactInfo(context),
+                  _buildHospitalName(context),
                   const SizedBox(height: 32),
                   _buildDoctorsSection(context, isDirectDoctor),
                   const SizedBox(height: 100), // Space for bottom button
@@ -193,34 +189,6 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen> {
     );
   }
 
-  Widget _buildAppBar(BuildContext context) {
-    return SliverAppBar(
-      pinned: true,
-      backgroundColor: Colors.white,
-      elevation: 0,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: AppColors.gray800),
-        onPressed: () {
-          if (context.canPop()) {
-            context.pop();
-          } else {
-            context.go('/home');
-          }
-        },
-      ),
-      actions: [
-        IconButton(
-          icon: Icon(
-            _isFavorite ? Icons.favorite : Icons.favorite_border,
-            color: _isFavorite ? Colors.red : AppColors.gray800,
-          ),
-          onPressed: () {
-            setState(() => _isFavorite = !_isFavorite);
-          },
-        ),
-      ],
-    );
-  }
 
   Widget _buildBanner(BuildContext context) {
     final imageUrl = _getHospitalImageUrl();
@@ -239,65 +207,44 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen> {
                   )
                 : _buildBannerPlaceholder(),
           ),
-          // Gradient overlay for better text readability
-          Positioned.fill(
+          // Back arrow button
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 8,
             child: Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.6),
-                  ],
-                ),
+                color: Colors.white.withOpacity(0.9),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: AppColors.gray800),
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/home');
+                  }
+                },
               ),
             ),
           ),
-          // Hospital name overlay
+          // Favorite button
           Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _hospital!.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      shadows: [
-                        Shadow(
-                          offset: Offset(0, 2),
-                          blurRadius: 8,
-                          color: Colors.black54,
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (_hospital!.type.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.skyBlue600,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        _hospital!.type,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 8,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.9),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: Icon(
+                  _isFavorite ? Icons.favorite : Icons.favorite_border,
+                  color: _isFavorite ? Colors.red : AppColors.gray800,
+                ),
+                onPressed: () {
+                  setState(() => _isFavorite = !_isFavorite);
+                },
               ),
             ),
           ),
@@ -326,166 +273,54 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen> {
     );
   }
 
-  Widget _buildHospitalInfo(BuildContext context) {
+  Widget _buildHospitalName(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Text(
+          _hospital!.name,
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppColors.gray900,
+              ),
+        ),
+        if (_hospital!.type.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.skyBlue100,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              _hospital!.type,
+              style: TextStyle(
+                color: AppColors.skyBlue700,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
         // Location
         if (_hospital!.address != null || _hospital!.city != null) ...[
+          const SizedBox(height: 12),
           Row(
             children: [
-              Icon(Icons.location_on, size: 20, color: AppColors.skyBlue600),
-              const SizedBox(width: 8),
+              Icon(Icons.location_on, size: 18, color: AppColors.gray600),
+              const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   '${_hospital!.address ?? ""}${_hospital!.address != null && _hospital!.city != null ? ", " : ""}${_hospital!.city ?? ""}',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppColors.gray900,
-                        fontWeight: FontWeight.w600,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.gray600,
                       ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-        ],
-        // Description
-        if (_hospital!.description != null && _hospital!.description!.isNotEmpty && _hospital!.description != 'N/A') ...[
-          Text(
-            'About',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.gray900,
-                ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            _hospital!.description!,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.gray700,
-                  height: 1.6,
-                ),
-          ),
-          const SizedBox(height: 24),
         ],
       ],
-    );
-  }
-
-  Widget _buildContactInfo(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.skyBlue50,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.skyBlue200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.info_outline, color: AppColors.skyBlue600, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Contact Information',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.gray900,
-                    ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (_hospital!.phone != null && _hospital!.phone!.isNotEmpty) ...[
-            _buildContactItem(
-              context,
-              icon: Icons.phone,
-              label: 'Phone',
-              value: _hospital!.phone!,
-              onTap: () {
-                launchUrl(Uri.parse('tel:${_hospital!.phone}'));
-              },
-            ),
-            const SizedBox(height: 12),
-          ],
-          if (_hospital!.email != null && _hospital!.email!.isNotEmpty) ...[
-            _buildContactItem(
-              context,
-              icon: Icons.email,
-              label: 'Email',
-              value: _hospital!.email!,
-              onTap: () {
-                launchUrl(Uri.parse('mailto:${_hospital!.email}'));
-              },
-            ),
-            const SizedBox(height: 12),
-          ],
-          if (_hospital!.website != null && _hospital!.website!.isNotEmpty) ...[
-            _buildContactItem(
-              context,
-              icon: Icons.language,
-              label: 'Website',
-              value: _hospital!.website!,
-              onTap: () {
-                launchUrl(Uri.parse(_hospital!.website!));
-              },
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContactItem(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String value,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, size: 18, color: AppColors.skyBlue600),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppColors.gray600,
-                          fontSize: 11,
-                        ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.gray900,
-                          fontWeight: FontWeight.w500,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right, color: AppColors.gray400, size: 20),
-          ],
-        ),
-      ),
     );
   }
 
@@ -576,161 +411,136 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen> {
       }
     }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isAvailable ? AppColors.skyBlue200 : AppColors.gray200,
-          width: isAvailable ? 1.5 : 1,
+    return InkWell(
+      onTap: () {
+        context.push('/doctor-details?id=${doc.doctorId}');
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isAvailable ? AppColors.skyBlue200 : AppColors.gray200,
+            width: isAvailable ? 1.5 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Doctor Image
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: imageFullUrl.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: imageFullUrl,
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    errorWidget: (_, __, ___) => _buildDoctorPlaceholder(),
-                    placeholder: (_, __) => _buildDoctorPlaceholder(),
-                  )
-                : _buildDoctorPlaceholder(),
-          ),
-          const SizedBox(width: 16),
-          // Doctor Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  name,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.gray900,
-                                      ),
-                                ),
-                              ),
-                              if (doctor?.isVerified ?? false)
-                                Icon(
-                                  Icons.verified,
-                                  size: 18,
-                                  color: AppColors.skyBlue600,
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            specialty,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: AppColors.gray600,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                // Role Badge
-                if (role.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.skyBlue100,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      role.replaceAll('_', ' '),
-                      style: TextStyle(
-                        color: AppColors.skyBlue700,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                // Consultation Fee (convert from cents to dollars)
-                if (consultationFee != null)
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Doctor Image - Cover and fit to leading section
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: 100,
+                height: 100,
+                child: imageFullUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: imageFullUrl,
+                        width: 100,
+                        height: 100,
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => _buildDoctorPlaceholder(),
+                        placeholder: (_, __) => _buildDoctorPlaceholder(),
+                      )
+                    : _buildDoctorPlaceholder(),
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Doctor Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Row(
                     children: [
-                      Icon(Icons.attach_money, size: 16, color: AppColors.gray600),
-                      const SizedBox(width: 4),
-                      Text(
-                        '\$${(consultationFee / 100).toStringAsFixed(2)} /consultation',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.gray700,
-                              fontWeight: FontWeight.w600,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    name,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.gray900,
+                                        ),
+                                  ),
+                                ),
+                                if (doctor?.isVerified ?? false)
+                                  Icon(
+                                    Icons.verified,
+                                    size: 18,
+                                    color: AppColors.skyBlue600,
+                                  ),
+                              ],
                             ),
+                            const SizedBox(height: 4),
+                            Text(
+                              specialty,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.gray600,
+                                  ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                // Book Button (only if direct doctor booking is allowed)
-                if (isDirectDoctor) ...[
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        context.push(
-                          '/doctor-details?id=${doc.doctorId}',
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.skyBlue600,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                  const SizedBox(height: 8),
+                  // Role Badge
+                  if (role.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.skyBlue100,
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Text(
-                        'View Profile',
+                      child: Text(
+                        role.replaceAll('_', ' '),
                         style: TextStyle(
-                          fontSize: 14,
+                          color: AppColors.skyBlue700,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                  ),
+                  const SizedBox(height: 8),
+                  // Consultation Fee (already in dollars from API)
+                  if (consultationFee != null)
+                    Text(
+                      '\$${consultationFee.toStringAsFixed(2)}',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppColors.gray700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildDoctorPlaceholder() {
     return Container(
-      width: 80,
-      height: 80,
+      width: 100,
+      height: 100,
       decoration: BoxDecoration(
         color: AppColors.gray200,
         borderRadius: BorderRadius.circular(12),
@@ -767,9 +577,11 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen> {
                 );
                 return;
               }
-              // Navigate to book appointment with hospital ID
-              context.push(
-                '/book-appointment?hospitalId=${_hospital!.id}',
+              // Show message that user should select a doctor first
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please select a doctor to book an appointment'),
+                ),
               );
             },
             style: ElevatedButton.styleFrom(
@@ -793,3 +605,5 @@ class _HospitalDetailsScreenState extends State<HospitalDetailsScreen> {
     );
   }
 }
+
+

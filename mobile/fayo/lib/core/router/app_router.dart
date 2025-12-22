@@ -11,7 +11,6 @@ import '../../presentation/screens/hospitals/hospital_details_screen.dart';
 import '../../presentation/screens/doctors/doctors_screen.dart';
 import '../../presentation/screens/doctors/doctor_detail_screen.dart';
 import '../../presentation/screens/appointments/appointments_screen.dart';
-import '../../presentation/screens/appointments/book_appointment_screen.dart';
 import '../../presentation/screens/profile/profile_screen.dart';
 import '../../presentation/screens/telemedicine/telemedicine_screen.dart';
 import '../../presentation/screens/health_advices/health_advices_screen.dart';
@@ -103,18 +102,6 @@ class AppRouter {
         path: '/appointments',
         name: 'appointments',
         builder: (context, state) => const AppointmentsScreen(),
-      ),
-      GoRoute(
-        path: '/book-appointment',
-        name: 'book-appointment',
-        builder: (context, state) {
-          final doctorId = state.uri.queryParameters['doctorId'];
-          final hospitalId = state.uri.queryParameters['hospitalId'];
-          return BookAppointmentScreen(
-            doctorId: doctorId,
-            hospitalId: hospitalId,
-          );
-        },
       ),
       GoRoute(
         path: '/payment',
