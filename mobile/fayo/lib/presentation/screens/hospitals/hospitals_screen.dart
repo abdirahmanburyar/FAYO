@@ -18,6 +18,7 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<HospitalDto> _hospitals = [];
   bool _isLoading = true;
+  int _currentPage = 0;
 
   @override
   void initState() {
@@ -73,22 +74,80 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
                         ],
                       )
                     : _hospitals.isEmpty
-                        ? ListView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: EdgeInsets.zero,
+                        ? _buildEmptyState(context)
+                        : Stack(
                             children: [
-                              _buildEmptyState(context),
-                              const SizedBox(height: 16),
+                              // Deck of cards - stacked design
+                              Center(
+                                child: SizedBox(
+                                  width: MediaQuery.of(context).size.width - 32,
+                                  height: MediaQuery.of(context).size.height * 0.65,
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      // Show up to 3 cards stacked
+                                      ...List.generate(
+                                        _hospitals.length > 3 ? 3 : _hospitals.length,
+                                        (stackIndex) {
+                                          final cardIndex = _currentPage + stackIndex;
+                                          if (cardIndex >= _hospitals.length) return const SizedBox.shrink();
+                                          
+                                          final hospital = _hospitals[cardIndex];
+                                          final isTopCard = stackIndex == 0;
+                                          
+                                          return Positioned(
+                                            top: stackIndex * 12.0,
+                                            left: stackIndex * 2.0,
+                                            right: stackIndex * 2.0,
+                                            child: GestureDetector(
+                                              onPanUpdate: isTopCard
+                                                  ? (details) {
+                                                      // Allow dragging top card
+                                                    }
+                                                  : null,
+                                              onPanEnd: isTopCard
+                                                  ? (details) {
+                                                      // Swipe left to next
+                                                      if (details.velocity.pixelsPerSecond.dx < -500) {
+                                                        if (_currentPage < _hospitals.length - 1) {
+                                                          setState(() {
+                                                            _currentPage++;
+                                                          });
+                                                        }
+                                                      }
+                                                      // Swipe right to previous
+                                                      if (details.velocity.pixelsPerSecond.dx > 500) {
+                                                        if (_currentPage > 0) {
+                                                          setState(() {
+                                                            _currentPage--;
+                                                          });
+                                                        }
+                                                      }
+                                                    }
+                                                  : null,
+                                              child: Transform.scale(
+                                                scale: 1.0 - (stackIndex * 0.03),
+                                                child: Opacity(
+                                                  opacity: 1.0 - (stackIndex * 0.15),
+                                                  child: _buildHospitalCard(context, hospital, cardIndex),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              // Page indicator at the bottom
+                              Positioned(
+                                bottom: 20,
+                                left: 0,
+                                right: 0,
+                                child: _buildPageIndicator(),
+                              ),
                             ],
-                          )
-                        : ListView.builder(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.only(top: 12, bottom: 16),
-                            itemCount: _hospitals.length,
-                            itemBuilder: (context, index) {
-                              final hospital = _hospitals[index];
-                              return _buildHospitalCard(context, hospital);
-                            },
                           ),
               ),
             ),
@@ -232,49 +291,67 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
     );
   }
 
-  Widget _buildHospitalCard(BuildContext context, HospitalDto hospital) {
+  Widget _buildPageIndicator() {
+    if (_hospitals.isEmpty) return const SizedBox.shrink();
+    
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(
+        _hospitals.length,
+        (index) => Container(
+          width: 8,
+          height: 8,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _currentPage == index
+                ? AppColors.skyBlue600
+                : AppColors.gray400.withOpacity(0.5),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHospitalCard(BuildContext context, HospitalDto hospital, int index) {
     final imageUrl = _getHospitalImageUrl(hospital.logoUrl);
+    final isTopCard = index == _currentPage;
     
     return InkWell(
       onTap: () => context.push('/hospital-details?id=${hospital.id}'),
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withOpacity(isTopCard ? 0.25 : 0.15),
+              blurRadius: isTopCard ? 20 : 10,
+              offset: Offset(0, isTopCard ? 8 : 4),
             ),
           ],
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Hospital Image/Logo - Prefix (Left Side)
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    bottomLeft: Radius.circular(16),
-                  ),
-                  child: Container(
-                    width: 120,
-                    height: 140,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Hospital Image - Full Width Top
+              Stack(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    height: 200,
                     color: AppColors.gray100,
                     child: imageUrl.isNotEmpty
                         ? CachedNetworkImage(
                             imageUrl: imageUrl,
                             fit: BoxFit.cover,
-                            width: 120,
-                            height: 140,
+                            width: double.infinity,
+                            height: double.infinity,
                             placeholder: (context, url) => Container(
-                              width: 120,
-                              height: 140,
+                              width: double.infinity,
+                              height: double.infinity,
                               color: AppColors.gray100,
                               child: const Center(
                                 child: CircularProgressIndicator(
@@ -287,199 +364,82 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
                           )
                         : _buildImagePlaceholder(),
                   ),
+                ],
+              ),
+              // Dark Info Panel - Bottom
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.gray800,
                 ),
-                // Type Badge
-                Positioned(
-                  top: 8,
-                  left: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: hospital.type == 'HOSPITAL'
-                          ? AppColors.skyBlue600
-                          : Colors.green.shade600,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          hospital.type == 'HOSPITAL'
-                              ? Icons.local_hospital
-                              : Icons.medical_services,
-                          color: Colors.white,
-                          size: 12,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          hospital.type == 'HOSPITAL' ? 'Hospital' : 'Clinic',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // Active Status Badge
-                if (hospital.isActive)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.check_circle,
-                        color: Colors.white,
-                        size: 14,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            // Hospital Info Section - Right Side
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Hospital Name
+                    // Hospital Name - Large, Bold, White
                     Text(
                       hospital.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.bold,
-                            color: AppColors.gray900,
-                            fontSize: 16,
+                            color: Colors.white,
+                            fontSize: 20,
                           ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
-                    // Location Info
-                    if (hospital.city != null || hospital.address != null)
+                    const SizedBox(height: 12),
+                    // City Badge - Blue icon + Blue text
+                    if (hospital.city != null)
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.home,
+                            size: 16,
+                            color: AppColors.skyBlue400,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            hospital.city!.toUpperCase(),
+                            style: TextStyle(
+                              color: AppColors.skyBlue400,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    // Address - Location icon + White text
+                    if (hospital.address != null) ...[
+                      const SizedBox(height: 8),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(
                             Icons.location_on,
                             size: 16,
-                            color: AppColors.gray600,
+                            color: AppColors.gray400,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              hospital.address != null && hospital.city != null
-                                  ? '${hospital.address}, ${hospital.city}'
-                                  : hospital.city ?? hospital.address ?? 'Location not available',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppColors.gray600,
-                                    fontSize: 12,
-                                  ),
+                              hospital.address!,
+                              style: TextStyle(
+                                color: AppColors.gray300,
+                                fontSize: 13,
+                              ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                    // Specialties Section
-                    if (hospital.specialties.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: hospital.specialties
-                            .take(2)
-                            .map((specialty) => Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.skyBlue50,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: AppColors.skyBlue200,
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    specialty.name,
-                                    style: const TextStyle(
-                                      color: AppColors.skyBlue700,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ))
-                            .toList(),
-                      ),
-                      if (hospital.specialties.length > 2)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            '+${hospital.specialties.length - 2} more',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppColors.skyBlue600,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 10,
-                                ),
-                          ),
-                        ),
                     ],
-                    const Spacer(),
-                    // View Details Button
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.skyBlue600,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'View Details',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(
-                            Icons.arrow_forward,
-                            color: Colors.white,
-                            size: 14,
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -487,8 +447,8 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
 
   Widget _buildImagePlaceholder() {
     return Container(
-      width: 120,
-      height: 140,
+      width: double.infinity,
+      height: 200,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -502,7 +462,7 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
       child: const Center(
         child: Icon(
           Icons.local_hospital,
-          size: 48,
+          size: 64,
           color: AppColors.skyBlue600,
         ),
       ),
@@ -538,47 +498,42 @@ class _HospitalsScreenState extends State<HospitalsScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 10,
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image skeleton
-          _shimmerBox(width: 120, height: 140, radius: 16),
-          // Content skeleton
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image skeleton
+            _shimmerBox(width: double.infinity, height: 200, radius: 0),
+            // Dark panel skeleton
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.gray800,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _shimmerBox(width: 150, height: 18),
+                  _shimmerBox(width: 200, height: 24),
+                  const SizedBox(height: 12),
+                  _shimmerBox(width: 100, height: 16),
                   const SizedBox(height: 8),
-                  _shimmerBox(width: 120, height: 14),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _shimmerBox(width: 60, height: 20, radius: 8),
-                      const SizedBox(width: 6),
-                      _shimmerBox(width: 50, height: 20, radius: 8),
-                    ],
-                  ),
-                  const Spacer(),
-                  const SizedBox(height: 8),
-                  _shimmerBox(width: double.infinity, height: 32, radius: 10),
+                  _shimmerBox(width: 180, height: 16),
                 ],
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
